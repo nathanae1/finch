@@ -1,0 +1,29 @@
+import 'package:drift/drift.dart';
+
+import '../database.dart';
+import '../tables/follows_table.dart';
+
+part 'follows_dao.g.dart';
+
+@DriftAccessor(tables: [FollowEntries])
+class FollowsDao extends DatabaseAccessor<AppDatabase>
+    with _$FollowsDaoMixin {
+  FollowsDao(super.db);
+
+  Future<List<FollowEntry>> getActiveFollows() =>
+      (select(followEntries)..where((f) => f.status.equals('active'))).get();
+
+  Future<FollowEntry?> getFollow(String pubkey) =>
+      (select(followEntries)..where((f) => f.pubkey.equals(pubkey)))
+          .getSingleOrNull();
+
+  Future<void> upsertFollow(FollowEntriesCompanion entry) =>
+      into(followEntries).insertOnConflictUpdate(entry);
+
+  Future<void> removeFollow(String pubkey) =>
+      (delete(followEntries)..where((f) => f.pubkey.equals(pubkey))).go();
+
+  Future<void> updateLastSynced(String pubkey, int timestamp) =>
+      (update(followEntries)..where((f) => f.pubkey.equals(pubkey)))
+          .write(FollowEntriesCompanion(lastSyncedAt: Value(timestamp)));
+}
