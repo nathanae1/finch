@@ -9,6 +9,7 @@ void main() {
       final event = EncryptedEvent(
         pubkey: 'test-pubkey',
         createdAt: 1711324800,
+        epoch: 0,
         nonce: Uint8List.fromList(List.filled(24, 0xAB)),
         payload: Uint8List.fromList([1, 2, 3, 4, 5]),
       );
@@ -21,6 +22,7 @@ void main() {
       final event = EncryptedEvent(
         pubkey: 'test-pubkey',
         createdAt: 1711324800,
+        epoch: 0,
         nonce: Uint8List.fromList(List.filled(24, 0x01)),
         payload: largePayload,
       );
@@ -35,12 +37,14 @@ void main() {
       final a = EncryptedEvent(
         pubkey: 'pk',
         createdAt: 100,
+        epoch: 0,
         nonce: nonce,
         payload: payload,
       );
       final b = EncryptedEvent(
         pubkey: 'pk',
         createdAt: 100,
+        epoch: 0,
         nonce: Uint8List.fromList(List.filled(24, 0x01)),
         payload: Uint8List.fromList([10, 20, 30]),
       );

@@ -9,24 +9,40 @@ The protocol is the contract between all Finch components. It defines how events
 ```
 Event {
   version:    string       // date-based, e.g. "2026-03-24"
-  id:         string       // sha256(cbor(pubkey + created_at + kind + content))
+  id:         string       // blake2b-256(cbor(version + pubkey + created_at + kind + ref + content + media + extensions))
   pubkey:     string       // creator's Ed25519 public key
   created_at: uint64       // unix timestamp (seconds)
   kind:       uint8        // event type (see below)
   ref:        string?      // optional, references another event id
   content:    bytes        // kind-specific payload (see below)
   media:      MediaRef[]   // for posts with photos
+  extensions: Map<string, bytes>  // optional, included in ID hash (empty map if none)
   sig:        bytes        // Ed25519 signature over id
 }
 
 MediaRef {
-  hash:       string       // SHA-256 of plaintext media blob
+  hash:       string       // BLAKE2b-256 of plaintext media blob
   mime_type:  string       // e.g. "image/jpeg"
   size:       uint64       // plaintext size in bytes
 }
 ```
 
 ### Event Kinds
+
+Event kinds are an open enum. Clients MUST store and sync events with unknown kinds without crashing or dropping them. Unknown kinds are preserved in the database and forwarded during sync, but not rendered in the UI. This allows older clients to coexist with newer ones in a P2P network where forced upgrades are impossible.
+
+**Reserved ranges:**
+
+| Range | Category | Description |
+|-------|----------|-------------|
+| 1-9 | Core social feed | Posts, profiles, follows, comments, likes, deletes |
+| 10-19 | Real-time / ephemeral | Voice rooms, typing indicators, presence |
+| 20-99 | Reserved | Future core protocol extensions |
+| 100-199 | Messaging | DMs, group chat, read receipts |
+| 200-299 | Media | Video, audio, file sharing |
+| 300+ | Application-defined | Third-party extensions |
+
+**Defined kinds (v1):**
 
 | Kind | Name | Content | Ref |
 |------|------|---------|-----|
@@ -51,8 +67,11 @@ EncryptedEvent {
 ### Serialization
 
 - Events are serialized to CBOR before encryption
-- The `id` is computed as sha256 over the CBOR-serialized event fields (excluding `id` and `sig`)
+- The `id` is computed as BLAKE2b-256 over the CBOR-serialized ID fields: `version`, `pubkey`, `created_at`, `kind`, `ref`, `content`, `media`, `extensions` (excluding `id` and `sig`)
+- `version` is included in the ID hash to prevent downgrade attacks (replacing the version tag to trigger different parsing)
+- `extensions` is included in the ID hash so item-level extensions are inside the signature by default (see Envelope Trust Model below). Pass an empty map `{}` when no extensions are present — the hash must be deterministic regardless of whether extensions exist.
 - The `sig` is computed as Ed25519.sign(private_key, id_bytes)
+- CBOR decoders MUST preserve unknown fields on decode, not drop them. This prevents old clients from silently stripping data added by newer protocol versions.
 
 ## Encryption Scheme
 
@@ -69,13 +88,48 @@ Identity Key (Ed25519 keypair)
 
 ### Feed Key Management
 
-- Creator generates a random 256-bit feed key at identity creation
+- Creator generates a random 256-bit feed key (epoch 0) at identity creation
 - Feed key is shared with each follower individually:
   1. Convert both parties' Ed25519 keys to X25519
   2. Perform X25519 Diffie-Hellman to derive shared secret
-  3. HKDF-SHA256(shared_secret, salt="finch-feed-key-v1") to derive encryption key
+  3. `crypto_kdf_derive_from_key(subkey_len=32, subkey_id=1, ctx="finchkex", key=shared_secret)` using libsodium's BLAKE2b-based KDF, with `info = requester_pubkey || responder_pubkey || timestamp` to ensure unique keys per exchange
   4. Encrypt feed key with derived key, send to follower
 - On follower removal: generate new feed key, re-encrypt for all remaining followers, distribute on next sync
+
+### Feed Key Ratchet (MegOLM-style)
+
+Feed keys advance forward using a hash ratchet to provide forward secrecy for new followers:
+
+```
+epoch_key_0 = random 256-bit key (generated at identity creation)
+epoch_key_1 = BLAKE2b-256(epoch_key_0 || "finch-ratchet-v1")
+epoch_key_2 = BLAKE2b-256(epoch_key_1 || "finch-ratchet-v1")
+...
+epoch_key_n = BLAKE2b-256(epoch_key_{n-1} || "finch-ratchet-v1")
+```
+
+**How it works:**
+- Each encrypted event includes the epoch number it was encrypted with (stored in the EncryptedEvent alongside existing fields)
+- The owner advances the epoch periodically (e.g., daily or every N posts — implementation decides)
+- When sharing keys with a new follower, the owner sends the **current** epoch key. The follower can derive all future keys but **cannot derive past keys** (the hash is one-way)
+- To grant a new follower access to history, the owner optionally sends older epoch keys during the follow handshake
+- On unfollow: force-advance to a new random epoch key (not derived from the chain), breaking the ratchet for the removed follower
+
+**Security properties:**
+- A new follower cannot read posts from before they were granted access (unless explicitly given old keys)
+- A removed follower cannot read posts after the epoch advances past the unfollow point
+- A compromised epoch key only exposes content from that epoch forward until the next random re-key
+
+**EncryptedEvent update:**
+```
+EncryptedEvent {
+  pubkey:     string       // plaintext — needed for routing
+  created_at: uint64       // plaintext — needed for sync queries
+  epoch:      uint32       // feed key epoch number
+  nonce:      bytes[24]    // random, unique per event
+  payload:    bytes        // XChaCha20-Poly1305(epoch_key, nonce, serialize(Event))
+}
+```
 
 ### Nonce Generation
 
@@ -90,7 +144,55 @@ All nonces are 24 bytes generated by a cryptographically secure random number ge
 - Each media blob is encrypted independently with the feed key
 - Nonce: random 24 bytes (prepended to output)
 - Encrypted blob format: `nonce (24 bytes) || XChaCha20-Poly1305(feed_key, nonce, plaintext_blob)`
-- The MediaRef.hash in the event references the plaintext hash, so followers can verify integrity after decryption
+- The MediaRef.hash in the event references the plaintext BLAKE2b-256 hash, so followers can verify integrity after decryption
+
+## Envelope Format & Trust Model
+
+### Structure
+
+The Envelope is the unit that transports move. All sync, push, and real-time communication operates on Envelopes, not on bare EncryptedEvents.
+
+```
+Envelope {
+  version:    string              // protocol version, e.g. "2026-03-24"
+  items:      EnvelopeItem[]      // one or more typed items
+  extensions: Map<string, bytes>  // optional, UNTRUSTED (see trust model)
+}
+
+EnvelopeItem {
+  type:       string              // "event", "commit", "receipt", etc.
+  payload:    bytes               // type-specific content
+  extensions: Map<string, bytes>  // optional, trust governed by item type's rules
+}
+```
+
+**Defined item types (v1):**
+
+| Type | Payload | Integrity mechanism |
+|------|---------|-------------------|
+| `"event"` | Serialized EncryptedEvent | Ed25519 signature over Event ID (inside the encrypted payload) |
+
+Future item types (MLS commits, delivery receipts, etc.) will be added as new type strings. Old clients that encounter unknown item types MUST preserve and forward them during sync, not drop them.
+
+### Trust Model
+
+**Rule 1: Every item carries its own integrity mechanism, defined by its type.**
+
+The item type's specification answers "how do I know this is authentic?" Events carry Ed25519 signatures. When MLS is added, MLS commits will carry MLS's own authentication. Any new item type (receipts, read markers, etc.) MUST define its signing or authentication scheme before shipping. An item type without a defined integrity mechanism is a protocol bug.
+
+**Rule 2: The Envelope itself is not signed and is not trusted.**
+
+A receiver treats an Envelope as an untrusted container: parse it, extract items, verify each item independently using the item type's integrity mechanism, then discard the Envelope. Any field that lives on the Envelope rather than inside an item is a hint, not a claim. The `version` field on the Envelope tells the parser how to decode — it does not assert authenticity.
+
+**Rule 3: Envelope-level extensions are explicitly untrusted.**
+
+If future work wants to put something security-relevant in an Envelope extension, this rule forces a decision: either promote it to a proper item type with its own signing scheme, or accept that it's advisory-only. This is the guardrail that prevents "forgot to think about trust" bugs. Envelope extensions are for transport-layer hints (routing preferences, compression flags, etc.) — never for content or identity claims.
+
+**Rule 4: Item-level extensions are governed by the item type's rules.**
+
+If an item type signs its payload, extensions on that item are either inside the signed bytes (trusted) or outside (untrusted), and the item type's specification MUST declare which. The default is: **extensions are inside the signature**. This is the safer default — it forces the "untrusted extension" case to be an explicit, documented decision rather than an accidental omission.
+
+For Events specifically: the `extensions` field is included in the Event ID hash (and therefore inside the Ed25519 signature). Any extension added to an Event is authenticated. An unsigned Event extension is not possible without changing the Event spec — by design.
 
 ## Sync Protocol
 
@@ -110,7 +212,7 @@ All sync happens over HTTP. The same API is implemented by:
 - Response: CBOR array of EncryptedEvent
 - Only returns events from the server's owner (single-user model)
 
-**GET /media/{sha256_hash}**
+**GET /media/{blake2b_hash}**
 - Returns the encrypted media blob (nonce prepended)
 - Response: raw bytes
 - Content-Type: `application/octet-stream`
@@ -160,7 +262,7 @@ If the client supports the server's version, sync proceeds. If not, the client s
 Requests to relay push endpoints (`POST /events`, `POST /media`) require a signature header:
 
 ```
-X-Finch-Sig: base64(Ed25519.sign(identity_key, sha256(request_body)))
+X-Finch-Sig: base64(Ed25519.sign(identity_key, blake2b_256(request_body)))
 X-Finch-Pubkey: base64(pubkey)
 ```
 
@@ -176,9 +278,12 @@ Encodes everything needed to reach an account:
   endpoints: [
     { type: "onion", address: "abc123...xyz.onion" },
     { type: "relay", url: "https://my-relay.example.com" }
-  ]
+  ],
+  capabilities: ["pairwise-v1"]
 }
 ```
+
+The `capabilities` field advertises what the peer supports. v1 clients advertise `["pairwise-v1"]`. Future capabilities (e.g., `"mls-v1"`, `"media-streaming-v1"`) are added as they ship. During handshake, peers compute the intersection of capabilities to determine which protocols to use. Peers with no `capabilities` field are assumed to be pre-v1 and treated as `["pairwise-v1"]`.
 
 - Serialized as JSON, then base64url-encoded for QR codes and links
 - QR code contains: `finch://connect?card={base64url_encoded_card}`
@@ -206,3 +311,33 @@ This is an optimization, not a requirement. The sync protocol works identically 
 - Clients MUST handle unknown event kinds gracefully (skip, don't crash)
 - Clients MUST handle events from newer versions gracefully (skip unknown fields)
 - Breaking changes get a new version date; additive changes may reuse the same version
+
+## Test Vectors
+
+The protocol is enforced across implementations (Dart app, Rust relay, future clients) by shared test vectors, not by a schema language. Test vectors are the source of truth for wire format agreement.
+
+### Vector format
+
+```
+test/vectors/
+  index.json                   // lists all vectors with descriptions
+  event_post_v1.cbor           // known-good serialized Event
+  encrypted_event_v1.cbor      // known-good EncryptedEvent
+  envelope_v1.cbor             // known-good Envelope
+  keypair_v1.json              // known-good keypair derivation
+  ...
+```
+
+Each entry in `index.json` specifies: the type being tested, the CBOR file path, and the expected decoded field values as JSON. Both the Dart and Rust test harnesses read the same index, decode the same CBOR, and assert the same field values.
+
+### What vectors cover
+
+1. **Event serialization**: Event fields → CBOR bytes → decode → fields match
+2. **Event ID computation**: Given specific fields (including version and extensions), the ID hash is exactly these bytes
+3. **Signing**: Given this keypair and this event, the signature is exactly these bytes
+4. **Encryption**: Given this feed key and this nonce, the EncryptedEvent payload is exactly these bytes
+5. **Envelope**: Given these items, the Envelope CBOR is exactly these bytes
+6. **Key derivation**: Given this seed, the Ed25519 keypair is exactly this. Given this keypair, the X25519 conversion is exactly this.
+7. **Feed key ratchet**: Given epoch key N, epoch key N+1 is exactly this
+
+Vectors pin the protocol against future refactors: when you optimize the encoder, vectors tell you whether bytes already on users' devices still decode correctly. For a P2P system with no forced upgrades, this is how you avoid bricking people's data.

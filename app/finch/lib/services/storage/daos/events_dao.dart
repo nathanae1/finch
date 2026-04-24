@@ -82,9 +82,9 @@ class EventsDao extends DatabaseAccessor<AppDatabase>
 
   Future<int> evictOldEvents(
     int maxAgeSeconds,
-    int graceLastViewedSeconds,
-  ) {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    int graceLastViewedSeconds, {
+    required int now,
+  }) {
     final cutoff = now - maxAgeSeconds;
     final graceCutoff = now - graceLastViewedSeconds;
 

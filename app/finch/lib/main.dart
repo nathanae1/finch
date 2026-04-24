@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'providers/service_providers.dart';
+import 'services/clock.dart';
+import 'services/crypto/sodium_crypto_service.dart';
 import 'services/storage/database.dart';
 import 'services/storage/drift_storage_service.dart';
 
@@ -12,11 +14,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final storageService = await _initStorageService();
+  final cryptoService = await SodiumCryptoService.init();
 
   runApp(
     ProviderScope(
       overrides: [
         storageServiceProvider.overrideWithValue(storageService),
+        cryptoServiceProvider.overrideWithValue(cryptoService),
       ],
       child: const FinchApp(),
     ),
@@ -36,7 +40,7 @@ Future<DriftStorageService> _initStorageService() async {
   }
 
   final db = AppDatabase.encrypted(dbKey);
-  return DriftStorageService(db);
+  return DriftStorageService(db, const SystemClock());
 }
 
 class FinchApp extends StatelessWidget {

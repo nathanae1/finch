@@ -15,6 +15,7 @@ class EventEntries extends Table {
   IntColumn get lastViewed => integer().nullable()();
   TextColumn get version =>
       text().withDefault(const Constant('2026-03-24'))();
+  BlobColumn get extensions => blob().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

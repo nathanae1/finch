@@ -27,8 +27,9 @@ First-launch experience: generate identity, create profile, back up recovery phr
 - Updated whenever user changes their profile
 
 ### Connection card
-- Generated after identity creation: `{ pubkey, endpoints: [] }`
+- Generated after identity creation: `{ pubkey, endpoints: [], capabilities: ["pairwise-v1"] }`
 - Endpoints initially empty (onion address added in Plan 11, relay in Plan 15)
+- Capabilities defaults to `["pairwise-v1"]` for v1 clients; future capabilities added as they ship
 - Serialized as JSON, base64url-encoded
 - QR code generated via `qr_flutter`
 - Invite link format: `finch://connect?card={base64url}`
@@ -43,6 +44,34 @@ First-launch experience: generate identity, create profile, back up recovery phr
 - `identityProvider` — loaded from DB on launch, provides pubkey, connection card
 - `profileProvider` — loaded from latest kind=2 event, provides name, bio, avatar
 
+### Plan 03 handoff — feed key epoch + real ContentKeyService wiring
+Plan 03 landed the crypto primitives but deliberately deferred the storage
+and wiring pieces that require a real identity. This plan picks them up:
+
+- **Schema**: Add `feed_key_epoch` column (integer, default 0) to
+  `IdentityEntries` and `FollowEntries` tables. Bump drift `schemaVersion`
+  to 3 and write the `ALTER TABLE ... ADD COLUMN` migration in
+  `database.dart`'s `onUpgrade`.
+- **Converters**: Update `identityFromRow`/`identityToCompanion` and
+  `followFromRow`/`followToCompanion` in `converters.dart` to carry the
+  new field.
+- **Types**: Add `int feedKeyEpoch` (default 0) to `Identity` and `Follow`
+  in `services/types.dart`.
+- **Cache hydration**: In `main.dart`, after the identity is loaded from
+  storage, construct a `FeedKeyCache` and populate it with the own
+  identity's `(feedKey, feedKeyEpoch)` plus every active follow's
+  `(feedKey, feedKeyEpoch)`. Clear the cache on app terminate.
+- **Secret key**: Load the Ed25519 secret key from
+  `FlutterSecureStorage` (stored during onboarding) and pass it to the
+  `PairwiseContentKeyService` constructor.
+- **Provider wiring**: Override `contentKeyServiceProvider` with the real
+  `PairwiseContentKeyService` in `main.dart`'s `ProviderScope.overrides`
+  once identity exists. Fall back to `MockContentKeyService` when
+  identity is missing (pre-onboarding) so the app can still boot.
+- **Onboarding write**: The keygen step must persist both the identity
+  (with `feedKeyEpoch = 0`) and the secret key to secure storage before
+  navigating away.
+
 ## Files created/modified
 - `lib/screens/onboarding/welcome_screen.dart`
 - `lib/screens/onboarding/keygen_screen.dart`
@@ -56,6 +85,12 @@ First-launch experience: generate identity, create profile, back up recovery phr
 - `lib/widgets/qr_code_card.dart`
 - `lib/router.dart` — go_router configuration
 - `pubspec.yaml` (add `go_router`)
+- `lib/services/types.dart` (add `feedKeyEpoch` to `Identity` and `Follow`)
+- `lib/services/storage/tables/identity_table.dart` (add `feedKeyEpoch` column)
+- `lib/services/storage/tables/follows_table.dart` (add `feedKeyEpoch` column)
+- `lib/services/storage/database.dart` (bump `schemaVersion` to 3 + migration)
+- `lib/services/storage/converters.dart` (update identity/follow converters)
+- `lib/main.dart` (hydrate `FeedKeyCache`, wire real `PairwiseContentKeyService`)
 - `test/screens/onboarding/` — widget tests with mock services
 
 ## Verification

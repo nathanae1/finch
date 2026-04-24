@@ -64,11 +64,13 @@ class Identity {
   const Identity({
     required this.pubkey,
     required this.feedKey,
+    this.feedKeyEpoch = 0,
     this.recoveryPhrase,
     required this.createdAt,
   });
   final String pubkey;
   final Uint8List feedKey;
+  final int feedKeyEpoch;
   final String? recoveryPhrase;
   final int createdAt;
 }
@@ -80,6 +82,7 @@ class Follow {
     this.avatarHash,
     required this.connectionCard,
     required this.feedKey,
+    this.feedKeyEpoch = 0,
     this.lastSyncedAt = 0,
     this.status = 'active',
   });
@@ -88,6 +91,7 @@ class Follow {
   final String? avatarHash;
   final String connectionCard; // serialized JSON
   final Uint8List feedKey;
+  final int feedKeyEpoch;
   final int lastSyncedAt;
   final String status;
 }

@@ -46,5 +46,29 @@ void main() {
       expect(decoded.endpoints[0].address, equals('abc.onion'));
       expect(decoded.endpoints[1].address, equals('https://r.example.com'));
     });
+
+    test('round-trips with capabilities', () {
+      const card = ConnectionCard(
+        pubkey: 'pk',
+        capabilities: ['pairwise-v1', 'mls-v1'],
+      );
+      final decoded = ConnectionCard.fromBytes(card.toBytes());
+      expect(decoded.capabilities, equals(['pairwise-v1', 'mls-v1']));
+      expect(decoded, equals(card));
+    });
+
+    test('defaults capabilities to pairwise-v1', () {
+      const card = ConnectionCard(pubkey: 'pk');
+      expect(card.capabilities, equals(['pairwise-v1']));
+    });
+
+    test('missing capabilities in wire data defaults to pairwise-v1', () {
+      // Simulate a v1 card serialized without capabilities field
+      final map = {'pubkey': 'pk', 'endpoints': <dynamic>[]};
+      final bytes = cbor.encode(map);
+      final decoded =
+          ConnectionCard.fromMap(cbor.decode(bytes) as Map<dynamic, dynamic>);
+      expect(decoded.capabilities, equals(['pairwise-v1']));
+    });
   });
 }

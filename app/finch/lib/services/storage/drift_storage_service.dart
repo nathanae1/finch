@@ -3,15 +3,17 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../models/models.dart';
+import '../clock.dart';
 import '../storage_service.dart';
 import '../types.dart';
 import 'converters.dart';
 import 'database.dart';
 
 class DriftStorageService implements StorageService {
-  DriftStorageService(this._db);
+  DriftStorageService(this._db, this._clock);
 
   final AppDatabase _db;
+  final Clock _clock;
 
   // --- Identity ---
 
@@ -79,9 +81,9 @@ class DriftStorageService implements StorageService {
   Future<void> saveEvent(Event event) async {
     final identity = await _db.identityDao.getIdentity();
     final isOwn = identity != null && identity.pubkey == event.pubkey;
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    await _db.eventsDao
-        .upsertEvent(eventToCompanion(event, isOwn: isOwn, fetchedAt: now));
+    await _db.eventsDao.upsertEvent(
+      eventToCompanion(event, isOwn: isOwn, fetchedAt: _clock.nowUnixSeconds()),
+    );
   }
 
   @override
@@ -169,7 +171,7 @@ class DriftStorageService implements StorageService {
         OutboundQueueEntriesCompanion.insert(
           targetPubkey: targetPubkey,
           eventBlob: eventBlob,
-          createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          createdAt: _clock.nowUnixSeconds(),
         ),
       );
 
@@ -194,7 +196,11 @@ class DriftStorageService implements StorageService {
     int maxAgeSeconds,
     int graceLastViewedSeconds,
   ) =>
-      _db.eventsDao.evictOldEvents(maxAgeSeconds, graceLastViewedSeconds);
+      _db.eventsDao.evictOldEvents(
+        maxAgeSeconds,
+        graceLastViewedSeconds,
+        now: _clock.nowUnixSeconds(),
+      );
 
   @override
   Future<int> evictMediaOverLimit(int maxBytes) =>

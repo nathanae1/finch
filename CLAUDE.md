@@ -14,7 +14,7 @@ A private, peer-to-peer social feed. No servers, no ads, no algorithm. E2E encry
 ## Architecture
 
 - Flutter (Dart) app that acts as both client and server
-- Crypto: libsodium via FFI (Ed25519 identity, XChaCha20-Poly1305 feed encryption)
+- Crypto: libsodium via `sodium` Dart package v4 (Ed25519 identity, XChaCha20-Poly1305 feed encryption, BLAKE2b hashing, MegOLM-style feed key ratchet)
 - Networking: embedded Arti (Tor) via Rust FFI for WAN, mDNS for LAN
 - Storage: SQLCipher via drift
 - Serialization: CBOR

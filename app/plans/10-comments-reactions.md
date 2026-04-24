@@ -8,13 +8,13 @@ Plan 05 (post creation — event model), Plan 06 (feed display — post detail s
 Add comments and likes to posts, with delivery to the post author via the sync/outbound queue.
 
 ### Comment creation (kind=4)
-- Event with `kind=4`, `ref=target_post_id`, `content=comment_text`
-- Signed and encrypted with own feed key
+- Event with `kind=4`, `ref=target_post_id`, `content=comment_text`, `extensions={}`
+- Signed and encrypted via `ContentKeyService.encryptForAudience(event, Audience.broadcast)`
 - Stored locally
 
 ### Like creation (kind=5)
-- Event with `kind=5`, `ref=target_post_id`, `content=""` (empty)
-- Signed and encrypted with own feed key
+- Event with `kind=5`, `ref=target_post_id`, `content=""` (empty), `extensions={}`
+- Signed and encrypted via `ContentKeyService.encryptForAudience(event, Audience.broadcast)`
 - One like per user per post (toggle: like again = create kind=6 delete event referencing the like)
 
 ### Outbound delivery

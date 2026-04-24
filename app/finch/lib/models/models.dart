@@ -1,5 +1,7 @@
+export 'audience.dart';
 export 'connection_card.dart';
 export 'encrypted_event.dart';
+export 'envelope.dart';
 export 'ephemeral_encrypted_event.dart';
 export 'event.dart';
 export 'event_kind.dart';

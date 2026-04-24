@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:finch/models/models.dart';
+import 'package:finch/services/mocks/mock_clock.dart';
 import 'package:finch/services/storage/database.dart';
 import 'package:finch/services/storage/drift_storage_service.dart';
 import 'package:finch/services/types.dart';
@@ -12,7 +13,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.memory();
-    service = DriftStorageService(db);
+    service = DriftStorageService(db, MockClock());
   });
 
   tearDown(() async {

@@ -7,18 +7,21 @@ class EncryptedEvent {
   const EncryptedEvent({
     required this.pubkey,
     required this.createdAt,
+    required this.epoch,
     required this.nonce,
     required this.payload,
   });
 
   final String pubkey;
   final int createdAt;
+  final int epoch; // feed key epoch number
   final Uint8List nonce; // 24 bytes
   final Uint8List payload;
 
   Map<String, dynamic> toMap() => {
         'pubkey': pubkey,
         'created_at': createdAt,
+        'epoch': epoch,
         'nonce': nonce,
         'payload': payload,
       };
@@ -28,6 +31,7 @@ class EncryptedEvent {
   static EncryptedEvent fromMap(Map<dynamic, dynamic> map) => EncryptedEvent(
         pubkey: map['pubkey'] as String,
         createdAt: map['created_at'] as int,
+        epoch: map['epoch'] as int,
         nonce: _toUint8List(map['nonce']),
         payload: _toUint8List(map['payload']),
       );
@@ -41,16 +45,17 @@ class EncryptedEvent {
       other is EncryptedEvent &&
           pubkey == other.pubkey &&
           createdAt == other.createdAt &&
+          epoch == other.epoch &&
           const ListEquality<int>().equals(nonce, other.nonce) &&
           const ListEquality<int>().equals(payload, other.payload);
 
   @override
-  int get hashCode => Object.hash(pubkey, createdAt);
+  int get hashCode => Object.hash(pubkey, createdAt, epoch);
 
   @override
   String toString() =>
       'EncryptedEvent(pubkey: $pubkey, createdAt: $createdAt, '
-      'payloadSize: ${payload.length})';
+      'epoch: $epoch, payloadSize: ${payload.length})';
 }
 
 Uint8List _toUint8List(dynamic value) {

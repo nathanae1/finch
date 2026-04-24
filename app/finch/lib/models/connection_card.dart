@@ -38,14 +38,17 @@ class ConnectionCard {
   const ConnectionCard({
     required this.pubkey,
     this.endpoints = const [],
+    this.capabilities = const ['pairwise-v1'],
   });
 
   final String pubkey;
   final List<Endpoint> endpoints;
+  final List<String> capabilities;
 
   Map<String, dynamic> toMap() => {
         'pubkey': pubkey,
         'endpoints': endpoints.map((e) => e.toMap()).toList(),
+        'capabilities': capabilities,
       };
 
   Uint8List toBytes() => Uint8List.fromList(cbor.encode(toMap()));
@@ -57,6 +60,10 @@ class ConnectionCard {
               (item) => Endpoint.fromMap(item as Map<dynamic, dynamic>),
             )
             .toList(),
+        capabilities: (map['capabilities'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const ['pairwise-v1'],
       );
 
   static ConnectionCard fromBytes(Uint8List bytes) =>
@@ -67,18 +74,26 @@ class ConnectionCard {
       identical(this, other) ||
       other is ConnectionCard &&
           pubkey == other.pubkey &&
-          const ListEquality<Endpoint>().equals(endpoints, other.endpoints);
+          const ListEquality<Endpoint>().equals(endpoints, other.endpoints) &&
+          const ListEquality<String>()
+              .equals(capabilities, other.capabilities);
 
   @override
-  int get hashCode => Object.hash(pubkey, endpoints.length);
+  int get hashCode => Object.hash(pubkey, endpoints.length, capabilities.length);
 
   @override
   String toString() =>
-      'ConnectionCard(pubkey: $pubkey, endpoints: ${endpoints.length})';
+      'ConnectionCard(pubkey: $pubkey, endpoints: ${endpoints.length}, '
+      'capabilities: $capabilities)';
 
-  ConnectionCard copyWith({String? pubkey, List<Endpoint>? endpoints}) =>
+  ConnectionCard copyWith({
+    String? pubkey,
+    List<Endpoint>? endpoints,
+    List<String>? capabilities,
+  }) =>
       ConnectionCard(
         pubkey: pubkey ?? this.pubkey,
         endpoints: endpoints ?? this.endpoints,
+        capabilities: capabilities ?? this.capabilities,
       );
 }

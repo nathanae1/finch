@@ -12,15 +12,15 @@ When you remove a follower, generate a new feed key so they can no longer decryp
 - `FollowService.removeFollower(pubkey)` triggers rotation
 
 ### Rotation steps
-1. **Generate new feed key**: random 256-bit key via CryptoService
+1. **Generate new feed key**: random 256-bit key via CryptoService (primitive)
 2. **Retain old key**: store in a `feed_key_history` table with the timestamp range it was active for
-3. **Set new key as current**: update `identity.feed_key` in DB
-4. **Encrypt new key for each remaining follower**:
+3. **Set new key as current**: update `identity.feed_key` in DB, update ContentKeyService's in-memory cache
+4. **Encrypt new key for each remaining follower** (ContentKeyService):
    - For each pubkey in `follows` table (excluding the removed one):
-   - Derive shared key via X25519 DH
-   - Encrypt new feed key with shared key
+   - Derive shared key via X25519 DH (CryptoService primitive)
+   - Encrypt new feed key with shared key (ContentKeyService)
    - Store in a `pending_key_distributions` table: `{ target_pubkey, encrypted_feed_key, nonce }`
-5. **New posts use the new key**: `CryptoService.getCurrentFeedKey()` always returns the latest
+5. **New posts use the new key**: `ContentKeyService.getCurrentFeedKey()` always returns the latest
 
 ### Key distribution (lazy, during sync)
 - During sync with a follower, check `pending_key_distributions` for their pubkey
@@ -73,8 +73,8 @@ CREATE TABLE pending_key_distributions (
 - `lib/services/storage/daos/key_rotation_dao.dart`
 - `lib/services/storage/database.dart` (update: new tables, migration)
 - `lib/services/follow_service.dart` (update: trigger rotation on unfollow)
-- `lib/services/crypto/sodium_crypto_service.dart` (update: multi-key decryption)
-- `lib/services/crypto/key_cache.dart` (update: include historical keys)
+- `lib/services/crypto/pairwise_content_key_service.dart` (update: multi-key decryption, rotation logic)
+- `lib/services/crypto/key_cache.dart` (update: include historical keys, used by ContentKeyService)
 - `lib/sync/sync_engine.dart` (update: distribute keys, receive rotated keys)
 - `lib/server/handlers/manifest_handler.dart` (update: include pending key distribution)
 - `test/services/crypto/key_rotation_test.dart`

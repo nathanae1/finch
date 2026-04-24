@@ -27,10 +27,10 @@ Run a shelf-based HTTP server inside the app that serves your content to peers.
 - Lightweight — no payloads, just IDs and timestamps
 
 **GET /events?since={ts}**
-- Returns CBOR array of `EncryptedEvent` objects
+- Returns CBOR-serialized `Envelope` containing `EnvelopeItem`s of type `"event"`, each wrapping an `EncryptedEvent`
 - Only own events (is_own=1) after the given timestamp
 
-**GET /media/{sha256_hash}**
+**GET /media/{blake2b_hash}**
 - Returns raw encrypted media blob from filesystem
 - Content-Type: `application/octet-stream`
 - 404 if hash not found in media_cache
@@ -72,7 +72,7 @@ Run a shelf-based HTTP server inside the app that serves your content to peers.
 - Server starts on app launch, binds to a port
 - `curl http://localhost:{port}/status` → valid JSON with correct pubkey and version
 - `curl http://localhost:{port}/manifest?since=0` → CBOR with list of own event IDs
-- `curl http://localhost:{port}/events?since=0` → CBOR array of EncryptedEvents
+- `curl http://localhost:{port}/events?since=0` → CBOR Envelope containing EnvelopeItems of type "event"
 - `curl http://localhost:{port}/media/{hash}` → encrypted blob bytes (correct size)
 - `curl http://localhost:{port}/media/nonexistent` → 404
 - POST to `/follow-request` with valid CBOR → 202, entry in inbound_follow_requests table
@@ -82,6 +82,7 @@ Run a shelf-based HTTP server inside the app that serves your content to peers.
 
 ## Key decisions
 - Random high port (49152-65535) avoids conflicts with well-known services. Port is ephemeral — communicated via mDNS and connection card, not hardcoded.
+- Envelope is the response format for /events — items are typed EnvelopeItems, envelope-level fields are untrusted hints (see protocol spec trust model)
 - CBOR responses for data endpoints, JSON for /status (human-readable for debugging)
 - No CORS headers needed (device-to-device, no browser involved)
 - No TLS on the local server — content payloads are E2E encrypted. LAN metadata exposure is the accepted trade-off from the spec.

@@ -7,6 +7,7 @@ void main() {
   Event makeEvent({
     String? ref,
     List<MediaRef> media = const [],
+    Map<String, Uint8List> extensions = const {},
   }) =>
       Event(
         version: '2026-03-24',
@@ -17,6 +18,7 @@ void main() {
         ref: ref,
         content: Uint8List.fromList([72, 101, 108, 108, 111]), // "Hello"
         media: media,
+        extensions: extensions,
         sig: Uint8List.fromList(List.filled(64, 0xFF)),
       );
 
@@ -67,19 +69,89 @@ void main() {
       expect(decoded.media, isEmpty);
     });
 
-    test('toIdFields only contains pubkey, created_at, kind, content', () {
+    test('round-trips with non-empty extensions', () {
+      final event = makeEvent(
+        extensions: {
+          'custom': Uint8List.fromList([1, 2, 3]),
+          'another': Uint8List.fromList([4, 5]),
+        },
+      );
+      final decoded = Event.fromBytes(event.toBytes());
+      expect(decoded.extensions, hasLength(2));
+      expect(decoded.extensions['custom'], equals(Uint8List.fromList([1, 2, 3])));
+      expect(decoded.extensions['another'], equals(Uint8List.fromList([4, 5])));
+      expect(decoded, equals(event));
+    });
+
+    test('round-trips with empty extensions', () {
+      final event = makeEvent();
+      final decoded = Event.fromBytes(event.toBytes());
+      expect(decoded.extensions, isEmpty);
+      expect(decoded, equals(event));
+    });
+
+    test('toIdFields contains version, pubkey, created_at, kind, ref, content, media, extensions', () {
       final event = makeEvent(ref: 'some-ref');
       final idFields = event.toIdFields();
-      expect(idFields.keys.toSet(), equals({'pubkey', 'created_at', 'kind', 'content'}));
+      expect(
+        idFields.keys.toSet(),
+        equals({'version', 'pubkey', 'created_at', 'kind', 'ref', 'content', 'media', 'extensions'}),
+      );
+      expect(idFields['version'], equals('2026-03-24'));
       expect(idFields['pubkey'], equals('test-pubkey-abc'));
       expect(idFields['created_at'], equals(1711324800));
       expect(idFields['kind'], equals(EventKind.post.value));
+      expect(idFields['ref'], equals('some-ref'));
     });
 
-    test('all EventKind values round-trip', () {
+    test('toIdFields excludes ref when null', () {
+      final event = makeEvent();
+      final idFields = event.toIdFields();
+      expect(idFields.containsKey('ref'), isFalse);
+      expect(
+        idFields.keys.toSet(),
+        equals({'version', 'pubkey', 'created_at', 'kind', 'content', 'media', 'extensions'}),
+      );
+    });
+
+    test('toIdFields includes version', () {
+      final event = makeEvent();
+      final idFields = event.toIdFields();
+      expect(idFields['version'], equals('2026-03-24'));
+    });
+
+    test('toIdFields includes extensions', () {
+      final event = makeEvent(
+        extensions: {'key': Uint8List.fromList([42])},
+      );
+      final idFields = event.toIdFields();
+      expect(idFields.containsKey('extensions'), isTrue);
+    });
+
+    test('all known EventKind values round-trip', () {
       for (final kind in EventKind.values) {
         expect(EventKind.fromValue(kind.value), equals(kind));
       }
+    });
+
+    test('unknown EventKind does not throw', () {
+      final kind = EventKind.fromValue(999);
+      expect(kind.value, equals(999));
+      expect(kind.isKnown, isFalse);
+    });
+
+    test('unknown EventKind round-trips through Event', () {
+      final event = Event(
+        version: '2026-03-24',
+        id: 'test-id',
+        pubkey: 'test-pk',
+        createdAt: 1000,
+        kind: EventKind.fromValue(42),
+        content: Uint8List(0),
+        sig: Uint8List(64),
+      );
+      final decoded = Event.fromBytes(event.toBytes());
+      expect(decoded.kind.value, equals(42));
     });
   });
 }

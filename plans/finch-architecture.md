@@ -40,7 +40,7 @@ Identity Key (Ed25519)
        +-- encrypts all your events + media
 ```
 
-- **Feed key**: A symmetric key you generate. All your posts are encrypted with it. You share it with each follower individually via X25519 Diffie-Hellman key exchange.
+- **Feed key**: A symmetric key you generate. Posts are encrypted with the current epoch key, which advances forward via a hash ratchet (MegOLM-style). New followers receive the current key and can derive future keys but not past ones. You share it with each follower individually via X25519 Diffie-Hellman key exchange.
 - **At rest on device**: Local SQLite DB encrypted via SQLCipher. Media files encrypted with a device-local key stored in OS keychain.
 - **In transit**: Content payloads are E2E encrypted. LAN connections expose HTTP metadata (request paths, timing) to local network observers — accepted trade-off for LAN simplicity. Tor connections are fully private.
 - **On relay (if configured)**: Relay stores encrypted blobs it cannot decrypt. It sees only: pubkey, timestamps, blob sizes.
@@ -52,21 +52,29 @@ Everything is a **signed-then-encrypted event**:
 ```
 Event (plaintext, before encryption) {
   version:    date-based protocol version (e.g., "2026-03-24")
-  id:         sha256(pubkey + created_at + kind + content)
+  id:         blake2b_256(version + pubkey + created_at + kind + ref + content + media + extensions)
   pubkey:     creator's Ed25519 public key
   created_at: unix timestamp
-  kind:       1=post, 2=profile, 3=follow_list, 4=comment, 5=like, 6=delete
+  kind:       1=post, 2=profile, 3=follow_list, 4=comment, 5=like, 6=delete (open enum — see protocol spec for ranges)
   ref:        optional reference to another event id
   content:    kind-specific payload
   media:      [{ hash, mime_type, size }]
+  extensions: Map<string, bytes> (empty map if none — included in ID hash and signature)
   sig:        Ed25519 signature over id
 }
 
-EncryptedEvent (what gets stored/transmitted) {
+EncryptedEvent (what gets stored in Envelopes) {
   pubkey:     creator's public key (plaintext, needed for routing)
   created_at: unix timestamp (plaintext, needed for sync)
+  epoch:      feed key epoch number
   nonce:      random 24 bytes (unique per event)
-  payload:    XChaCha20-Poly1305(feed_key, nonce, serialized Event)
+  payload:    XChaCha20-Poly1305(epoch_key, nonce, serialized Event)
+}
+
+Envelope (what transports actually move) {
+  version:    protocol version
+  items:      [EnvelopeItem { type, payload, extensions }]
+  extensions: Map<string, bytes> (untrusted — see protocol spec trust model)
 }
 ```
 
@@ -179,7 +187,7 @@ The goal is to make self-hosting normal by starting with something people actual
 - **Mobile app**: Flutter (single codebase, iOS + Android + desktop)
 - **On-device server**: Dart `shelf` package
 - **Local storage**: SQLCipher (encrypted SQLite)
-- **Crypto**: libsodium via FFI
+- **Crypto**: libsodium via `sodium` Dart package (v4, uses Dart native asset build hooks)
 - **Tor**: Arti (Rust Tor client) via FFI
 - **Relay (standalone)**: Rust, SQLite, single static binary
 - **Serialization**: CBOR

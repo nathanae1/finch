@@ -65,7 +65,7 @@ Implements the Finch sync protocol endpoints:
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /events` | Push new encrypted events |
+| `POST /events` | Push Envelope containing EnvelopeItems |
 | `POST /media` | Push encrypted media blobs |
 | `POST /follow-accept` | Forward encrypted feed key to a requester's endpoint |
 
@@ -73,7 +73,7 @@ Implements the Finch sync protocol endpoints:
 
 Owner-only endpoints require:
 ```
-X-Finch-Sig: base64(Ed25519.sign(owner_key, sha256(request_body)))
+X-Finch-Sig: base64(Ed25519.sign(owner_key, blake2b_256(request_body)))
 X-Finch-Pubkey: base64(owner_pubkey)
 ```
 
@@ -192,3 +192,15 @@ ENTRYPOINT ["finch-relay"]
 - Rate limiting prevents abuse
 - TLS required for production over clearnet (not needed for Tor-only)
 - Follow requests stored encrypted — only the owner's phone can decrypt them
+- Relay treats Envelopes as untrusted containers and stores EnvelopeItems by type without inspecting payloads (zero-knowledge). Unknown item types are preserved and served back to requesting clients.
+
+## Cross-Language Enforcement
+
+The relay (Rust) and app (Dart) share the wire protocol, not code. Agreement is enforced by shared test vectors in `test/vectors/`, not by a schema language. Both implementations read the same vector files and assert the same decoded field values. See protocol spec "Test Vectors" section for format.
+
+What's shared between app and relay:
+1. **Event and Envelope CBOR format** — enforced by test vectors
+2. **Crypto algorithms** — enforced by libsodium's published vectors + protocol spec
+3. **Sync protocol messages** — enforced by integration tests (app against test relay)
+4. **Storage schema** — NOT shared (each side optimizes for its access patterns)
+5. **Transport framing** — mostly shared (both speak CBOR-over-HTTP) but not identical

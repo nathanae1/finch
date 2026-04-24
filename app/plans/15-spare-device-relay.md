@@ -39,7 +39,7 @@ A mode toggle that converts the app into a dedicated relay. The device:
 3. Begin pushing content to relay
 
 ### Relay push (main phone → relay)
-- `POST /events` — push new encrypted events to relay
+- `POST /events` — push `Envelope` containing `EnvelopeItem`s to relay. The relay stores items without inspecting payloads (zero-knowledge).
 - `POST /media` — push encrypted media blobs to relay
 - Auth: `X-Finch-Sig` header (Ed25519 signature of request body hash)
 - Push happens:
@@ -49,7 +49,7 @@ A mode toggle that converts the app into a dedicated relay. The device:
 
 ### Auth middleware (relay side)
 - Verify `X-Finch-Pubkey` matches configured owner pubkey
-- Verify `X-Finch-Sig` is valid Ed25519 signature of `sha256(request_body)`
+- Verify `X-Finch-Sig` is valid Ed25519 signature of `blake2b_256(request_body)`
 - Reject all unauthorized writes
 - Read endpoints (GET) remain unauthenticated (same as on-device server)
 

@@ -82,7 +82,7 @@ EphemeralEncryptedEvent {
 ```
 
 The pairwise key is derived the same way as for feed key exchange but with a distinct salt:
-`HKDF-SHA256(X25519_DH(my_sk, their_pk), salt="finch-signaling-v1")`
+`crypto_kdf(X25519_DH(my_sk, their_pk), ctx="finchsig", info=my_pk || their_pk)`
 
 ### WebSocket Endpoint
 
@@ -136,7 +136,7 @@ One participant (best connectivity) or a spare-device relay acts as mixer/SFU â€
 
 ### Signaling
 Pairwise X25519 key exchange (reuses existing crypto infrastructure):
-- Derive key: `HKDF-SHA256(X25519_DH(my_sk, their_pk), salt="finch-signaling-v1")`
+- Derive key: `crypto_kdf(X25519_DH(my_sk, their_pk), ctx="finchsig", info=my_pk || their_pk)`
 - Encrypt: `XChaCha20-Poly1305(pairwise_key, random_nonce, message)`
 
 ### Audio

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cbor/simple.dart';
 import 'package:drift/drift.dart';
 
 import '../../models/models.dart';
@@ -11,6 +12,7 @@ import 'database.dart';
 Identity identityFromRow(IdentityEntry row) => Identity(
       pubkey: row.pubkey,
       feedKey: row.feedKey,
+      feedKeyEpoch: row.feedKeyEpoch,
       recoveryPhrase: row.recoveryPhrase,
       createdAt: row.createdAt,
     );
@@ -19,6 +21,7 @@ IdentityEntriesCompanion identityToCompanion(Identity identity) =>
     IdentityEntriesCompanion.insert(
       pubkey: identity.pubkey,
       feedKey: identity.feedKey,
+      feedKeyEpoch: Value(identity.feedKeyEpoch),
       recoveryPhrase: Value(identity.recoveryPhrase),
       createdAt: identity.createdAt,
     );
@@ -31,6 +34,7 @@ Follow followFromRow(FollowEntry row) => Follow(
       avatarHash: row.avatarHash,
       connectionCard: row.connectionCard,
       feedKey: row.feedKey,
+      feedKeyEpoch: row.feedKeyEpoch,
       lastSyncedAt: row.lastSyncedAt,
       status: row.status,
     );
@@ -42,6 +46,7 @@ FollowEntriesCompanion followToCompanion(Follow follow) =>
       avatarHash: Value(follow.avatarHash),
       connectionCard: follow.connectionCard,
       feedKey: follow.feedKey,
+      feedKeyEpoch: Value(follow.feedKeyEpoch),
       lastSyncedAt: Value(follow.lastSyncedAt),
       status: Value(follow.status),
     );
@@ -57,6 +62,7 @@ Event eventFromRow(EventEntry row) => Event(
       ref: row.refId,
       content: row.content,
       media: _decodeMediaRefs(row.mediaRefs),
+      extensions: _decodeExtensions(row.extensions),
       sig: row.sig,
     );
 
@@ -77,6 +83,7 @@ EventEntriesCompanion eventToCompanion(
       isOwn: Value(isOwn ? 1 : 0),
       fetchedAt: fetchedAt,
       version: Value(event.version),
+      extensions: Value(_encodeExtensions(event.extensions)),
     );
 
 String? _encodeMediaRefs(List<MediaRef> media) {
@@ -136,3 +143,27 @@ QueuedEvent queuedEventFromRow(OutboundQueueEntry row) => QueuedEvent(
       createdAt: row.createdAt,
       retryCount: row.retryCount,
     );
+
+// --- Extensions ---
+
+Uint8List? _encodeExtensions(Map<String, Uint8List> extensions) {
+  if (extensions.isEmpty) return null;
+  return Uint8List.fromList(cbor.encode(extensions));
+}
+
+Map<String, Uint8List> _decodeExtensions(Uint8List? blob) {
+  if (blob == null || blob.isEmpty) return const {};
+  final decoded = cbor.decode(blob);
+  if (decoded is Map) {
+    return Map.unmodifiable(
+      decoded.map((k, v) => MapEntry(k.toString(), _toUint8List(v))),
+    );
+  }
+  return const {};
+}
+
+Uint8List _toUint8List(dynamic value) {
+  if (value is Uint8List) return value;
+  if (value is List) return Uint8List.fromList(value.cast<int>());
+  throw ArgumentError('Expected bytes, got ${value.runtimeType}');
+}

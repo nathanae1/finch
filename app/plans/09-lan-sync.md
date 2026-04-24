@@ -26,8 +26,8 @@ Core orchestration logic, runs on app open and pull-to-refresh.
 1. **Build want list**: for each followed pubkey, determine what events we're missing within the sync window (default 30 days). Query local events table for latest `created_at` per pubkey.
 2. **Discover reachable endpoints**: check mDNS cache for LAN peers matching followed pubkeys. (Relay and Tor tiers added in Plans 11, 15.)
 3. **Exchange manifests**: for each reachable peer, `GET /manifest?since={last_synced_at}` → get list of event IDs we don't have
-4. **Pull missing events**: `GET /events?since={timestamp}` → receive EncryptedEvents
-5. **Decrypt and verify**: decrypt each event with the follow's feed key, verify Ed25519 signature, reject invalid events
+4. **Pull missing events**: `GET /events?since={timestamp}` → receive `Envelope` containing `EnvelopeItem`s
+5. **Process envelope**: parse Envelope (untrusted container), extract EnvelopeItems, process each by type. For type `"event"`: decrypt EncryptedEvent with the follow's feed key (via ContentKeyService), verify Ed25519 signature, reject invalid events. Unknown item types are preserved and stored for future compatibility.
 6. **Store locally**: insert into events table with `is_own=0`, update `last_synced_at` for the follow
 
 ### Sync concurrency

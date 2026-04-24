@@ -21,10 +21,10 @@ The complete follow lifecycle: discover → request → accept → connected.
 - Android: AndroidManifest.xml intent filter
 
 ### Follow request (outbound)
-1. Parse connection card from QR/link
-2. Derive X25519 keys from own Ed25519 identity
-3. Derive shared key via X25519 DH with target's pubkey
-4. Encrypt own return endpoints (connection card) with shared key
+1. Parse connection card from QR/link (including `capabilities` field)
+2. Derive X25519 keys from own Ed25519 identity (CryptoService)
+3. Derive shared key via X25519 DH with target's pubkey (CryptoService)
+4. Encrypt own return endpoints (connection card) with shared key (CryptoService)
 5. Send `POST /follow-request` to target's endpoint:
    ```
    { requester_pubkey, encrypted_return_endpoints, nonce }
@@ -37,8 +37,8 @@ The complete follow lifecycle: discover → request → accept → connected.
 - Accept / Reject buttons
 
 ### Accept flow
-1. Decrypt requester's return endpoints using X25519 DH shared key
-2. Encrypt own feed key for the requester using the same shared key
+1. Decrypt requester's return endpoints using X25519 DH shared key (CryptoService)
+2. Encrypt own feed key for the requester using the same shared key (ContentKeyService)
 3. Send `POST /follow-accept` to requester's endpoint:
    ```
    { owner_pubkey, encrypted_feed_key, nonce }

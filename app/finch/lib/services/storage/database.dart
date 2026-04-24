@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,6 +74,23 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX idx_events_ref '
             'ON event_entries (ref_id)',
           );
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await customStatement(
+              'ALTER TABLE event_entries ADD COLUMN extensions BLOB',
+            );
+          }
+          if (from < 3) {
+            await customStatement(
+              'ALTER TABLE identity_entries '
+              'ADD COLUMN feed_key_epoch INTEGER NOT NULL DEFAULT 0',
+            );
+            await customStatement(
+              'ALTER TABLE follow_entries '
+              'ADD COLUMN feed_key_epoch INTEGER NOT NULL DEFAULT 0',
+            );
+          }
         },
       );
 }

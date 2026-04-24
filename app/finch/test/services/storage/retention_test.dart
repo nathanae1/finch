@@ -44,6 +44,7 @@ void main() {
       final evicted = await db.eventsDao.evictOldEvents(
         30 * 24 * 60 * 60,
         7 * 24 * 60 * 60,
+        now: now,
       );
 
       expect(evicted, equals(1));
@@ -62,6 +63,7 @@ void main() {
       final evicted = await db.eventsDao.evictOldEvents(
         30 * 24 * 60 * 60,
         7 * 24 * 60 * 60,
+        now: now,
       );
 
       expect(evicted, equals(0));
@@ -83,6 +85,7 @@ void main() {
       final evicted = await db.eventsDao.evictOldEvents(
         30 * 24 * 60 * 60,
         7 * 24 * 60 * 60,
+        now: now,
       );
 
       expect(evicted, equals(1));

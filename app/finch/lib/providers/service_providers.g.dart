@@ -23,6 +23,24 @@ final cryptoServiceProvider = AutoDisposeProvider<CryptoService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CryptoServiceRef = AutoDisposeProviderRef<CryptoService>;
+String _$contentKeyServiceHash() => r'a78a53238dac79c497d480c88673c44293bacb5e';
+
+/// See also [contentKeyService].
+@ProviderFor(contentKeyService)
+final contentKeyServiceProvider =
+    AutoDisposeProvider<ContentKeyService>.internal(
+      contentKeyService,
+      name: r'contentKeyServiceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$contentKeyServiceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ContentKeyServiceRef = AutoDisposeProviderRef<ContentKeyService>;
 String _$storageServiceHash() => r'65689112479ea1a2c03829881e8ce7d280c0376f';
 
 /// See also [storageService].
@@ -91,5 +109,22 @@ final signalingServiceProvider = AutoDisposeProvider<SignalingService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SignalingServiceRef = AutoDisposeProviderRef<SignalingService>;
+String _$clockHash() => r'326d25ac11404b1e97639d8209a9a8f2e2b68163';
+
+/// See also [clock].
+@ProviderFor(clock)
+final clockProvider = AutoDisposeProvider<Clock>.internal(
+  clock,
+  name: r'clockProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clockHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClockRef = AutoDisposeProviderRef<Clock>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

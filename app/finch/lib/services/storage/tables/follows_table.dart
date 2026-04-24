@@ -6,6 +6,8 @@ class FollowEntries extends Table {
   TextColumn get avatarHash => text().nullable()();
   TextColumn get connectionCard => text()();
   BlobColumn get feedKey => blob()();
+  IntColumn get feedKeyEpoch =>
+      integer().withDefault(const Constant(0))();
   IntColumn get lastSyncedAt =>
       integer().withDefault(const Constant(0))();
   TextColumn get status =>

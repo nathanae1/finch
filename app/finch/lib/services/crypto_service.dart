@@ -1,12 +1,15 @@
 import 'dart:typed_data';
 
-import '../models/models.dart';
 import 'types.dart';
 
-/// Abstract interface for all cryptographic operations.
+/// Narrow interface for cryptographic primitives.
 ///
-/// Default implementation wraps libsodium via FFI (Plan 03).
-/// Mock implementation provides deterministic values for testing.
+/// Contains only stable, low-level operations: signing, verification,
+/// symmetric encryption, hashing, key conversion, key derivation.
+///
+/// Feed key management, epoch ratchet, and composed operations
+/// (sign-then-encrypt) live in [ContentKeyService], which uses
+/// this interface for primitives.
 abstract class CryptoService {
   // --- Key management ---
 
@@ -15,8 +18,6 @@ abstract class CryptoService {
   Future<List<String>> deriveRecoveryPhrase(Uint8List seed);
 
   Future<KeyPair> recoverFromPhrase(List<String> words);
-
-  Future<Uint8List> generateFeedKey();
 
   Uint8List ed25519ToX25519PublicKey(Uint8List ed25519Pk);
 
@@ -28,29 +29,43 @@ abstract class CryptoService {
 
   bool verify(Uint8List publicKey, Uint8List data, Uint8List signature);
 
-  // --- Event encryption (sign-then-encrypt / decrypt-then-verify) ---
+  // --- Random bytes ---
 
-  EncryptedEvent encryptEvent(Event event, Uint8List feedKey);
+  /// Cryptographically secure random bytes.
+  Uint8List randomBytes(int length);
 
-  Event decryptEvent(EncryptedEvent encryptedEvent, Uint8List feedKey);
+  // --- Symmetric encryption (XChaCha20-Poly1305) ---
 
-  // --- Media encryption ---
+  /// Low-level XChaCha20-Poly1305 encrypt with explicit nonce.
+  /// Does not prepend nonce to output. Caller stores nonce separately
+  /// (e.g. in [EncryptedEvent.nonce]).
+  Uint8List encrypt(Uint8List plaintext, Uint8List nonce, Uint8List key);
 
-  Uint8List encryptMedia(Uint8List blob, Uint8List feedKey);
+  /// Low-level XChaCha20-Poly1305 decrypt with explicit nonce.
+  /// Throws on authentication failure (wrong key / tampered ciphertext).
+  Uint8List decrypt(Uint8List ciphertext, Uint8List nonce, Uint8List key);
 
-  Uint8List decryptMedia(Uint8List encryptedBlob, Uint8List feedKey);
+  /// Encrypt a media blob. Generates a random 24-byte nonce and
+  /// prepends it to the output: `nonce || ct`.
+  Uint8List encryptMedia(Uint8List blob, Uint8List epochKey);
 
-  // --- Key exchange (X25519 DH + HKDF-SHA256, salt "finch-feed-key-v1") ---
+  /// Decrypt a media blob where the first 24 bytes are the nonce.
+  Uint8List decryptMedia(Uint8List encryptedBlob, Uint8List epochKey);
 
-  Uint8List deriveSharedKey(Uint8List myPrivateKey, Uint8List theirPublicKey);
+  // --- Key exchange (X25519 DH + crypto_kdf, ctx "finchkex") ---
 
-  Uint8List encryptFeedKey(Uint8List feedKey, Uint8List sharedKey);
-
-  Uint8List decryptFeedKey(Uint8List encryptedFeedKey, Uint8List sharedKey);
+  /// Derive a shared key for feed key exchange.
+  /// Uses X25519 DH + libsodium crypto_kdf with context parameters
+  /// to ensure unique keys per exchange.
+  Uint8List deriveSharedKey(
+    Uint8List myPrivateKey,
+    Uint8List theirPublicKey,
+    Uint8List requesterPubkey,
+    Uint8List responderPubkey,
+    int timestamp,
+  );
 
   // --- Hashing ---
 
-  Uint8List sha256(Uint8List data);
-
-  String computeEventId(Event event);
+  Uint8List blake2b256(Uint8List data);
 }

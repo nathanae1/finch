@@ -942,6 +942,17 @@ class $EventEntriesTable extends EventEntries
     requiredDuringInsert: false,
     defaultValue: const Constant('2026-03-24'),
   );
+  static const VerificationMeta _extensionsMeta = const VerificationMeta(
+    'extensions',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> extensions = GeneratedColumn<Uint8List>(
+    'extensions',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -956,6 +967,7 @@ class $EventEntriesTable extends EventEntries
     fetchedAt,
     lastViewed,
     version,
+    extensions,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1052,6 +1064,12 @@ class $EventEntriesTable extends EventEntries
         version.isAcceptableOrUnknown(data['version']!, _versionMeta),
       );
     }
+    if (data.containsKey('extensions')) {
+      context.handle(
+        _extensionsMeta,
+        extensions.isAcceptableOrUnknown(data['extensions']!, _extensionsMeta),
+      );
+    }
     return context;
   }
 
@@ -1109,6 +1127,10 @@ class $EventEntriesTable extends EventEntries
         DriftSqlType.string,
         data['${effectivePrefix}version'],
       )!,
+      extensions: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}extensions'],
+      ),
     );
   }
 
@@ -1131,6 +1153,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
   final int fetchedAt;
   final int? lastViewed;
   final String version;
+  final Uint8List? extensions;
   const EventEntry({
     required this.id,
     required this.pubkey,
@@ -1144,6 +1167,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     required this.fetchedAt,
     this.lastViewed,
     required this.version,
+    this.extensions,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1166,6 +1190,9 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
       map['last_viewed'] = Variable<int>(lastViewed);
     }
     map['version'] = Variable<String>(version);
+    if (!nullToAbsent || extensions != null) {
+      map['extensions'] = Variable<Uint8List>(extensions);
+    }
     return map;
   }
 
@@ -1189,6 +1216,9 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           ? const Value.absent()
           : Value(lastViewed),
       version: Value(version),
+      extensions: extensions == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extensions),
     );
   }
 
@@ -1210,6 +1240,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
       fetchedAt: serializer.fromJson<int>(json['fetchedAt']),
       lastViewed: serializer.fromJson<int?>(json['lastViewed']),
       version: serializer.fromJson<String>(json['version']),
+      extensions: serializer.fromJson<Uint8List?>(json['extensions']),
     );
   }
   @override
@@ -1228,6 +1259,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
       'fetchedAt': serializer.toJson<int>(fetchedAt),
       'lastViewed': serializer.toJson<int?>(lastViewed),
       'version': serializer.toJson<String>(version),
+      'extensions': serializer.toJson<Uint8List?>(extensions),
     };
   }
 
@@ -1244,6 +1276,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     int? fetchedAt,
     Value<int?> lastViewed = const Value.absent(),
     String? version,
+    Value<Uint8List?> extensions = const Value.absent(),
   }) => EventEntry(
     id: id ?? this.id,
     pubkey: pubkey ?? this.pubkey,
@@ -1257,6 +1290,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     fetchedAt: fetchedAt ?? this.fetchedAt,
     lastViewed: lastViewed.present ? lastViewed.value : this.lastViewed,
     version: version ?? this.version,
+    extensions: extensions.present ? extensions.value : this.extensions,
   );
   EventEntry copyWithCompanion(EventEntriesCompanion data) {
     return EventEntry(
@@ -1274,6 +1308,9 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           ? data.lastViewed.value
           : this.lastViewed,
       version: data.version.present ? data.version.value : this.version,
+      extensions: data.extensions.present
+          ? data.extensions.value
+          : this.extensions,
     );
   }
 
@@ -1291,7 +1328,8 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           ..write('isOwn: $isOwn, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('lastViewed: $lastViewed, ')
-          ..write('version: $version')
+          ..write('version: $version, ')
+          ..write('extensions: $extensions')
           ..write(')'))
         .toString();
   }
@@ -1310,6 +1348,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     fetchedAt,
     lastViewed,
     version,
+    $driftBlobEquality.hash(extensions),
   );
   @override
   bool operator ==(Object other) =>
@@ -1326,7 +1365,8 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           other.isOwn == this.isOwn &&
           other.fetchedAt == this.fetchedAt &&
           other.lastViewed == this.lastViewed &&
-          other.version == this.version);
+          other.version == this.version &&
+          $driftBlobEquality.equals(other.extensions, this.extensions));
 }
 
 class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
@@ -1342,6 +1382,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
   final Value<int> fetchedAt;
   final Value<int?> lastViewed;
   final Value<String> version;
+  final Value<Uint8List?> extensions;
   final Value<int> rowid;
   const EventEntriesCompanion({
     this.id = const Value.absent(),
@@ -1356,6 +1397,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     this.fetchedAt = const Value.absent(),
     this.lastViewed = const Value.absent(),
     this.version = const Value.absent(),
+    this.extensions = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EventEntriesCompanion.insert({
@@ -1371,6 +1413,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     required int fetchedAt,
     this.lastViewed = const Value.absent(),
     this.version = const Value.absent(),
+    this.extensions = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        pubkey = Value(pubkey),
@@ -1392,6 +1435,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     Expression<int>? fetchedAt,
     Expression<int>? lastViewed,
     Expression<String>? version,
+    Expression<Uint8List>? extensions,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1407,6 +1451,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
       if (fetchedAt != null) 'fetched_at': fetchedAt,
       if (lastViewed != null) 'last_viewed': lastViewed,
       if (version != null) 'version': version,
+      if (extensions != null) 'extensions': extensions,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1424,6 +1469,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     Value<int>? fetchedAt,
     Value<int?>? lastViewed,
     Value<String>? version,
+    Value<Uint8List?>? extensions,
     Value<int>? rowid,
   }) {
     return EventEntriesCompanion(
@@ -1439,6 +1485,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
       fetchedAt: fetchedAt ?? this.fetchedAt,
       lastViewed: lastViewed ?? this.lastViewed,
       version: version ?? this.version,
+      extensions: extensions ?? this.extensions,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1482,6 +1529,9 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     if (version.present) {
       map['version'] = Variable<String>(version.value);
     }
+    if (extensions.present) {
+      map['extensions'] = Variable<Uint8List>(extensions.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1503,6 +1553,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
           ..write('fetchedAt: $fetchedAt, ')
           ..write('lastViewed: $lastViewed, ')
           ..write('version: $version, ')
+          ..write('extensions: $extensions, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3346,6 +3397,7 @@ typedef $$EventEntriesTableCreateCompanionBuilder =
       required int fetchedAt,
       Value<int?> lastViewed,
       Value<String> version,
+      Value<Uint8List?> extensions,
       Value<int> rowid,
     });
 typedef $$EventEntriesTableUpdateCompanionBuilder =
@@ -3362,6 +3414,7 @@ typedef $$EventEntriesTableUpdateCompanionBuilder =
       Value<int> fetchedAt,
       Value<int?> lastViewed,
       Value<String> version,
+      Value<Uint8List?> extensions,
       Value<int> rowid,
     });
 
@@ -3431,6 +3484,11 @@ class $$EventEntriesTableFilterComposer
 
   ColumnFilters<String> get version => $composableBuilder(
     column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get extensions => $composableBuilder(
+    column: $table.extensions,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3503,6 +3561,11 @@ class $$EventEntriesTableOrderingComposer
     column: $table.version,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<Uint8List> get extensions => $composableBuilder(
+    column: $table.extensions,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$EventEntriesTableAnnotationComposer
@@ -3551,6 +3614,11 @@ class $$EventEntriesTableAnnotationComposer
 
   GeneratedColumn<String> get version =>
       $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get extensions => $composableBuilder(
+    column: $table.extensions,
+    builder: (column) => column,
+  );
 }
 
 class $$EventEntriesTableTableManager
@@ -3596,6 +3664,7 @@ class $$EventEntriesTableTableManager
                 Value<int> fetchedAt = const Value.absent(),
                 Value<int?> lastViewed = const Value.absent(),
                 Value<String> version = const Value.absent(),
+                Value<Uint8List?> extensions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EventEntriesCompanion(
                 id: id,
@@ -3610,6 +3679,7 @@ class $$EventEntriesTableTableManager
                 fetchedAt: fetchedAt,
                 lastViewed: lastViewed,
                 version: version,
+                extensions: extensions,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3626,6 +3696,7 @@ class $$EventEntriesTableTableManager
                 required int fetchedAt,
                 Value<int?> lastViewed = const Value.absent(),
                 Value<String> version = const Value.absent(),
+                Value<Uint8List?> extensions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EventEntriesCompanion.insert(
                 id: id,
@@ -3640,6 +3711,7 @@ class $$EventEntriesTableTableManager
                 fetchedAt: fetchedAt,
                 lastViewed: lastViewed,
                 version: version,
+                extensions: extensions,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

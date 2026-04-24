@@ -17,7 +17,7 @@ Create posts with photos and store them locally as encrypted events.
 1. Pick or capture image
 2. Compress: max 1080px on longest side, JPEG quality 80
 3. Store original (own photos only) + compressed version
-4. Compute SHA-256 hash of plaintext compressed photo
+4. Compute BLAKE2b-256 hash of plaintext compressed photo
 5. Encrypt compressed photo with feed key (random nonce, prepended to blob)
 6. Write encrypted blob to app's sandboxed filesystem
 7. Register in `media_cache` table: hash, path, size, last_accessed
@@ -25,11 +25,12 @@ Create posts with photos and store them locally as encrypted events.
 Use `compute()` or a separate isolate for compression and encryption to avoid UI jank.
 
 ### Event creation (kind=1: Post)
-1. Build `Event`: version, pubkey, created_at (now), kind=1, content=caption, media=[MediaRef(hash, mime_type, size)]
-2. Compute ID: `sha256(cbor(pubkey + created_at + kind + content))`
-3. Sign: `Ed25519.sign(private_key, id_bytes)`
-4. Serialize to CBOR
-5. Encrypt: `XChaCha20-Poly1305(feed_key, random_nonce, cbor_bytes)`
+Uses the publish pipeline from Plan 03:
+1. Build `Event`: version, pubkey, created_at (from `Clock`), kind=1, content=caption, media=[MediaRef(hash, mime_type, size)], extensions={}
+2. Compute ID: `blake2b_256(cbor(version + pubkey + created_at + kind + ref + content + media + extensions))`
+3. Resolve `Audience.broadcast`
+4. `ContentKeyService.encryptForAudience(event, audience)` → signs, encrypts with current feed key, returns `EncryptedEvent`
+5. Wrap in `EnvelopeItem(type: "event")` → `Envelope`
 6. Store `EncryptedEvent` in events table with `is_own=1`
 
 ### Delete event (kind=6)
@@ -66,7 +67,7 @@ Hash-prefix sharding prevents too many files in one directory.
 - `is_own=1` on the stored event
 - Encrypted media blob exists on filesystem at expected path
 - Decrypt event from DB: plaintext matches original caption
-- Decrypt media from filesystem: SHA-256 hash matches MediaRef.hash
+- Decrypt media from filesystem: BLAKE2b-256 hash matches MediaRef.hash
 - Delete event: kind=6 created with correct ref, target no longer shown in queries
 - Multiple posts: each has unique ID and unique nonce
 - Large photo: compression + encryption doesn't block UI (runs in isolate)

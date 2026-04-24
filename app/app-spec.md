@@ -77,7 +77,7 @@ Abstract `CryptoService` interface. Default implementation wraps libsodium via F
 **Nonces:** All nonces are random (24 bytes from a CSPRNG). Never derived from content. This avoids nonce reuse if the same content is posted twice.
 
 **Key exchange:**
-- `derive_shared_key(my_x25519, their_x25519) -> symmetric_key` — X25519 DH + HKDF-SHA256 with salt "finch-feed-key-v1"
+- `derive_shared_key(my_x25519, their_x25519) -> symmetric_key` — X25519 DH + libsodium `crypto_kdf` (BLAKE2b-based) with context `"finchkex"` and info = `requester_pubkey || responder_pubkey || timestamp`
 - `encrypt_feed_key(feed_key, shared_key) -> encrypted_feed_key`
 - `decrypt_feed_key(encrypted_feed_key, shared_key) -> feed_key`
 
@@ -92,7 +92,7 @@ A lightweight HTTP server running inside the app. Serves your own content to pee
 - Endpoints:
   - `GET /manifest?since=T&until=T` — returns list of event IDs + timestamps this device has for its own pubkey
   - `GET /events?since=T` — returns encrypted events
-  - `GET /media/{sha256_hash}` — returns encrypted media blob
+  - `GET /media/{blake2b_hash}` — returns encrypted media blob
   - `GET /status` — health check, pubkey, protocol version
   - `POST /follow-request` — receive inbound follow requests
 - Only serves content for the device owner's pubkey
