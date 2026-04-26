@@ -36,6 +36,11 @@ class DriftStorageService implements StorageService {
   }
 
   @override
+  Stream<List<Follow>> watchFollows() => _db.followsDao
+      .watchActiveFollows()
+      .map((rows) => rows.map(followFromRow).toList());
+
+  @override
   Future<Follow?> getFollow(String pubkey) async {
     final row = await _db.followsDao.getFollow(pubkey);
     return row == null ? null : followFromRow(row);
@@ -96,6 +101,24 @@ class DriftStorageService implements StorageService {
     return rows.map(eventFromRow).toList();
   }
 
+  @override
+  Future<List<Event>> getProfilePosts(String pubkey, {int? limit}) async {
+    final rows = await _db.eventsDao.getProfilePosts(pubkey, limit: limit);
+    return rows.map(eventFromRow).toList();
+  }
+
+  @override
+  Future<bool> isEventSaved(String id) =>
+      _db.eventsDao.isEventSaved(id);
+
+  @override
+  Future<void> setEventSaved(String id, bool saved) =>
+      _db.eventsDao.setEventSaved(id, saved);
+
+  @override
+  Future<void> setEventLastViewed(String id, int timestamp) =>
+      _db.eventsDao.setLastViewed(id, timestamp);
+
   // --- Media cache ---
 
   @override
@@ -128,12 +151,31 @@ class DriftStorageService implements StorageService {
   }
 
   @override
+  Stream<List<FollowRequest>> watchInboundRequests() => _db
+      .followRequestsDao
+      .watchInboundPending()
+      .map((rows) => rows.map(inboundRequestFromRow).toList());
+
+  @override
+  Future<List<FollowRequest>> getInboundRequestsByStatus(String status) async {
+    final rows = await _db.followRequestsDao.getInboundByStatus(status);
+    return rows.map(inboundRequestFromRow).toList();
+  }
+
+  @override
+  Future<FollowRequest?> getInboundRequest(String pubkey) async {
+    final row = await _db.followRequestsDao.getInbound(pubkey);
+    return row == null ? null : inboundRequestFromRow(row);
+  }
+
+  @override
   Future<void> saveInboundRequest(FollowRequest request) =>
       _db.followRequestsDao.upsertInbound(
         InboundFollowRequestEntriesCompanion.insert(
           pubkey: request.pubkey,
           encryptedEndpoints: request.payload,
           createdAt: request.createdAt,
+          requestTimestamp: Value(request.requestTimestamp),
           status: Value(request.status),
         ),
       );
@@ -143,9 +185,25 @@ class DriftStorageService implements StorageService {
       _db.followRequestsDao.updateInboundStatus(pubkey, status);
 
   @override
+  Future<void> deleteInboundRequest(String pubkey) =>
+      _db.followRequestsDao.deleteInbound(pubkey);
+
+  @override
   Future<List<FollowRequest>> getOutboundRequests() async {
     final rows = await _db.followRequestsDao.getOutbound();
     return rows.map(outboundRequestFromRow).toList();
+  }
+
+  @override
+  Stream<List<FollowRequest>> watchOutboundRequests() => _db
+      .followRequestsDao
+      .watchOutbound()
+      .map((rows) => rows.map(outboundRequestFromRow).toList());
+
+  @override
+  Future<FollowRequest?> getOutboundRequest(String pubkey) async {
+    final row = await _db.followRequestsDao.getOutboundFor(pubkey);
+    return row == null ? null : outboundRequestFromRow(row);
   }
 
   @override
@@ -162,6 +220,42 @@ class DriftStorageService implements StorageService {
   @override
   Future<void> updateOutboundRequestStatus(String pubkey, String status) =>
       _db.followRequestsDao.updateOutboundStatus(pubkey, status);
+
+  @override
+  Future<void> deleteOutboundRequest(String pubkey) =>
+      _db.followRequestsDao.deleteOutbound(pubkey);
+
+  // --- Unknown envelope items ---
+
+  @override
+  Future<void> saveUnknownEnvelopeItem(UnknownEnvelopeItem item) =>
+      _db.unknownItemsDao.insert(
+        UnknownEnvelopeItemEntriesCompanion.insert(
+          sourcePubkey: item.sourcePubkey,
+          envelopeVersion: item.envelopeVersion,
+          type: item.type,
+          payload: item.payload,
+          extensions: Value(item.extensions),
+          receivedAt: item.receivedAt,
+        ),
+      );
+
+  @override
+  Future<List<UnknownEnvelopeItem>> getUnknownEnvelopeItemsByType(
+    String type,
+  ) async {
+    final rows = await _db.unknownItemsDao.getByType(type);
+    return rows
+        .map((r) => UnknownEnvelopeItem(
+              sourcePubkey: r.sourcePubkey,
+              envelopeVersion: r.envelopeVersion,
+              type: r.type,
+              payload: r.payload,
+              extensions: r.extensions,
+              receivedAt: r.receivedAt,
+            ))
+        .toList();
+  }
 
   // --- Outbound queue ---
 

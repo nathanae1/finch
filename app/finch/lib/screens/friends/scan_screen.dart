@@ -1,0 +1,232 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import '../../providers/qr_scanner_provider.dart';
+import '../../services/qr_scanner_service.dart';
+import '../../theme/finch_theme.dart';
+import '../../utils/connection_card_parser.dart';
+import '../../widgets/buttons.dart';
+import '../../widgets/sheet.dart';
+import 'confirm_request_sheet.dart';
+
+class ScanScreen extends ConsumerStatefulWidget {
+  const ScanScreen({super.key});
+
+  @override
+  ConsumerState<ScanScreen> createState() => _ScanScreenState();
+}
+
+class _ScanScreenState extends ConsumerState<ScanScreen> {
+  StreamSubscription<String>? _sub;
+  bool _busy = false;
+  String? _permissionMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    final scanner = ref.read(qrScannerServiceProvider);
+    unawaited(scanner.stop());
+    super.dispose();
+  }
+
+  Future<void> _start() async {
+    final scanner = ref.read(qrScannerServiceProvider);
+    try {
+      await scanner.start();
+      _sub = scanner.scans.listen(_handleScan);
+    } on QrScannerException catch (e) {
+      setState(() {
+        _permissionMessage = e.code == 'permission-denied'
+            ? 'Camera access is off. Paste an invite link below.'
+            : "Couldn't start the camera (${e.message}). Paste an invite link below.";
+      });
+    }
+  }
+
+  Future<void> _handleScan(String payload) async {
+    if (_busy) return;
+    final parsed = parseInvite(payload);
+    if (parsed is! ValidInvite) return;
+    setState(() => _busy = true);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    await showFinchSheet(
+      context: context,
+      builder: (_) => ConfirmRequestSheet(card: parsed.card),
+    );
+  }
+
+  Future<void> _openPasteSheet() async {
+    final controller = TextEditingController();
+    final result = await showFinchSheet<String>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Paste invite link',
+              style: FinchTheme.of(ctx).typography.h3,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'finch://connect?card=…',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: 'Open',
+              onPressed: () => Navigator.of(ctx).pop(controller.text),
+              block: true,
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || result.isEmpty) return;
+    final parsed = parseInvite(result);
+    if (parsed is! ValidInvite) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (parsed as InvalidInvite).reason,
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    await showFinchSheet(
+      context: context,
+      builder: (_) => ConfirmRequestSheet(card: parsed.card),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final finch = FinchTheme.of(context);
+    final scanner = ref.read(qrScannerServiceProvider);
+    final permissionDenied = _permissionMessage != null;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: permissionDenied
+                  ? Container(color: Colors.black)
+                  : _platformView(scanner.platformViewType),
+            ),
+            const Positioned.fill(child: _ReticleOverlay()),
+            if (_permissionMessage != null)
+              Positioned(
+                top: 80,
+                left: 24,
+                right: 24,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: finch.colors.paper,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _permissionMessage!,
+                    style: finch.typography.small,
+                  ),
+                ),
+              ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Material(
+                color: Colors.black54,
+                shape: const CircleBorder(),
+                child: IconButton(
+                  icon: const Icon(PhosphorIconsRegular.x, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 36,
+              left: 24,
+              right: 24,
+              child: Center(
+                child: GhostButton(
+                  label: 'Paste invite link',
+                  onPressed: _openPasteSheet,
+                ),
+              ),
+            ),
+            const Positioned(
+              bottom: 110,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  'Point at a Finch QR',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _platformView(String viewType) {
+    if (viewType.endsWith('.mock')) {
+      return Container(color: Colors.black);
+    }
+    return defaultTargetPlatform == TargetPlatform.iOS
+        ? UiKitView(viewType: viewType, creationParams: const <String, dynamic>{},
+            creationParamsCodec: const StandardMessageCodec())
+        : AndroidView(viewType: viewType, creationParams: const <String, dynamic>{},
+            creationParamsCodec: const StandardMessageCodec());
+  }
+}
+
+class _ReticleOverlay extends StatelessWidget {
+  const _ReticleOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ColoredBox(
+        color: Colors.black26,
+        child: Center(
+          child: Container(
+            width: 240,
+            height: 240,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white70, width: 2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

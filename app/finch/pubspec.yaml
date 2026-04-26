@@ -29,15 +29,35 @@ dependencies:
   drift: ^2.22.1
   sqlcipher_flutter_libs: ^0.6.4
 
-  # QR codes (Plan 04/08)
-  mobile_scanner: ^6.0.2
+  # QR rendering (Plan 04 / 08). Scanning is a bespoke AVFoundation/CameraX
+  # platform channel (Plan 08) — no mobile_scanner, no ML Kit, no Google deps.
   qr_flutter: ^4.1.0
 
-  # Networking (Plan 09)
-  multicast_dns: ^0.3.2+8
+  # Navigation (Plan 04 / 04a)
+  go_router: ^14.6.1
+
+  # Icon library (Plan 04a)
+  phosphor_flutter: ^2.1.0
+
+  # mDNS (Plan 09): bespoke platform channel via NWListener/NWBrowser on
+  # iOS and NsdManager on Android. See `lib/services/mdns_service.dart`
+  # and the platform-specific `MdnsPlugin.{swift,kt}`. No Dart-side mDNS
+  # package — `multicast_dns` is resolver-only and would still need
+  # native code to advertise.
+
+  # HTTP client for the follow handshake (Plan 08) and LAN sync (Plan 09)
+  http: ^1.2.2
+
+  # Deep linking — finch://connect?card=... (Plan 08)
+  app_links: ^6.3.2
 
   # Image processing (Plan 05)
   image: ^4.5.2
+
+  # Photo capture + gallery picking (Plan 05). Uses UIImagePickerController on
+  # iOS and PhotoPicker/ACTION_PICK on Android — no Google Play Services / ML
+  # Kit dependency (unlike mobile_scanner, which is why QR scanning is bespoke).
+  image_picker: ^1.1.2
 
   # Crypto (Plan 03) — libsodium via native asset build hooks
   sodium: ^4.0.2
@@ -68,3 +88,21 @@ flutter:
 
   assets:
     - assets/bip39_english.txt
+
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-VariableFont_SOFT_WONK_opsz_wght.ttf
+        - asset: assets/fonts/Fraunces-Italic-VariableFont_SOFT_WONK_opsz_wght.ttf
+          style: italic
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fonts/IBMPlexSansVar-Roman.ttf
+        - asset: assets/fonts/IBMPlexSansVar-Italic.ttf
+          style: italic
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500

@@ -39,4 +39,13 @@ abstract class ContentKeyService {
   /// Encrypt an event for the given audience. For [Audience.broadcast],
   /// signs and encrypts with the current feed key.
   EncryptedEvent encryptForAudience(Event event, Audience audience);
+
+  /// Sign and encrypt an event for the given audience, returning both the
+  /// signed plaintext (for local storage) and the encrypted wire form (for
+  /// the outbound queue / network). Callers that only need the wire form
+  /// can use [encryptForAudience] instead.
+  ({Event signed, EncryptedEvent encrypted}) signAndEncryptForAudience(
+    Event event,
+    Audience audience,
+  );
 }

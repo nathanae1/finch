@@ -1,0 +1,201 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'providers/identity_provider.dart';
+import 'screens/compose/compose_screen.dart';
+import 'screens/compose/preview_screen.dart';
+import 'screens/feed/feed_screen.dart';
+import 'screens/feed/post_detail_screen.dart';
+import 'screens/friends/friends_screen.dart';
+import 'screens/friends/scan_screen.dart';
+import 'screens/onboarding/recovery_phrase_screen.dart';
+import 'screens/onboarding/restore_screen.dart';
+import 'screens/onboarding/setup_screen.dart';
+import 'screens/onboarding/welcome_screen.dart';
+import 'screens/placeholder_screen.dart';
+import 'screens/profile/other_profile_screen.dart';
+import 'screens/profile/own_profile_screen.dart';
+import 'screens/settings/settings_screen.dart';
+import 'shell/app_shell.dart';
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _feedNavigatorKey = GlobalKey<NavigatorState>();
+final _friendsNavigatorKey = GlobalKey<NavigatorState>();
+final _youNavigatorKey = GlobalKey<NavigatorState>();
+
+GoRouter buildRouter(Ref ref) {
+  return GoRouter(
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: '/feed',
+    refreshListenable: _IdentityRefresh(ref),
+    redirect: (context, state) {
+      final identity = ref.read(identityControllerProvider);
+      final hasIdentity = identity.valueOrNull != null;
+      final isOnboarding = state.matchedLocation.startsWith('/onboarding');
+
+      if (identity.isLoading) return null;
+      if (!hasIdentity && !isOnboarding) return '/onboarding/welcome';
+      if (hasIdentity && isOnboarding) return '/feed';
+      return null;
+    },
+    routes: [
+      // Onboarding (no shell)
+      GoRoute(
+        path: '/onboarding/welcome',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/setup',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const SetupScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/recovery',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const RecoveryPhraseScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/restore',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const RestoreScreen(),
+      ),
+
+      // Compose (root-level modal, pushed from the "Post" tab). The preview
+      // screen is a nested push above the same root navigator, not another
+      // fullscreen dialog — it slides in from the right, inside the same
+      // modal chrome, so popping it returns to Compose.
+      GoRoute(
+        path: '/compose',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (_, _) => const MaterialPage(
+          fullscreenDialog: true,
+          child: ComposeScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'preview',
+            parentNavigatorKey: _rootNavigatorKey,
+            pageBuilder: (_, _) =>
+                const MaterialPage(child: PreviewScreen()),
+          ),
+        ],
+      ),
+
+      // Settings (root-level push, dismissed with back)
+      GoRoute(
+        path: '/settings',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const SettingsScreen(),
+      ),
+
+      // Plan 15 (or sooner) replaces /profile/edit with the profile editor.
+      // /invite was removed in Plan 08 — share-invite opens QrInviteSheet
+      // directly instead.
+      GoRoute(
+        path: '/profile/edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Edit profile',
+          planHint: 'Plan 15 fills this in.',
+        ),
+      ),
+
+      // Plan 08 — fullscreen scan (modal over the Friends tab).
+      GoRoute(
+        path: '/friends/scan',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (_, _) => const MaterialPage(
+          fullscreenDialog: true,
+          child: ScanScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/friends/profile/:pubkey',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, state) => OtherProfileScreen(
+          pubkey: state.pathParameters['pubkey']!,
+        ),
+      ),
+
+      // Tab shell
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            navigatorKey: _feedNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/feed',
+                builder: (_, _) => const FeedScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'post/:id',
+                    builder: (_, state) => PostDetailScreen(
+                      eventId: state.pathParameters['id']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'profile/:pubkey',
+                    builder: (_, state) => OtherProfileScreen(
+                      pubkey: state.pathParameters['pubkey']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _friendsNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/friends',
+                builder: (_, _) => const FriendsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _youNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/you',
+                builder: (_, _) => const OwnProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'post/:id',
+                    builder: (_, state) => PostDetailScreen(
+                      eventId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Bridges Riverpod's `identityControllerProvider` into GoRouter's
+/// `refreshListenable`, so writing an identity in onboarding causes the
+/// redirect rule to reevaluate and navigate to the feed.
+class _IdentityRefresh extends ChangeNotifier {
+  _IdentityRefresh(this._ref) {
+    _sub = _ref.listen<AsyncValue<dynamic>>(
+      identityControllerProvider,
+      (_, _) => notifyListeners(),
+    );
+  }
+
+  final Ref _ref;
+  late final ProviderSubscription<AsyncValue<dynamic>> _sub;
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+}

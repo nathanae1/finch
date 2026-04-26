@@ -70,7 +70,23 @@ class MockContentKeyService implements ContentKeyService {
   }
 
   @override
-  EncryptedEvent encryptForAudience(Event event, Audience audience) {
-    return encryptEvent(event, _mockFeedKey, 0);
+  EncryptedEvent encryptForAudience(Event event, Audience audience) =>
+      signAndEncryptForAudience(event, audience).encrypted;
+
+  @override
+  ({Event signed, EncryptedEvent encrypted}) signAndEncryptForAudience(
+    Event event,
+    Audience audience,
+  ) {
+    // Deterministic, non-cryptographic stand-in: compute the id the same way
+    // the mock would, attach a sentinel signature (all 0xBB), and return both
+    // the "signed" event and an encrypted (really CBOR) payload.
+    final id = computeEventId(event);
+    final signed = event.copyWith(
+      id: id,
+      sig: Uint8List.fromList(List.filled(64, 0xBB)),
+    );
+    final encrypted = encryptEvent(signed, _mockFeedKey, 0);
+    return (signed: signed, encrypted: encrypted);
   }
 }

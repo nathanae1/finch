@@ -219,7 +219,8 @@ All sync happens over HTTP. The same API is implemented by:
 
 **GET /status**
 - Returns server info
-- Response: JSON `{ pubkey, version, storage_used, storage_limit, event_count }`
+- Response: JSON `{ pubkey, version, media_storage_used, event_count }`
+  - `media_storage_used`: bytes of cached encrypted media on disk. The DB blob is excluded — this is an approximate, peer-visible figure used only for sync planning.
 - No authentication required
 
 **POST /follow-request**

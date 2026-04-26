@@ -69,13 +69,22 @@ When in relay mode, the app shows:
 - Owner can prune oldest media via main phone (future feature, not MVP)
 
 ### Settings screen polish (main phone)
-Complete the settings screen with all sections:
-- **Recovery phrase**: re-display all 24 words (with confirmation prompt for security)
-- **Relay configuration**: if paired, show relay status (.onion address, last push, storage used). If not, show "Set Up Relay" button.
-- **Storage management**: link to storage settings screen (Plan 12)
-- **Tor status**: on/off, .onion address, bootstrap status
-- **Network status**: link to network status screen (Plan 14)
-- **About**: app version, protocol version, "Made with Finch" link
+The Claude Design mockup groups settings into six top-level rows. This plan adopts that grouping — it's simpler for non-technical users and keeps the technical surface (Tor, relay, network) tucked under a single "Network" row rather than spread across three.
+
+Each row uses the same visual pattern: a rounded `linen` tile with an icon on the left, a two-line label + subtitle in the middle, and a caret-right on the right.
+
+1. **Profile** (icon: `user`) — sub: "Display name, photo, bio". Pushes the profile-edit screen (stubbed in Plan 06 via the "Edit" button; this row is a second entry point).
+2. **Recovery phrase** (icon: `key`) — sub: "View or re-export". Pushes a confirmation screen ("Only view this where no one can see your screen.") then re-displays the 24 words on the same `linen` grid used in onboarding.
+3. **Notifications** (icon: `bell-slash`) — sub: "Off". **Informational only**, not a toggle. Pushes a read-only screen explaining: "Finch doesn't send notifications — your phone only checks when you open the app. There's no server to push from, so nothing can ping you when you're not looking." No code path writes anything, no push-token handling, no FCM/APNS integration anywhere in the app. This row exists so the absence is explained, not hidden.
+4. **Network** (icon: `globe`) — sub: "Local Wi-Fi + Tor". Pushes the network detail screen which subsumes what earlier drafts of this plan had split into three top-level rows:
+   - **Local Wi-Fi section**: mDNS discovery status, currently-reachable peer count
+   - **Tor section**: bootstrap status, .onion address (with a copy button), circuit count
+   - **Relay section**: if paired, show the relay's .onion address, last-push timestamp, storage used on the relay. If not paired, show a **PrimaryButton** "Set Up Relay" that opens the pairing flow (`/relay/setup`).
+   Grouping all three under Network matches the user's mental model ("how Finch talks to my friends") rather than the engineer's (Wi-Fi vs. Tor vs. relay as separate subsystems).
+5. **Storage** (icon: `download-simple`) — sub: live "N posts · M MB" string. Pushes the storage management screen from Plan 12 (usage breakdown, clear cache, export).
+6. **About Finch** (icon: `question`) — sub: "v{app_version}". Pushes a static screen with app version, protocol version, credits, and the one-paragraph manifesto: "Finch doesn't have a server. Your phone talks to your friends' phones directly, through Tor when you're apart and over local Wi-Fi when you're close. Sometimes a post takes a few minutes to show up because your friend's phone was off. That's fine."
+
+Also render the same manifesto paragraph as a small footnote (12 stone) at the bottom of the settings list itself — it's the tone the app opens with, so it should be the tone it closes with too.
 
 ## Files created/modified
 - `lib/screens/relay/relay_dashboard_screen.dart`
@@ -85,10 +94,13 @@ Complete the settings screen with all sections:
 - `lib/server/middleware/auth_middleware.dart` — Ed25519 signature verification
 - `lib/server/handlers/events_push_handler.dart` (update: relay write path with auth)
 - `lib/server/handlers/media_push_handler.dart`
-- `lib/screens/settings/settings_screen.dart` (complete)
-- `lib/screens/settings/recovery_phrase_screen.dart`
-- `lib/screens/settings/relay_settings_screen.dart`
-- `lib/router.dart` (update: relay mode routing, settings sub-screens)
+- `lib/screens/settings/settings_screen.dart` (complete — 6 rows per design grouping, manifesto footnote)
+- `lib/screens/settings/profile_edit_screen.dart` — pushed from row 1 (and from "Edit" on the "You" tab)
+- `lib/screens/settings/recovery_phrase_screen.dart` — confirmation → re-display
+- `lib/screens/settings/notifications_screen.dart` — informational only, no toggle
+- `lib/screens/settings/network_screen.dart` — Wi-Fi + Tor + Relay sections inside one screen
+- `lib/screens/settings/about_screen.dart` — version, protocol version, manifesto
+- `lib/router.dart` (update: relay mode routing, settings sub-screens under the tab shell)
 - `lib/providers/relay_provider.dart`
 - `test/services/relay_service_test.dart`
 - `test/server/auth_middleware_test.dart`
@@ -111,9 +123,15 @@ Complete the settings screen with all sections:
 9. Post displays correctly — relay served the encrypted content
 
 **Settings:**
-10. Recovery phrase re-displays correctly
-11. Relay settings show accurate status
-12. All settings sections present and functional
+10. Settings list renders the 6 rows in order: Profile / Recovery phrase / Notifications / Network / Storage / About Finch
+11. Each row shows the correct icon in its linen tile + caret-right affordance
+12. Recovery phrase: confirmation prompt gates the re-display, 24 words render correctly
+13. Notifications row: pushes an informational screen (no toggle, no switch, no permission prompt); no code path anywhere requests push tokens or registers for remote notifications
+14. Network screen: shows Wi-Fi status, Tor bootstrap status + .onion (copyable), and Relay status or "Set Up Relay" button as appropriate
+15. Storage row subtitle reflects live values ("N posts · M MB") and the row pushes Plan 12's storage screen
+16. About screen: version, protocol version, manifesto paragraph
+17. Manifesto footnote renders at the bottom of the main Settings list in 12 stone
+18. No push-notification integration is present in the app bundle (verify by grepping for `UNUserNotification`, `FirebaseMessaging`, `APNS`, etc. → zero matches)
 
 **Additional:**
 - Auth: unauthorized POST to relay → rejected (403)

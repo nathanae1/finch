@@ -29,6 +29,18 @@ class $IdentityEntriesTable extends IdentityEntries
     type: DriftSqlType.blob,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _feedKeyEpochMeta = const VerificationMeta(
+    'feedKeyEpoch',
+  );
+  @override
+  late final GeneratedColumn<int> feedKeyEpoch = GeneratedColumn<int>(
+    'feed_key_epoch',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _recoveryPhraseMeta = const VerificationMeta(
     'recoveryPhrase',
   );
@@ -55,6 +67,7 @@ class $IdentityEntriesTable extends IdentityEntries
   List<GeneratedColumn> get $columns => [
     pubkey,
     feedKey,
+    feedKeyEpoch,
     recoveryPhrase,
     createdAt,
   ];
@@ -85,6 +98,15 @@ class $IdentityEntriesTable extends IdentityEntries
       );
     } else if (isInserting) {
       context.missing(_feedKeyMeta);
+    }
+    if (data.containsKey('feed_key_epoch')) {
+      context.handle(
+        _feedKeyEpochMeta,
+        feedKeyEpoch.isAcceptableOrUnknown(
+          data['feed_key_epoch']!,
+          _feedKeyEpochMeta,
+        ),
+      );
     }
     if (data.containsKey('recovery_phrase')) {
       context.handle(
@@ -120,6 +142,10 @@ class $IdentityEntriesTable extends IdentityEntries
         DriftSqlType.blob,
         data['${effectivePrefix}feed_key'],
       )!,
+      feedKeyEpoch: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}feed_key_epoch'],
+      )!,
       recoveryPhrase: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}recovery_phrase'],
@@ -140,11 +166,13 @@ class $IdentityEntriesTable extends IdentityEntries
 class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
   final String pubkey;
   final Uint8List feedKey;
+  final int feedKeyEpoch;
   final String? recoveryPhrase;
   final int createdAt;
   const IdentityEntry({
     required this.pubkey,
     required this.feedKey,
+    required this.feedKeyEpoch,
     this.recoveryPhrase,
     required this.createdAt,
   });
@@ -153,6 +181,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
     final map = <String, Expression>{};
     map['pubkey'] = Variable<String>(pubkey);
     map['feed_key'] = Variable<Uint8List>(feedKey);
+    map['feed_key_epoch'] = Variable<int>(feedKeyEpoch);
     if (!nullToAbsent || recoveryPhrase != null) {
       map['recovery_phrase'] = Variable<String>(recoveryPhrase);
     }
@@ -164,6 +193,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
     return IdentityEntriesCompanion(
       pubkey: Value(pubkey),
       feedKey: Value(feedKey),
+      feedKeyEpoch: Value(feedKeyEpoch),
       recoveryPhrase: recoveryPhrase == null && nullToAbsent
           ? const Value.absent()
           : Value(recoveryPhrase),
@@ -179,6 +209,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
     return IdentityEntry(
       pubkey: serializer.fromJson<String>(json['pubkey']),
       feedKey: serializer.fromJson<Uint8List>(json['feedKey']),
+      feedKeyEpoch: serializer.fromJson<int>(json['feedKeyEpoch']),
       recoveryPhrase: serializer.fromJson<String?>(json['recoveryPhrase']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
     );
@@ -189,6 +220,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
     return <String, dynamic>{
       'pubkey': serializer.toJson<String>(pubkey),
       'feedKey': serializer.toJson<Uint8List>(feedKey),
+      'feedKeyEpoch': serializer.toJson<int>(feedKeyEpoch),
       'recoveryPhrase': serializer.toJson<String?>(recoveryPhrase),
       'createdAt': serializer.toJson<int>(createdAt),
     };
@@ -197,11 +229,13 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
   IdentityEntry copyWith({
     String? pubkey,
     Uint8List? feedKey,
+    int? feedKeyEpoch,
     Value<String?> recoveryPhrase = const Value.absent(),
     int? createdAt,
   }) => IdentityEntry(
     pubkey: pubkey ?? this.pubkey,
     feedKey: feedKey ?? this.feedKey,
+    feedKeyEpoch: feedKeyEpoch ?? this.feedKeyEpoch,
     recoveryPhrase: recoveryPhrase.present
         ? recoveryPhrase.value
         : this.recoveryPhrase,
@@ -211,6 +245,9 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
     return IdentityEntry(
       pubkey: data.pubkey.present ? data.pubkey.value : this.pubkey,
       feedKey: data.feedKey.present ? data.feedKey.value : this.feedKey,
+      feedKeyEpoch: data.feedKeyEpoch.present
+          ? data.feedKeyEpoch.value
+          : this.feedKeyEpoch,
       recoveryPhrase: data.recoveryPhrase.present
           ? data.recoveryPhrase.value
           : this.recoveryPhrase,
@@ -223,6 +260,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
     return (StringBuffer('IdentityEntry(')
           ..write('pubkey: $pubkey, ')
           ..write('feedKey: $feedKey, ')
+          ..write('feedKeyEpoch: $feedKeyEpoch, ')
           ..write('recoveryPhrase: $recoveryPhrase, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -233,6 +271,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
   int get hashCode => Object.hash(
     pubkey,
     $driftBlobEquality.hash(feedKey),
+    feedKeyEpoch,
     recoveryPhrase,
     createdAt,
   );
@@ -242,6 +281,7 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
       (other is IdentityEntry &&
           other.pubkey == this.pubkey &&
           $driftBlobEquality.equals(other.feedKey, this.feedKey) &&
+          other.feedKeyEpoch == this.feedKeyEpoch &&
           other.recoveryPhrase == this.recoveryPhrase &&
           other.createdAt == this.createdAt);
 }
@@ -249,12 +289,14 @@ class IdentityEntry extends DataClass implements Insertable<IdentityEntry> {
 class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
   final Value<String> pubkey;
   final Value<Uint8List> feedKey;
+  final Value<int> feedKeyEpoch;
   final Value<String?> recoveryPhrase;
   final Value<int> createdAt;
   final Value<int> rowid;
   const IdentityEntriesCompanion({
     this.pubkey = const Value.absent(),
     this.feedKey = const Value.absent(),
+    this.feedKeyEpoch = const Value.absent(),
     this.recoveryPhrase = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -262,6 +304,7 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
   IdentityEntriesCompanion.insert({
     required String pubkey,
     required Uint8List feedKey,
+    this.feedKeyEpoch = const Value.absent(),
     this.recoveryPhrase = const Value.absent(),
     required int createdAt,
     this.rowid = const Value.absent(),
@@ -271,6 +314,7 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
   static Insertable<IdentityEntry> custom({
     Expression<String>? pubkey,
     Expression<Uint8List>? feedKey,
+    Expression<int>? feedKeyEpoch,
     Expression<String>? recoveryPhrase,
     Expression<int>? createdAt,
     Expression<int>? rowid,
@@ -278,6 +322,7 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
     return RawValuesInsertable({
       if (pubkey != null) 'pubkey': pubkey,
       if (feedKey != null) 'feed_key': feedKey,
+      if (feedKeyEpoch != null) 'feed_key_epoch': feedKeyEpoch,
       if (recoveryPhrase != null) 'recovery_phrase': recoveryPhrase,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -287,6 +332,7 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
   IdentityEntriesCompanion copyWith({
     Value<String>? pubkey,
     Value<Uint8List>? feedKey,
+    Value<int>? feedKeyEpoch,
     Value<String?>? recoveryPhrase,
     Value<int>? createdAt,
     Value<int>? rowid,
@@ -294,6 +340,7 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
     return IdentityEntriesCompanion(
       pubkey: pubkey ?? this.pubkey,
       feedKey: feedKey ?? this.feedKey,
+      feedKeyEpoch: feedKeyEpoch ?? this.feedKeyEpoch,
       recoveryPhrase: recoveryPhrase ?? this.recoveryPhrase,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -308,6 +355,9 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
     }
     if (feedKey.present) {
       map['feed_key'] = Variable<Uint8List>(feedKey.value);
+    }
+    if (feedKeyEpoch.present) {
+      map['feed_key_epoch'] = Variable<int>(feedKeyEpoch.value);
     }
     if (recoveryPhrase.present) {
       map['recovery_phrase'] = Variable<String>(recoveryPhrase.value);
@@ -326,6 +376,7 @@ class IdentityEntriesCompanion extends UpdateCompanion<IdentityEntry> {
     return (StringBuffer('IdentityEntriesCompanion(')
           ..write('pubkey: $pubkey, ')
           ..write('feedKey: $feedKey, ')
+          ..write('feedKeyEpoch: $feedKeyEpoch, ')
           ..write('recoveryPhrase: $recoveryPhrase, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -393,6 +444,18 @@ class $FollowEntriesTable extends FollowEntries
     type: DriftSqlType.blob,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _feedKeyEpochMeta = const VerificationMeta(
+    'feedKeyEpoch',
+  );
+  @override
+  late final GeneratedColumn<int> feedKeyEpoch = GeneratedColumn<int>(
+    'feed_key_epoch',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
     'lastSyncedAt',
   );
@@ -422,6 +485,7 @@ class $FollowEntriesTable extends FollowEntries
     avatarHash,
     connectionCard,
     feedKey,
+    feedKeyEpoch,
     lastSyncedAt,
     status,
   ];
@@ -479,6 +543,15 @@ class $FollowEntriesTable extends FollowEntries
     } else if (isInserting) {
       context.missing(_feedKeyMeta);
     }
+    if (data.containsKey('feed_key_epoch')) {
+      context.handle(
+        _feedKeyEpochMeta,
+        feedKeyEpoch.isAcceptableOrUnknown(
+          data['feed_key_epoch']!,
+          _feedKeyEpochMeta,
+        ),
+      );
+    }
     if (data.containsKey('last_synced_at')) {
       context.handle(
         _lastSyncedAtMeta,
@@ -523,6 +596,10 @@ class $FollowEntriesTable extends FollowEntries
         DriftSqlType.blob,
         data['${effectivePrefix}feed_key'],
       )!,
+      feedKeyEpoch: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}feed_key_epoch'],
+      )!,
       lastSyncedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}last_synced_at'],
@@ -546,6 +623,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
   final String? avatarHash;
   final String connectionCard;
   final Uint8List feedKey;
+  final int feedKeyEpoch;
   final int lastSyncedAt;
   final String status;
   const FollowEntry({
@@ -554,6 +632,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
     this.avatarHash,
     required this.connectionCard,
     required this.feedKey,
+    required this.feedKeyEpoch,
     required this.lastSyncedAt,
     required this.status,
   });
@@ -569,6 +648,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
     }
     map['connection_card'] = Variable<String>(connectionCard);
     map['feed_key'] = Variable<Uint8List>(feedKey);
+    map['feed_key_epoch'] = Variable<int>(feedKeyEpoch);
     map['last_synced_at'] = Variable<int>(lastSyncedAt);
     map['status'] = Variable<String>(status);
     return map;
@@ -585,6 +665,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
           : Value(avatarHash),
       connectionCard: Value(connectionCard),
       feedKey: Value(feedKey),
+      feedKeyEpoch: Value(feedKeyEpoch),
       lastSyncedAt: Value(lastSyncedAt),
       status: Value(status),
     );
@@ -601,6 +682,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
       avatarHash: serializer.fromJson<String?>(json['avatarHash']),
       connectionCard: serializer.fromJson<String>(json['connectionCard']),
       feedKey: serializer.fromJson<Uint8List>(json['feedKey']),
+      feedKeyEpoch: serializer.fromJson<int>(json['feedKeyEpoch']),
       lastSyncedAt: serializer.fromJson<int>(json['lastSyncedAt']),
       status: serializer.fromJson<String>(json['status']),
     );
@@ -614,6 +696,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
       'avatarHash': serializer.toJson<String?>(avatarHash),
       'connectionCard': serializer.toJson<String>(connectionCard),
       'feedKey': serializer.toJson<Uint8List>(feedKey),
+      'feedKeyEpoch': serializer.toJson<int>(feedKeyEpoch),
       'lastSyncedAt': serializer.toJson<int>(lastSyncedAt),
       'status': serializer.toJson<String>(status),
     };
@@ -625,6 +708,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
     Value<String?> avatarHash = const Value.absent(),
     String? connectionCard,
     Uint8List? feedKey,
+    int? feedKeyEpoch,
     int? lastSyncedAt,
     String? status,
   }) => FollowEntry(
@@ -633,6 +717,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
     avatarHash: avatarHash.present ? avatarHash.value : this.avatarHash,
     connectionCard: connectionCard ?? this.connectionCard,
     feedKey: feedKey ?? this.feedKey,
+    feedKeyEpoch: feedKeyEpoch ?? this.feedKeyEpoch,
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     status: status ?? this.status,
   );
@@ -649,6 +734,9 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
           ? data.connectionCard.value
           : this.connectionCard,
       feedKey: data.feedKey.present ? data.feedKey.value : this.feedKey,
+      feedKeyEpoch: data.feedKeyEpoch.present
+          ? data.feedKeyEpoch.value
+          : this.feedKeyEpoch,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
@@ -664,6 +752,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
           ..write('avatarHash: $avatarHash, ')
           ..write('connectionCard: $connectionCard, ')
           ..write('feedKey: $feedKey, ')
+          ..write('feedKeyEpoch: $feedKeyEpoch, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
           ..write('status: $status')
           ..write(')'))
@@ -677,6 +766,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
     avatarHash,
     connectionCard,
     $driftBlobEquality.hash(feedKey),
+    feedKeyEpoch,
     lastSyncedAt,
     status,
   );
@@ -689,6 +779,7 @@ class FollowEntry extends DataClass implements Insertable<FollowEntry> {
           other.avatarHash == this.avatarHash &&
           other.connectionCard == this.connectionCard &&
           $driftBlobEquality.equals(other.feedKey, this.feedKey) &&
+          other.feedKeyEpoch == this.feedKeyEpoch &&
           other.lastSyncedAt == this.lastSyncedAt &&
           other.status == this.status);
 }
@@ -699,6 +790,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
   final Value<String?> avatarHash;
   final Value<String> connectionCard;
   final Value<Uint8List> feedKey;
+  final Value<int> feedKeyEpoch;
   final Value<int> lastSyncedAt;
   final Value<String> status;
   final Value<int> rowid;
@@ -708,6 +800,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
     this.avatarHash = const Value.absent(),
     this.connectionCard = const Value.absent(),
     this.feedKey = const Value.absent(),
+    this.feedKeyEpoch = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -718,6 +811,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
     this.avatarHash = const Value.absent(),
     required String connectionCard,
     required Uint8List feedKey,
+    this.feedKeyEpoch = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -730,6 +824,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
     Expression<String>? avatarHash,
     Expression<String>? connectionCard,
     Expression<Uint8List>? feedKey,
+    Expression<int>? feedKeyEpoch,
     Expression<int>? lastSyncedAt,
     Expression<String>? status,
     Expression<int>? rowid,
@@ -740,6 +835,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
       if (avatarHash != null) 'avatar_hash': avatarHash,
       if (connectionCard != null) 'connection_card': connectionCard,
       if (feedKey != null) 'feed_key': feedKey,
+      if (feedKeyEpoch != null) 'feed_key_epoch': feedKeyEpoch,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
       if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
@@ -752,6 +848,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
     Value<String?>? avatarHash,
     Value<String>? connectionCard,
     Value<Uint8List>? feedKey,
+    Value<int>? feedKeyEpoch,
     Value<int>? lastSyncedAt,
     Value<String>? status,
     Value<int>? rowid,
@@ -762,6 +859,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
       avatarHash: avatarHash ?? this.avatarHash,
       connectionCard: connectionCard ?? this.connectionCard,
       feedKey: feedKey ?? this.feedKey,
+      feedKeyEpoch: feedKeyEpoch ?? this.feedKeyEpoch,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       status: status ?? this.status,
       rowid: rowid ?? this.rowid,
@@ -786,6 +884,9 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
     if (feedKey.present) {
       map['feed_key'] = Variable<Uint8List>(feedKey.value);
     }
+    if (feedKeyEpoch.present) {
+      map['feed_key_epoch'] = Variable<int>(feedKeyEpoch.value);
+    }
     if (lastSyncedAt.present) {
       map['last_synced_at'] = Variable<int>(lastSyncedAt.value);
     }
@@ -806,6 +907,7 @@ class FollowEntriesCompanion extends UpdateCompanion<FollowEntry> {
           ..write('avatarHash: $avatarHash, ')
           ..write('connectionCard: $connectionCard, ')
           ..write('feedKey: $feedKey, ')
+          ..write('feedKeyEpoch: $feedKeyEpoch, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
           ..write('status: $status, ')
           ..write('rowid: $rowid')
@@ -908,6 +1010,18 @@ class $EventEntriesTable extends EventEntries
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _isSavedMeta = const VerificationMeta(
+    'isSaved',
+  );
+  @override
+  late final GeneratedColumn<int> isSaved = GeneratedColumn<int>(
+    'is_saved',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _fetchedAtMeta = const VerificationMeta(
     'fetchedAt',
   );
@@ -964,6 +1078,7 @@ class $EventEntriesTable extends EventEntries
     mediaRefs,
     sig,
     isOwn,
+    isSaved,
     fetchedAt,
     lastViewed,
     version,
@@ -1044,6 +1159,12 @@ class $EventEntriesTable extends EventEntries
         isOwn.isAcceptableOrUnknown(data['is_own']!, _isOwnMeta),
       );
     }
+    if (data.containsKey('is_saved')) {
+      context.handle(
+        _isSavedMeta,
+        isSaved.isAcceptableOrUnknown(data['is_saved']!, _isSavedMeta),
+      );
+    }
     if (data.containsKey('fetched_at')) {
       context.handle(
         _fetchedAtMeta,
@@ -1115,6 +1236,10 @@ class $EventEntriesTable extends EventEntries
         DriftSqlType.int,
         data['${effectivePrefix}is_own'],
       )!,
+      isSaved: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}is_saved'],
+      )!,
       fetchedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}fetched_at'],
@@ -1150,6 +1275,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
   final String? mediaRefs;
   final Uint8List sig;
   final int isOwn;
+  final int isSaved;
   final int fetchedAt;
   final int? lastViewed;
   final String version;
@@ -1164,6 +1290,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     this.mediaRefs,
     required this.sig,
     required this.isOwn,
+    required this.isSaved,
     required this.fetchedAt,
     this.lastViewed,
     required this.version,
@@ -1185,6 +1312,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     }
     map['sig'] = Variable<Uint8List>(sig);
     map['is_own'] = Variable<int>(isOwn);
+    map['is_saved'] = Variable<int>(isSaved);
     map['fetched_at'] = Variable<int>(fetchedAt);
     if (!nullToAbsent || lastViewed != null) {
       map['last_viewed'] = Variable<int>(lastViewed);
@@ -1211,6 +1339,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           : Value(mediaRefs),
       sig: Value(sig),
       isOwn: Value(isOwn),
+      isSaved: Value(isSaved),
       fetchedAt: Value(fetchedAt),
       lastViewed: lastViewed == null && nullToAbsent
           ? const Value.absent()
@@ -1237,6 +1366,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
       mediaRefs: serializer.fromJson<String?>(json['mediaRefs']),
       sig: serializer.fromJson<Uint8List>(json['sig']),
       isOwn: serializer.fromJson<int>(json['isOwn']),
+      isSaved: serializer.fromJson<int>(json['isSaved']),
       fetchedAt: serializer.fromJson<int>(json['fetchedAt']),
       lastViewed: serializer.fromJson<int?>(json['lastViewed']),
       version: serializer.fromJson<String>(json['version']),
@@ -1256,6 +1386,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
       'mediaRefs': serializer.toJson<String?>(mediaRefs),
       'sig': serializer.toJson<Uint8List>(sig),
       'isOwn': serializer.toJson<int>(isOwn),
+      'isSaved': serializer.toJson<int>(isSaved),
       'fetchedAt': serializer.toJson<int>(fetchedAt),
       'lastViewed': serializer.toJson<int?>(lastViewed),
       'version': serializer.toJson<String>(version),
@@ -1273,6 +1404,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     Value<String?> mediaRefs = const Value.absent(),
     Uint8List? sig,
     int? isOwn,
+    int? isSaved,
     int? fetchedAt,
     Value<int?> lastViewed = const Value.absent(),
     String? version,
@@ -1287,6 +1419,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     mediaRefs: mediaRefs.present ? mediaRefs.value : this.mediaRefs,
     sig: sig ?? this.sig,
     isOwn: isOwn ?? this.isOwn,
+    isSaved: isSaved ?? this.isSaved,
     fetchedAt: fetchedAt ?? this.fetchedAt,
     lastViewed: lastViewed.present ? lastViewed.value : this.lastViewed,
     version: version ?? this.version,
@@ -1303,6 +1436,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
       mediaRefs: data.mediaRefs.present ? data.mediaRefs.value : this.mediaRefs,
       sig: data.sig.present ? data.sig.value : this.sig,
       isOwn: data.isOwn.present ? data.isOwn.value : this.isOwn,
+      isSaved: data.isSaved.present ? data.isSaved.value : this.isSaved,
       fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
       lastViewed: data.lastViewed.present
           ? data.lastViewed.value
@@ -1326,6 +1460,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           ..write('mediaRefs: $mediaRefs, ')
           ..write('sig: $sig, ')
           ..write('isOwn: $isOwn, ')
+          ..write('isSaved: $isSaved, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('lastViewed: $lastViewed, ')
           ..write('version: $version, ')
@@ -1345,6 +1480,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
     mediaRefs,
     $driftBlobEquality.hash(sig),
     isOwn,
+    isSaved,
     fetchedAt,
     lastViewed,
     version,
@@ -1363,6 +1499,7 @@ class EventEntry extends DataClass implements Insertable<EventEntry> {
           other.mediaRefs == this.mediaRefs &&
           $driftBlobEquality.equals(other.sig, this.sig) &&
           other.isOwn == this.isOwn &&
+          other.isSaved == this.isSaved &&
           other.fetchedAt == this.fetchedAt &&
           other.lastViewed == this.lastViewed &&
           other.version == this.version &&
@@ -1379,6 +1516,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
   final Value<String?> mediaRefs;
   final Value<Uint8List> sig;
   final Value<int> isOwn;
+  final Value<int> isSaved;
   final Value<int> fetchedAt;
   final Value<int?> lastViewed;
   final Value<String> version;
@@ -1394,6 +1532,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     this.mediaRefs = const Value.absent(),
     this.sig = const Value.absent(),
     this.isOwn = const Value.absent(),
+    this.isSaved = const Value.absent(),
     this.fetchedAt = const Value.absent(),
     this.lastViewed = const Value.absent(),
     this.version = const Value.absent(),
@@ -1410,6 +1549,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     this.mediaRefs = const Value.absent(),
     required Uint8List sig,
     this.isOwn = const Value.absent(),
+    this.isSaved = const Value.absent(),
     required int fetchedAt,
     this.lastViewed = const Value.absent(),
     this.version = const Value.absent(),
@@ -1432,6 +1572,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     Expression<String>? mediaRefs,
     Expression<Uint8List>? sig,
     Expression<int>? isOwn,
+    Expression<int>? isSaved,
     Expression<int>? fetchedAt,
     Expression<int>? lastViewed,
     Expression<String>? version,
@@ -1448,6 +1589,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
       if (mediaRefs != null) 'media_refs': mediaRefs,
       if (sig != null) 'sig': sig,
       if (isOwn != null) 'is_own': isOwn,
+      if (isSaved != null) 'is_saved': isSaved,
       if (fetchedAt != null) 'fetched_at': fetchedAt,
       if (lastViewed != null) 'last_viewed': lastViewed,
       if (version != null) 'version': version,
@@ -1466,6 +1608,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     Value<String?>? mediaRefs,
     Value<Uint8List>? sig,
     Value<int>? isOwn,
+    Value<int>? isSaved,
     Value<int>? fetchedAt,
     Value<int?>? lastViewed,
     Value<String>? version,
@@ -1482,6 +1625,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
       mediaRefs: mediaRefs ?? this.mediaRefs,
       sig: sig ?? this.sig,
       isOwn: isOwn ?? this.isOwn,
+      isSaved: isSaved ?? this.isSaved,
       fetchedAt: fetchedAt ?? this.fetchedAt,
       lastViewed: lastViewed ?? this.lastViewed,
       version: version ?? this.version,
@@ -1520,6 +1664,9 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
     if (isOwn.present) {
       map['is_own'] = Variable<int>(isOwn.value);
     }
+    if (isSaved.present) {
+      map['is_saved'] = Variable<int>(isSaved.value);
+    }
     if (fetchedAt.present) {
       map['fetched_at'] = Variable<int>(fetchedAt.value);
     }
@@ -1550,6 +1697,7 @@ class EventEntriesCompanion extends UpdateCompanion<EventEntry> {
           ..write('mediaRefs: $mediaRefs, ')
           ..write('sig: $sig, ')
           ..write('isOwn: $isOwn, ')
+          ..write('isSaved: $isSaved, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('lastViewed: $lastViewed, ')
           ..write('version: $version, ')
@@ -1915,6 +2063,18 @@ class $InboundFollowRequestEntriesTable extends InboundFollowRequestEntries
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _requestTimestampMeta = const VerificationMeta(
+    'requestTimestamp',
+  );
+  @override
+  late final GeneratedColumn<int> requestTimestamp = GeneratedColumn<int>(
+    'request_timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -1930,6 +2090,7 @@ class $InboundFollowRequestEntriesTable extends InboundFollowRequestEntries
     pubkey,
     encryptedEndpoints,
     createdAt,
+    requestTimestamp,
     status,
   ];
   @override
@@ -1971,6 +2132,15 @@ class $InboundFollowRequestEntriesTable extends InboundFollowRequestEntries
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('request_timestamp')) {
+      context.handle(
+        _requestTimestampMeta,
+        requestTimestamp.isAcceptableOrUnknown(
+          data['request_timestamp']!,
+          _requestTimestampMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -2001,6 +2171,10 @@ class $InboundFollowRequestEntriesTable extends InboundFollowRequestEntries
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      requestTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}request_timestamp'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -2019,11 +2193,13 @@ class InboundFollowRequestEntry extends DataClass
   final String pubkey;
   final Uint8List encryptedEndpoints;
   final int createdAt;
+  final int requestTimestamp;
   final String status;
   const InboundFollowRequestEntry({
     required this.pubkey,
     required this.encryptedEndpoints,
     required this.createdAt,
+    required this.requestTimestamp,
     required this.status,
   });
   @override
@@ -2032,6 +2208,7 @@ class InboundFollowRequestEntry extends DataClass
     map['pubkey'] = Variable<String>(pubkey);
     map['encrypted_endpoints'] = Variable<Uint8List>(encryptedEndpoints);
     map['created_at'] = Variable<int>(createdAt);
+    map['request_timestamp'] = Variable<int>(requestTimestamp);
     map['status'] = Variable<String>(status);
     return map;
   }
@@ -2041,6 +2218,7 @@ class InboundFollowRequestEntry extends DataClass
       pubkey: Value(pubkey),
       encryptedEndpoints: Value(encryptedEndpoints),
       createdAt: Value(createdAt),
+      requestTimestamp: Value(requestTimestamp),
       status: Value(status),
     );
   }
@@ -2056,6 +2234,7 @@ class InboundFollowRequestEntry extends DataClass
         json['encryptedEndpoints'],
       ),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      requestTimestamp: serializer.fromJson<int>(json['requestTimestamp']),
       status: serializer.fromJson<String>(json['status']),
     );
   }
@@ -2066,6 +2245,7 @@ class InboundFollowRequestEntry extends DataClass
       'pubkey': serializer.toJson<String>(pubkey),
       'encryptedEndpoints': serializer.toJson<Uint8List>(encryptedEndpoints),
       'createdAt': serializer.toJson<int>(createdAt),
+      'requestTimestamp': serializer.toJson<int>(requestTimestamp),
       'status': serializer.toJson<String>(status),
     };
   }
@@ -2074,11 +2254,13 @@ class InboundFollowRequestEntry extends DataClass
     String? pubkey,
     Uint8List? encryptedEndpoints,
     int? createdAt,
+    int? requestTimestamp,
     String? status,
   }) => InboundFollowRequestEntry(
     pubkey: pubkey ?? this.pubkey,
     encryptedEndpoints: encryptedEndpoints ?? this.encryptedEndpoints,
     createdAt: createdAt ?? this.createdAt,
+    requestTimestamp: requestTimestamp ?? this.requestTimestamp,
     status: status ?? this.status,
   );
   InboundFollowRequestEntry copyWithCompanion(
@@ -2090,6 +2272,9 @@ class InboundFollowRequestEntry extends DataClass
           ? data.encryptedEndpoints.value
           : this.encryptedEndpoints,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      requestTimestamp: data.requestTimestamp.present
+          ? data.requestTimestamp.value
+          : this.requestTimestamp,
       status: data.status.present ? data.status.value : this.status,
     );
   }
@@ -2100,6 +2285,7 @@ class InboundFollowRequestEntry extends DataClass
           ..write('pubkey: $pubkey, ')
           ..write('encryptedEndpoints: $encryptedEndpoints, ')
           ..write('createdAt: $createdAt, ')
+          ..write('requestTimestamp: $requestTimestamp, ')
           ..write('status: $status')
           ..write(')'))
         .toString();
@@ -2110,6 +2296,7 @@ class InboundFollowRequestEntry extends DataClass
     pubkey,
     $driftBlobEquality.hash(encryptedEndpoints),
     createdAt,
+    requestTimestamp,
     status,
   );
   @override
@@ -2122,6 +2309,7 @@ class InboundFollowRequestEntry extends DataClass
             this.encryptedEndpoints,
           ) &&
           other.createdAt == this.createdAt &&
+          other.requestTimestamp == this.requestTimestamp &&
           other.status == this.status);
 }
 
@@ -2130,12 +2318,14 @@ class InboundFollowRequestEntriesCompanion
   final Value<String> pubkey;
   final Value<Uint8List> encryptedEndpoints;
   final Value<int> createdAt;
+  final Value<int> requestTimestamp;
   final Value<String> status;
   final Value<int> rowid;
   const InboundFollowRequestEntriesCompanion({
     this.pubkey = const Value.absent(),
     this.encryptedEndpoints = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.requestTimestamp = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2143,6 +2333,7 @@ class InboundFollowRequestEntriesCompanion
     required String pubkey,
     required Uint8List encryptedEndpoints,
     required int createdAt,
+    this.requestTimestamp = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : pubkey = Value(pubkey),
@@ -2152,6 +2343,7 @@ class InboundFollowRequestEntriesCompanion
     Expression<String>? pubkey,
     Expression<Uint8List>? encryptedEndpoints,
     Expression<int>? createdAt,
+    Expression<int>? requestTimestamp,
     Expression<String>? status,
     Expression<int>? rowid,
   }) {
@@ -2159,6 +2351,7 @@ class InboundFollowRequestEntriesCompanion
       if (pubkey != null) 'pubkey': pubkey,
       if (encryptedEndpoints != null) 'encrypted_endpoints': encryptedEndpoints,
       if (createdAt != null) 'created_at': createdAt,
+      if (requestTimestamp != null) 'request_timestamp': requestTimestamp,
       if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2168,6 +2361,7 @@ class InboundFollowRequestEntriesCompanion
     Value<String>? pubkey,
     Value<Uint8List>? encryptedEndpoints,
     Value<int>? createdAt,
+    Value<int>? requestTimestamp,
     Value<String>? status,
     Value<int>? rowid,
   }) {
@@ -2175,6 +2369,7 @@ class InboundFollowRequestEntriesCompanion
       pubkey: pubkey ?? this.pubkey,
       encryptedEndpoints: encryptedEndpoints ?? this.encryptedEndpoints,
       createdAt: createdAt ?? this.createdAt,
+      requestTimestamp: requestTimestamp ?? this.requestTimestamp,
       status: status ?? this.status,
       rowid: rowid ?? this.rowid,
     );
@@ -2194,6 +2389,9 @@ class InboundFollowRequestEntriesCompanion
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (requestTimestamp.present) {
+      map['request_timestamp'] = Variable<int>(requestTimestamp.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -2209,6 +2407,7 @@ class InboundFollowRequestEntriesCompanion
           ..write('pubkey: $pubkey, ')
           ..write('encryptedEndpoints: $encryptedEndpoints, ')
           ..write('createdAt: $createdAt, ')
+          ..write('requestTimestamp: $requestTimestamp, ')
           ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2911,6 +3110,492 @@ class OutboundQueueEntriesCompanion
   }
 }
 
+class $UnknownEnvelopeItemEntriesTable extends UnknownEnvelopeItemEntries
+    with TableInfo<$UnknownEnvelopeItemEntriesTable, UnknownEnvelopeItemEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UnknownEnvelopeItemEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sourcePubkeyMeta = const VerificationMeta(
+    'sourcePubkey',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePubkey = GeneratedColumn<String>(
+    'source_pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeVersionMeta = const VerificationMeta(
+    'envelopeVersion',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeVersion = GeneratedColumn<String>(
+    'envelope_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> payload = GeneratedColumn<Uint8List>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _extensionsMeta = const VerificationMeta(
+    'extensions',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> extensions = GeneratedColumn<Uint8List>(
+    'extensions',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receivedAtMeta = const VerificationMeta(
+    'receivedAt',
+  );
+  @override
+  late final GeneratedColumn<int> receivedAt = GeneratedColumn<int>(
+    'received_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourcePubkey,
+    envelopeVersion,
+    type,
+    payload,
+    extensions,
+    receivedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'unknown_envelope_item_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UnknownEnvelopeItemEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('source_pubkey')) {
+      context.handle(
+        _sourcePubkeyMeta,
+        sourcePubkey.isAcceptableOrUnknown(
+          data['source_pubkey']!,
+          _sourcePubkeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourcePubkeyMeta);
+    }
+    if (data.containsKey('envelope_version')) {
+      context.handle(
+        _envelopeVersionMeta,
+        envelopeVersion.isAcceptableOrUnknown(
+          data['envelope_version']!,
+          _envelopeVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeVersionMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('extensions')) {
+      context.handle(
+        _extensionsMeta,
+        extensions.isAcceptableOrUnknown(data['extensions']!, _extensionsMeta),
+      );
+    }
+    if (data.containsKey('received_at')) {
+      context.handle(
+        _receivedAtMeta,
+        receivedAt.isAcceptableOrUnknown(data['received_at']!, _receivedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_receivedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UnknownEnvelopeItemEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UnknownEnvelopeItemEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sourcePubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_pubkey'],
+      )!,
+      envelopeVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_version'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}payload'],
+      )!,
+      extensions: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}extensions'],
+      ),
+      receivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}received_at'],
+      )!,
+    );
+  }
+
+  @override
+  $UnknownEnvelopeItemEntriesTable createAlias(String alias) {
+    return $UnknownEnvelopeItemEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class UnknownEnvelopeItemEntry extends DataClass
+    implements Insertable<UnknownEnvelopeItemEntry> {
+  final int id;
+
+  /// The peer pubkey we received this item from. Lets us scope retention /
+  /// purge by source if a peer turns hostile.
+  final String sourcePubkey;
+
+  /// `Envelope.version` at receive time — useful when we eventually decide
+  /// whether to forward the item back during sync.
+  final String envelopeVersion;
+
+  /// The unknown `type` string, e.g. `"commit"` or `"receipt"`.
+  final String type;
+
+  /// Raw payload bytes. We never decode these.
+  final Uint8List payload;
+
+  /// Item-level extensions, raw CBOR (or null if absent).
+  final Uint8List? extensions;
+  final int receivedAt;
+  const UnknownEnvelopeItemEntry({
+    required this.id,
+    required this.sourcePubkey,
+    required this.envelopeVersion,
+    required this.type,
+    required this.payload,
+    this.extensions,
+    required this.receivedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['source_pubkey'] = Variable<String>(sourcePubkey);
+    map['envelope_version'] = Variable<String>(envelopeVersion);
+    map['type'] = Variable<String>(type);
+    map['payload'] = Variable<Uint8List>(payload);
+    if (!nullToAbsent || extensions != null) {
+      map['extensions'] = Variable<Uint8List>(extensions);
+    }
+    map['received_at'] = Variable<int>(receivedAt);
+    return map;
+  }
+
+  UnknownEnvelopeItemEntriesCompanion toCompanion(bool nullToAbsent) {
+    return UnknownEnvelopeItemEntriesCompanion(
+      id: Value(id),
+      sourcePubkey: Value(sourcePubkey),
+      envelopeVersion: Value(envelopeVersion),
+      type: Value(type),
+      payload: Value(payload),
+      extensions: extensions == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extensions),
+      receivedAt: Value(receivedAt),
+    );
+  }
+
+  factory UnknownEnvelopeItemEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UnknownEnvelopeItemEntry(
+      id: serializer.fromJson<int>(json['id']),
+      sourcePubkey: serializer.fromJson<String>(json['sourcePubkey']),
+      envelopeVersion: serializer.fromJson<String>(json['envelopeVersion']),
+      type: serializer.fromJson<String>(json['type']),
+      payload: serializer.fromJson<Uint8List>(json['payload']),
+      extensions: serializer.fromJson<Uint8List?>(json['extensions']),
+      receivedAt: serializer.fromJson<int>(json['receivedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sourcePubkey': serializer.toJson<String>(sourcePubkey),
+      'envelopeVersion': serializer.toJson<String>(envelopeVersion),
+      'type': serializer.toJson<String>(type),
+      'payload': serializer.toJson<Uint8List>(payload),
+      'extensions': serializer.toJson<Uint8List?>(extensions),
+      'receivedAt': serializer.toJson<int>(receivedAt),
+    };
+  }
+
+  UnknownEnvelopeItemEntry copyWith({
+    int? id,
+    String? sourcePubkey,
+    String? envelopeVersion,
+    String? type,
+    Uint8List? payload,
+    Value<Uint8List?> extensions = const Value.absent(),
+    int? receivedAt,
+  }) => UnknownEnvelopeItemEntry(
+    id: id ?? this.id,
+    sourcePubkey: sourcePubkey ?? this.sourcePubkey,
+    envelopeVersion: envelopeVersion ?? this.envelopeVersion,
+    type: type ?? this.type,
+    payload: payload ?? this.payload,
+    extensions: extensions.present ? extensions.value : this.extensions,
+    receivedAt: receivedAt ?? this.receivedAt,
+  );
+  UnknownEnvelopeItemEntry copyWithCompanion(
+    UnknownEnvelopeItemEntriesCompanion data,
+  ) {
+    return UnknownEnvelopeItemEntry(
+      id: data.id.present ? data.id.value : this.id,
+      sourcePubkey: data.sourcePubkey.present
+          ? data.sourcePubkey.value
+          : this.sourcePubkey,
+      envelopeVersion: data.envelopeVersion.present
+          ? data.envelopeVersion.value
+          : this.envelopeVersion,
+      type: data.type.present ? data.type.value : this.type,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      extensions: data.extensions.present
+          ? data.extensions.value
+          : this.extensions,
+      receivedAt: data.receivedAt.present
+          ? data.receivedAt.value
+          : this.receivedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UnknownEnvelopeItemEntry(')
+          ..write('id: $id, ')
+          ..write('sourcePubkey: $sourcePubkey, ')
+          ..write('envelopeVersion: $envelopeVersion, ')
+          ..write('type: $type, ')
+          ..write('payload: $payload, ')
+          ..write('extensions: $extensions, ')
+          ..write('receivedAt: $receivedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sourcePubkey,
+    envelopeVersion,
+    type,
+    $driftBlobEquality.hash(payload),
+    $driftBlobEquality.hash(extensions),
+    receivedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UnknownEnvelopeItemEntry &&
+          other.id == this.id &&
+          other.sourcePubkey == this.sourcePubkey &&
+          other.envelopeVersion == this.envelopeVersion &&
+          other.type == this.type &&
+          $driftBlobEquality.equals(other.payload, this.payload) &&
+          $driftBlobEquality.equals(other.extensions, this.extensions) &&
+          other.receivedAt == this.receivedAt);
+}
+
+class UnknownEnvelopeItemEntriesCompanion
+    extends UpdateCompanion<UnknownEnvelopeItemEntry> {
+  final Value<int> id;
+  final Value<String> sourcePubkey;
+  final Value<String> envelopeVersion;
+  final Value<String> type;
+  final Value<Uint8List> payload;
+  final Value<Uint8List?> extensions;
+  final Value<int> receivedAt;
+  const UnknownEnvelopeItemEntriesCompanion({
+    this.id = const Value.absent(),
+    this.sourcePubkey = const Value.absent(),
+    this.envelopeVersion = const Value.absent(),
+    this.type = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.extensions = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+  });
+  UnknownEnvelopeItemEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String sourcePubkey,
+    required String envelopeVersion,
+    required String type,
+    required Uint8List payload,
+    this.extensions = const Value.absent(),
+    required int receivedAt,
+  }) : sourcePubkey = Value(sourcePubkey),
+       envelopeVersion = Value(envelopeVersion),
+       type = Value(type),
+       payload = Value(payload),
+       receivedAt = Value(receivedAt);
+  static Insertable<UnknownEnvelopeItemEntry> custom({
+    Expression<int>? id,
+    Expression<String>? sourcePubkey,
+    Expression<String>? envelopeVersion,
+    Expression<String>? type,
+    Expression<Uint8List>? payload,
+    Expression<Uint8List>? extensions,
+    Expression<int>? receivedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourcePubkey != null) 'source_pubkey': sourcePubkey,
+      if (envelopeVersion != null) 'envelope_version': envelopeVersion,
+      if (type != null) 'type': type,
+      if (payload != null) 'payload': payload,
+      if (extensions != null) 'extensions': extensions,
+      if (receivedAt != null) 'received_at': receivedAt,
+    });
+  }
+
+  UnknownEnvelopeItemEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? sourcePubkey,
+    Value<String>? envelopeVersion,
+    Value<String>? type,
+    Value<Uint8List>? payload,
+    Value<Uint8List?>? extensions,
+    Value<int>? receivedAt,
+  }) {
+    return UnknownEnvelopeItemEntriesCompanion(
+      id: id ?? this.id,
+      sourcePubkey: sourcePubkey ?? this.sourcePubkey,
+      envelopeVersion: envelopeVersion ?? this.envelopeVersion,
+      type: type ?? this.type,
+      payload: payload ?? this.payload,
+      extensions: extensions ?? this.extensions,
+      receivedAt: receivedAt ?? this.receivedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sourcePubkey.present) {
+      map['source_pubkey'] = Variable<String>(sourcePubkey.value);
+    }
+    if (envelopeVersion.present) {
+      map['envelope_version'] = Variable<String>(envelopeVersion.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<Uint8List>(payload.value);
+    }
+    if (extensions.present) {
+      map['extensions'] = Variable<Uint8List>(extensions.value);
+    }
+    if (receivedAt.present) {
+      map['received_at'] = Variable<int>(receivedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UnknownEnvelopeItemEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('sourcePubkey: $sourcePubkey, ')
+          ..write('envelopeVersion: $envelopeVersion, ')
+          ..write('type: $type, ')
+          ..write('payload: $payload, ')
+          ..write('extensions: $extensions, ')
+          ..write('receivedAt: $receivedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2927,6 +3612,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $OutboundFollowRequestEntriesTable(this);
   late final $OutboundQueueEntriesTable outboundQueueEntries =
       $OutboundQueueEntriesTable(this);
+  late final $UnknownEnvelopeItemEntriesTable unknownEnvelopeItemEntries =
+      $UnknownEnvelopeItemEntriesTable(this);
   late final IdentityDao identityDao = IdentityDao(this as AppDatabase);
   late final FollowsDao followsDao = FollowsDao(this as AppDatabase);
   late final EventsDao eventsDao = EventsDao(this as AppDatabase);
@@ -2935,6 +3622,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final OutboundQueueDao outboundQueueDao = OutboundQueueDao(
+    this as AppDatabase,
+  );
+  late final UnknownItemsDao unknownItemsDao = UnknownItemsDao(
     this as AppDatabase,
   );
   @override
@@ -2949,6 +3639,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     inboundFollowRequestEntries,
     outboundFollowRequestEntries,
     outboundQueueEntries,
+    unknownEnvelopeItemEntries,
   ];
 }
 
@@ -2956,6 +3647,7 @@ typedef $$IdentityEntriesTableCreateCompanionBuilder =
     IdentityEntriesCompanion Function({
       required String pubkey,
       required Uint8List feedKey,
+      Value<int> feedKeyEpoch,
       Value<String?> recoveryPhrase,
       required int createdAt,
       Value<int> rowid,
@@ -2964,6 +3656,7 @@ typedef $$IdentityEntriesTableUpdateCompanionBuilder =
     IdentityEntriesCompanion Function({
       Value<String> pubkey,
       Value<Uint8List> feedKey,
+      Value<int> feedKeyEpoch,
       Value<String?> recoveryPhrase,
       Value<int> createdAt,
       Value<int> rowid,
@@ -2985,6 +3678,11 @@ class $$IdentityEntriesTableFilterComposer
 
   ColumnFilters<Uint8List> get feedKey => $composableBuilder(
     column: $table.feedKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get feedKeyEpoch => $composableBuilder(
+    column: $table.feedKeyEpoch,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3018,6 +3716,11 @@ class $$IdentityEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get feedKeyEpoch => $composableBuilder(
+    column: $table.feedKeyEpoch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get recoveryPhrase => $composableBuilder(
     column: $table.recoveryPhrase,
     builder: (column) => ColumnOrderings(column),
@@ -3043,6 +3746,11 @@ class $$IdentityEntriesTableAnnotationComposer
 
   GeneratedColumn<Uint8List> get feedKey =>
       $composableBuilder(column: $table.feedKey, builder: (column) => column);
+
+  GeneratedColumn<int> get feedKeyEpoch => $composableBuilder(
+    column: $table.feedKeyEpoch,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get recoveryPhrase => $composableBuilder(
     column: $table.recoveryPhrase,
@@ -3088,12 +3796,14 @@ class $$IdentityEntriesTableTableManager
               ({
                 Value<String> pubkey = const Value.absent(),
                 Value<Uint8List> feedKey = const Value.absent(),
+                Value<int> feedKeyEpoch = const Value.absent(),
                 Value<String?> recoveryPhrase = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => IdentityEntriesCompanion(
                 pubkey: pubkey,
                 feedKey: feedKey,
+                feedKeyEpoch: feedKeyEpoch,
                 recoveryPhrase: recoveryPhrase,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -3102,12 +3812,14 @@ class $$IdentityEntriesTableTableManager
               ({
                 required String pubkey,
                 required Uint8List feedKey,
+                Value<int> feedKeyEpoch = const Value.absent(),
                 Value<String?> recoveryPhrase = const Value.absent(),
                 required int createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => IdentityEntriesCompanion.insert(
                 pubkey: pubkey,
                 feedKey: feedKey,
+                feedKeyEpoch: feedKeyEpoch,
                 recoveryPhrase: recoveryPhrase,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -3144,6 +3856,7 @@ typedef $$FollowEntriesTableCreateCompanionBuilder =
       Value<String?> avatarHash,
       required String connectionCard,
       required Uint8List feedKey,
+      Value<int> feedKeyEpoch,
       Value<int> lastSyncedAt,
       Value<String> status,
       Value<int> rowid,
@@ -3155,6 +3868,7 @@ typedef $$FollowEntriesTableUpdateCompanionBuilder =
       Value<String?> avatarHash,
       Value<String> connectionCard,
       Value<Uint8List> feedKey,
+      Value<int> feedKeyEpoch,
       Value<int> lastSyncedAt,
       Value<String> status,
       Value<int> rowid,
@@ -3191,6 +3905,11 @@ class $$FollowEntriesTableFilterComposer
 
   ColumnFilters<Uint8List> get feedKey => $composableBuilder(
     column: $table.feedKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get feedKeyEpoch => $composableBuilder(
+    column: $table.feedKeyEpoch,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3239,6 +3958,11 @@ class $$FollowEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get feedKeyEpoch => $composableBuilder(
+    column: $table.feedKeyEpoch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get lastSyncedAt => $composableBuilder(
     column: $table.lastSyncedAt,
     builder: (column) => ColumnOrderings(column),
@@ -3279,6 +4003,11 @@ class $$FollowEntriesTableAnnotationComposer
 
   GeneratedColumn<Uint8List> get feedKey =>
       $composableBuilder(column: $table.feedKey, builder: (column) => column);
+
+  GeneratedColumn<int> get feedKeyEpoch => $composableBuilder(
+    column: $table.feedKeyEpoch,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get lastSyncedAt => $composableBuilder(
     column: $table.lastSyncedAt,
@@ -3325,6 +4054,7 @@ class $$FollowEntriesTableTableManager
                 Value<String?> avatarHash = const Value.absent(),
                 Value<String> connectionCard = const Value.absent(),
                 Value<Uint8List> feedKey = const Value.absent(),
+                Value<int> feedKeyEpoch = const Value.absent(),
                 Value<int> lastSyncedAt = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3334,6 +4064,7 @@ class $$FollowEntriesTableTableManager
                 avatarHash: avatarHash,
                 connectionCard: connectionCard,
                 feedKey: feedKey,
+                feedKeyEpoch: feedKeyEpoch,
                 lastSyncedAt: lastSyncedAt,
                 status: status,
                 rowid: rowid,
@@ -3345,6 +4076,7 @@ class $$FollowEntriesTableTableManager
                 Value<String?> avatarHash = const Value.absent(),
                 required String connectionCard,
                 required Uint8List feedKey,
+                Value<int> feedKeyEpoch = const Value.absent(),
                 Value<int> lastSyncedAt = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3354,6 +4086,7 @@ class $$FollowEntriesTableTableManager
                 avatarHash: avatarHash,
                 connectionCard: connectionCard,
                 feedKey: feedKey,
+                feedKeyEpoch: feedKeyEpoch,
                 lastSyncedAt: lastSyncedAt,
                 status: status,
                 rowid: rowid,
@@ -3394,6 +4127,7 @@ typedef $$EventEntriesTableCreateCompanionBuilder =
       Value<String?> mediaRefs,
       required Uint8List sig,
       Value<int> isOwn,
+      Value<int> isSaved,
       required int fetchedAt,
       Value<int?> lastViewed,
       Value<String> version,
@@ -3411,6 +4145,7 @@ typedef $$EventEntriesTableUpdateCompanionBuilder =
       Value<String?> mediaRefs,
       Value<Uint8List> sig,
       Value<int> isOwn,
+      Value<int> isSaved,
       Value<int> fetchedAt,
       Value<int?> lastViewed,
       Value<String> version,
@@ -3469,6 +4204,11 @@ class $$EventEntriesTableFilterComposer
 
   ColumnFilters<int> get isOwn => $composableBuilder(
     column: $table.isOwn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get isSaved => $composableBuilder(
+    column: $table.isSaved,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3547,6 +4287,11 @@ class $$EventEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get isSaved => $composableBuilder(
+    column: $table.isSaved,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get fetchedAt => $composableBuilder(
     column: $table.fetchedAt,
     builder: (column) => ColumnOrderings(column),
@@ -3603,6 +4348,9 @@ class $$EventEntriesTableAnnotationComposer
 
   GeneratedColumn<int> get isOwn =>
       $composableBuilder(column: $table.isOwn, builder: (column) => column);
+
+  GeneratedColumn<int> get isSaved =>
+      $composableBuilder(column: $table.isSaved, builder: (column) => column);
 
   GeneratedColumn<int> get fetchedAt =>
       $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
@@ -3661,6 +4409,7 @@ class $$EventEntriesTableTableManager
                 Value<String?> mediaRefs = const Value.absent(),
                 Value<Uint8List> sig = const Value.absent(),
                 Value<int> isOwn = const Value.absent(),
+                Value<int> isSaved = const Value.absent(),
                 Value<int> fetchedAt = const Value.absent(),
                 Value<int?> lastViewed = const Value.absent(),
                 Value<String> version = const Value.absent(),
@@ -3676,6 +4425,7 @@ class $$EventEntriesTableTableManager
                 mediaRefs: mediaRefs,
                 sig: sig,
                 isOwn: isOwn,
+                isSaved: isSaved,
                 fetchedAt: fetchedAt,
                 lastViewed: lastViewed,
                 version: version,
@@ -3693,6 +4443,7 @@ class $$EventEntriesTableTableManager
                 Value<String?> mediaRefs = const Value.absent(),
                 required Uint8List sig,
                 Value<int> isOwn = const Value.absent(),
+                Value<int> isSaved = const Value.absent(),
                 required int fetchedAt,
                 Value<int?> lastViewed = const Value.absent(),
                 Value<String> version = const Value.absent(),
@@ -3708,6 +4459,7 @@ class $$EventEntriesTableTableManager
                 mediaRefs: mediaRefs,
                 sig: sig,
                 isOwn: isOwn,
+                isSaved: isSaved,
                 fetchedAt: fetchedAt,
                 lastViewed: lastViewed,
                 version: version,
@@ -3936,6 +4688,7 @@ typedef $$InboundFollowRequestEntriesTableCreateCompanionBuilder =
       required String pubkey,
       required Uint8List encryptedEndpoints,
       required int createdAt,
+      Value<int> requestTimestamp,
       Value<String> status,
       Value<int> rowid,
     });
@@ -3944,6 +4697,7 @@ typedef $$InboundFollowRequestEntriesTableUpdateCompanionBuilder =
       Value<String> pubkey,
       Value<Uint8List> encryptedEndpoints,
       Value<int> createdAt,
+      Value<int> requestTimestamp,
       Value<String> status,
       Value<int> rowid,
     });
@@ -3969,6 +4723,11 @@ class $$InboundFollowRequestEntriesTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get requestTimestamp => $composableBuilder(
+    column: $table.requestTimestamp,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4002,6 +4761,11 @@ class $$InboundFollowRequestEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get requestTimestamp => $composableBuilder(
+    column: $table.requestTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -4027,6 +4791,11 @@ class $$InboundFollowRequestEntriesTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get requestTimestamp => $composableBuilder(
+    column: $table.requestTimestamp,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -4081,12 +4850,14 @@ class $$InboundFollowRequestEntriesTableTableManager
                 Value<String> pubkey = const Value.absent(),
                 Value<Uint8List> encryptedEndpoints = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> requestTimestamp = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InboundFollowRequestEntriesCompanion(
                 pubkey: pubkey,
                 encryptedEndpoints: encryptedEndpoints,
                 createdAt: createdAt,
+                requestTimestamp: requestTimestamp,
                 status: status,
                 rowid: rowid,
               ),
@@ -4095,12 +4866,14 @@ class $$InboundFollowRequestEntriesTableTableManager
                 required String pubkey,
                 required Uint8List encryptedEndpoints,
                 required int createdAt,
+                Value<int> requestTimestamp = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InboundFollowRequestEntriesCompanion.insert(
                 pubkey: pubkey,
                 encryptedEndpoints: encryptedEndpoints,
                 createdAt: createdAt,
+                requestTimestamp: requestTimestamp,
                 status: status,
                 rowid: rowid,
               ),
@@ -4549,6 +5322,265 @@ typedef $$OutboundQueueEntriesTableProcessedTableManager =
       OutboundQueueEntry,
       PrefetchHooks Function()
     >;
+typedef $$UnknownEnvelopeItemEntriesTableCreateCompanionBuilder =
+    UnknownEnvelopeItemEntriesCompanion Function({
+      Value<int> id,
+      required String sourcePubkey,
+      required String envelopeVersion,
+      required String type,
+      required Uint8List payload,
+      Value<Uint8List?> extensions,
+      required int receivedAt,
+    });
+typedef $$UnknownEnvelopeItemEntriesTableUpdateCompanionBuilder =
+    UnknownEnvelopeItemEntriesCompanion Function({
+      Value<int> id,
+      Value<String> sourcePubkey,
+      Value<String> envelopeVersion,
+      Value<String> type,
+      Value<Uint8List> payload,
+      Value<Uint8List?> extensions,
+      Value<int> receivedAt,
+    });
+
+class $$UnknownEnvelopeItemEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $UnknownEnvelopeItemEntriesTable> {
+  $$UnknownEnvelopeItemEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePubkey => $composableBuilder(
+    column: $table.sourcePubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeVersion => $composableBuilder(
+    column: $table.envelopeVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get extensions => $composableBuilder(
+    column: $table.extensions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UnknownEnvelopeItemEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $UnknownEnvelopeItemEntriesTable> {
+  $$UnknownEnvelopeItemEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourcePubkey => $composableBuilder(
+    column: $table.sourcePubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeVersion => $composableBuilder(
+    column: $table.envelopeVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get extensions => $composableBuilder(
+    column: $table.extensions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UnknownEnvelopeItemEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UnknownEnvelopeItemEntriesTable> {
+  $$UnknownEnvelopeItemEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourcePubkey => $composableBuilder(
+    column: $table.sourcePubkey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get envelopeVersion => $composableBuilder(
+    column: $table.envelopeVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get extensions => $composableBuilder(
+    column: $table.extensions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$UnknownEnvelopeItemEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UnknownEnvelopeItemEntriesTable,
+          UnknownEnvelopeItemEntry,
+          $$UnknownEnvelopeItemEntriesTableFilterComposer,
+          $$UnknownEnvelopeItemEntriesTableOrderingComposer,
+          $$UnknownEnvelopeItemEntriesTableAnnotationComposer,
+          $$UnknownEnvelopeItemEntriesTableCreateCompanionBuilder,
+          $$UnknownEnvelopeItemEntriesTableUpdateCompanionBuilder,
+          (
+            UnknownEnvelopeItemEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $UnknownEnvelopeItemEntriesTable,
+              UnknownEnvelopeItemEntry
+            >,
+          ),
+          UnknownEnvelopeItemEntry,
+          PrefetchHooks Function()
+        > {
+  $$UnknownEnvelopeItemEntriesTableTableManager(
+    _$AppDatabase db,
+    $UnknownEnvelopeItemEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UnknownEnvelopeItemEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$UnknownEnvelopeItemEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$UnknownEnvelopeItemEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> sourcePubkey = const Value.absent(),
+                Value<String> envelopeVersion = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<Uint8List> payload = const Value.absent(),
+                Value<Uint8List?> extensions = const Value.absent(),
+                Value<int> receivedAt = const Value.absent(),
+              }) => UnknownEnvelopeItemEntriesCompanion(
+                id: id,
+                sourcePubkey: sourcePubkey,
+                envelopeVersion: envelopeVersion,
+                type: type,
+                payload: payload,
+                extensions: extensions,
+                receivedAt: receivedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String sourcePubkey,
+                required String envelopeVersion,
+                required String type,
+                required Uint8List payload,
+                Value<Uint8List?> extensions = const Value.absent(),
+                required int receivedAt,
+              }) => UnknownEnvelopeItemEntriesCompanion.insert(
+                id: id,
+                sourcePubkey: sourcePubkey,
+                envelopeVersion: envelopeVersion,
+                type: type,
+                payload: payload,
+                extensions: extensions,
+                receivedAt: receivedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UnknownEnvelopeItemEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UnknownEnvelopeItemEntriesTable,
+      UnknownEnvelopeItemEntry,
+      $$UnknownEnvelopeItemEntriesTableFilterComposer,
+      $$UnknownEnvelopeItemEntriesTableOrderingComposer,
+      $$UnknownEnvelopeItemEntriesTableAnnotationComposer,
+      $$UnknownEnvelopeItemEntriesTableCreateCompanionBuilder,
+      $$UnknownEnvelopeItemEntriesTableUpdateCompanionBuilder,
+      (
+        UnknownEnvelopeItemEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $UnknownEnvelopeItemEntriesTable,
+          UnknownEnvelopeItemEntry
+        >,
+      ),
+      UnknownEnvelopeItemEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4575,4 +5607,10 @@ class $AppDatabaseManager {
       );
   $$OutboundQueueEntriesTableTableManager get outboundQueueEntries =>
       $$OutboundQueueEntriesTableTableManager(_db, _db.outboundQueueEntries);
+  $$UnknownEnvelopeItemEntriesTableTableManager
+  get unknownEnvelopeItemEntries =>
+      $$UnknownEnvelopeItemEntriesTableTableManager(
+        _db,
+        _db.unknownEnvelopeItemEntries,
+      );
 }

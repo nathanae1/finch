@@ -11,6 +11,8 @@ class EventEntries extends Table {
   BlobColumn get sig => blob()();
   IntColumn get isOwn =>
       integer().withDefault(const Constant(0))();
+  IntColumn get isSaved =>
+      integer().withDefault(const Constant(0))();
   IntColumn get fetchedAt => integer()();
   IntColumn get lastViewed => integer().nullable()();
   TextColumn get version =>

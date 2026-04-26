@@ -4,6 +4,29 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>finch</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>finch</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Finch uses the camera to capture photos for your posts and to scan friend invite QR codes.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Finch finds nearby friends on your WiFi to sync your feed without a server.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_finch._tcp</string>
+	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Finch reads photos from your library so you can share them with friends.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Finch may save photos you capture back to your library.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

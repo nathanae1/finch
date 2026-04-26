@@ -9,7 +9,7 @@ Bootstrap the Flutter project with the foundational structure everything else bu
 
 ### Project setup
 - `flutter create` inside `app/` with package name `dev.finch.app`
-- Minimum SDK: iOS 17+, Android API 26+
+- Minimum SDK: iOS 26+, Android API 26+
 - Directory structure:
   ```
   lib/
@@ -62,7 +62,7 @@ Declare all Phase 1 deps even if unused yet:
 - `drift`, `sqlcipher_flutter_libs`, `sqlite3_flutter_libs`
 - `shelf`, `shelf_router`
 - `cbor`
-- `mobile_scanner`, `qr_flutter`
+- `qr_flutter` (QR rendering). QR scanning is a bespoke native platform channel — see Plan 08.
 - `multicast_dns`
 - `image`
 - `flutter_secure_storage`
@@ -115,7 +115,7 @@ Declare all Phase 1 deps even if unused yet:
 
 ## Key decisions
 - Package name `dev.finch.app` — affects keychain access group, deep link scheme, mDNS service name
-- iOS 17+ / Android API 26+ — modern crypto and keychain APIs
+- iOS 26+ / Android API 26+ — modern crypto and keychain APIs
 - All service interfaces are abstract classes, not mixins or extension types
 - CryptoService is narrow (primitives only). Group key management (feed keys, ratchet, audience) lives in ContentKeyService, which uses CryptoService. This keeps crypto primitives stable forever and puts volatile group-messaging design in a layer that can have multiple implementations (pairwise today, MLS later).
 - Event kind is an open integer enum, not a closed Dart enum. Unknown kinds are stored/synced/forwarded, not rendered. This allows protocol evolution without lockstep upgrades.

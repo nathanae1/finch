@@ -1,17 +1,27 @@
 # Plan 05: Post Creation & Local Event Storage
 
 ## Dependencies
-Plan 02 (storage), Plan 03 (crypto), Plan 04 (identity)
+Plan 02 (storage), Plan 03 (crypto), Plan 04 (identity), Plan 04a (design system, shared components, shell with Compose modal route)
 
 ## Scope
 
 Create posts with photos and store them locally as encrypted events.
 
 ### Compose screen
-- Select photo from gallery or capture with camera
-- Add caption (text, optional)
-- Preview: show photo + caption before posting
-- Post button: triggers the full pipeline
+Matches the Claude Design mockup layout, with two important deviations noted below.
+
+- **Header**: ✕ (cancel, left), centered "New post" title in Fraunces display 18/500, and a **Ghost** "Post" button on the right (disabled until a photo is selected). Tapping Post advances to the **Preview screen** (it does not publish immediately — see rationale below).
+- **Photo area**: an inline, 4:5 dashed placeholder when no photo is chosen. The placeholder shows a camera icon, "Choose a photo" text, and two `SecondaryButton`s labeled **Gallery** and **Camera**. Once a photo is chosen, the placeholder is replaced by the photo itself (rounded 14, hairline border) with a ✕ overlay in the top-right (32px circle, semi-transparent ink background) that clears the selection.
+- **Caption**: multi-line `Textarea` below the photo, placeholder "Say something…". Optional.
+- **No trust/encryption footnote on the compose screen.** The mockup's earlier "End-to-end encrypted" line was explicitly removed — trust is supposed to be inherent in the product, not performed in microcopy. Do not reintroduce it.
+
+### Preview screen
+Kept as a distinct screen (not merged into Compose). The mockup collapses them for visual brevity, but splitting gives the user a clear "final review" step and keeps the publish pipeline behind an explicit commit. Preview renders:
+- The chosen photo at full 4:5 aspect with the caption beneath, in the same layout the viewer will see on the feed
+- A sticky bottom bar with a **GhostButton** "Back to edit" and a block **PrimaryButton** "Post" that triggers the publish pipeline (step "Event creation" below)
+- No header chrome — this is the "what your friends will see" moment
+
+**Why two screens and not one:** the publish pipeline is destructive in the sense that once the event is signed + written, deleting it generates a kind=6 event rather than undoing anything. A preview step matches that weight: edit freely here, commit over there. It also gives us somewhere obvious to add future publish options (cross-post to a second audience, schedule, etc.) without crowding the compose screen.
 
 ### Photo pipeline
 1. Pick or capture image
@@ -52,16 +62,23 @@ Hash-prefix sharding prevents too many files in one directory.
 - Both are Riverpod providers
 
 ## Files created/modified
-- `lib/screens/compose/compose_screen.dart`
-- `lib/screens/compose/preview_screen.dart`
+- `lib/screens/compose/compose_screen.dart` — header (✕ / "New post" / Ghost "Post"), inline photo picker placeholder, Gallery/Camera buttons, caption textarea. Reached via the "Post" tab (Plan 04a) which pushes this as a full-screen modal.
+- `lib/screens/compose/preview_screen.dart` — full-photo preview with caption, sticky "Back to edit" / "Post" bar. Pushed onto the Compose modal stack.
 - `lib/services/post_service.dart` — event creation pipeline
 - `lib/services/media_service.dart` — compression, encryption, filesystem storage
-- `lib/providers/compose_provider.dart`
+- `lib/providers/compose_provider.dart` — holds selected photo + caption across compose → preview
 - `lib/providers/events_provider.dart`
 - `test/services/post_service_test.dart`
 - `test/services/media_service_test.dart`
+- `test/screens/compose/` — widget tests for both screens (selection, clear, back-to-edit, preview → post)
 
 ## Verification
+- Compose modal opens from the "Post" tab over whichever tab is active; dismissing returns to that tab (not always Feed)
+- Compose: "Post" button is disabled until a photo is selected
+- Compose → Preview: advances with the chosen photo + caption carried through
+- Preview → "Back to edit": returns to Compose with selections intact (compose_provider state preserved)
+- Preview → "Post": creates the event, closes the modal, lands the user back on whichever tab they were on
+- No "end-to-end encrypted" microcopy anywhere on Compose or Preview
 - Create a post with photo + caption: event appears in DB
 - Event fields: correct kind, pubkey, created_at, media_refs, signature
 - `is_own=1` on the stored event

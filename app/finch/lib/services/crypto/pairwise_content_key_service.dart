@@ -121,7 +121,14 @@ class PairwiseContentKeyService implements ContentKeyService {
   // --- Publish pipeline ---
 
   @override
-  EncryptedEvent encryptForAudience(Event event, Audience audience) {
+  EncryptedEvent encryptForAudience(Event event, Audience audience) =>
+      signAndEncryptForAudience(event, audience).encrypted;
+
+  @override
+  ({Event signed, EncryptedEvent encrypted}) signAndEncryptForAudience(
+    Event event,
+    Audience audience,
+  ) {
     // v1 supports only broadcast audience; future audiences will branch here.
     switch (audience) {
       case Audience.broadcast:
@@ -148,6 +155,8 @@ class PairwiseContentKeyService implements ContentKeyService {
     final signed = event.copyWith(id: id, sig: sig);
 
     // Step 4: encrypt with the current epoch key.
-    return encryptEvent(signed, entry.key, entry.epoch);
+    final encrypted = encryptEvent(signed, entry.key, entry.epoch);
+
+    return (signed: signed, encrypted: encrypted);
   }
 }

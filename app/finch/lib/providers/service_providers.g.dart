@@ -92,6 +92,27 @@ final networkServiceProvider = AutoDisposeProvider<NetworkService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef NetworkServiceRef = AutoDisposeProviderRef<NetworkService>;
+String _$mdnsServiceHash() => r'051622a3658f2a1dd5614400fc63fd4c6973cf20';
+
+/// Default binding is the in-memory mock so tests don't trigger native
+/// channel activity. Production code overrides this in `main.dart` with
+/// the real `MethodChannelMdnsService`.
+///
+/// Copied from [mdnsService].
+@ProviderFor(mdnsService)
+final mdnsServiceProvider = AutoDisposeProvider<MdnsService>.internal(
+  mdnsService,
+  name: r'mdnsServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mdnsServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef MdnsServiceRef = AutoDisposeProviderRef<MdnsService>;
 String _$signalingServiceHash() => r'be3614e3457f3ea6318245b432c89f36af2bb5e9';
 
 /// See also [signalingService].

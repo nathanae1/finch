@@ -13,6 +13,9 @@ class FollowsDao extends DatabaseAccessor<AppDatabase>
   Future<List<FollowEntry>> getActiveFollows() =>
       (select(followEntries)..where((f) => f.status.equals('active'))).get();
 
+  Stream<List<FollowEntry>> watchActiveFollows() =>
+      (select(followEntries)..where((f) => f.status.equals('active'))).watch();
+
   Future<FollowEntry?> getFollow(String pubkey) =>
       (select(followEntries)..where((f) => f.pubkey.equals(pubkey)))
           .getSingleOrNull();

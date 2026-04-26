@@ -195,6 +195,52 @@ void main() {
       expect(f.service.advanceEpoch(f.feedKey), isNot(f.feedKey));
     });
   });
+
+  group('signAndEncryptForAudience', () {
+    test('returns the signed plaintext alongside the encrypted wire form',
+        () async {
+      final f = await buildFixture();
+      final unsigned = unsignedEvent(pubkey: f.ownPubkey);
+
+      final result = f.service.signAndEncryptForAudience(
+        unsigned,
+        Audience.broadcast,
+      );
+
+      expect(result.signed.id, isNotEmpty);
+      expect(result.signed.sig.length, equals(64));
+      expect(result.signed.pubkey, equals(f.ownPubkey));
+      expect(result.signed.content, equals(unsigned.content));
+      // Signature must verify against the owner's public key over the decoded
+      // id bytes (same contract as decryptEvent).
+      final idBytes = crockfordBase32Decode(result.signed.id);
+      expect(
+        crypto.verify(f.ownPublicKey, idBytes, result.signed.sig),
+        isTrue,
+      );
+      // Encrypted wire form decrypts back to the same signed event.
+      final decrypted =
+          f.service.decryptEvent(result.encrypted, f.feedKey);
+      expect(decrypted.id, equals(result.signed.id));
+      expect(decrypted.sig, equals(result.signed.sig));
+    });
+
+    test('encryptForAudience returns the same encrypted event', () async {
+      final f = await buildFixture();
+      final unsigned = unsignedEvent(pubkey: f.ownPubkey);
+      // Two independent calls produce different ciphertexts (nonces differ)
+      // but identical ids/signatures — compare via decryption instead.
+      final pair = f.service.signAndEncryptForAudience(
+        unsigned,
+        Audience.broadcast,
+      );
+      final viaEncryptOnly =
+          f.service.encryptForAudience(unsigned, Audience.broadcast);
+      final a = f.service.decryptEvent(pair.encrypted, f.feedKey);
+      final b = f.service.decryptEvent(viaEncryptOnly, f.feedKey);
+      expect(a.id, equals(b.id));
+    });
+  });
 }
 
 class _Fixture {

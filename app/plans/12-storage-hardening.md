@@ -21,10 +21,13 @@ Audit and harden the storage layer. Verify encryption is actually working. Imple
 
 ### Retention enforcement
 - Run on app open (once per launch, not repeatedly)
-- **Events from others**: delete where `is_own=0 AND created_at < (now - 30 days) AND last_viewed < (now - 7 days)`
+- **Events from others**: delete where `is_own=0 AND is_saved=0 AND created_at < (now - 30 days) AND last_viewed < (now - 7 days)`
   - The `last_viewed` grace period keeps recently-viewed old content alive
-- **Media from others**: calculate total size of non-own media in media_cache. If > 2GB, delete oldest by `last_accessed` until under limit. Remove corresponding files from filesystem.
+  - The `is_saved=0` clause is the Save/bookmark eviction exception (Plan 10)
+- **Media from others**: calculate total size of non-own, non-pinned media in media_cache. If > 2GB, delete oldest by `last_accessed` until under limit. Remove corresponding files from filesystem.
+  - "Pinned" = referenced by at least one `is_saved=1` event. Compute the pin set before eviction via a join on `events.media_refs` ⨝ `media_cache.hash`.
 - **Own content**: never touched by retention
+- **Saved content** (`is_saved=1`): never touched by retention. Same treatment as own.
 
 ### `last_viewed` tracking
 - Update `events.last_viewed` when a post scrolls into the viewport
@@ -63,7 +66,9 @@ Audit and harden the storage layer. Verify encryption is actually working. Imple
 - Retention: insert events older than 30 days with old last_viewed → run retention → events deleted
 - Retention: insert events older than 30 days with recent last_viewed → run retention → events kept (grace period)
 - Retention: own events older than 30 days → never deleted
+- Retention: `is_saved=1` events older than 30 days with old last_viewed → never deleted
 - Media eviction: insert 3GB of media entries → run eviction → oldest removed until under 2GB
+- Media eviction: media referenced by a saved event is pinned and not evicted even when over the 2GB limit
 - Storage settings: shows accurate numbers matching actual disk usage
 - Clear cache: removes cached media, own content untouched
 - Export: produces valid CBOR bundle, signature verifiable, re-importable

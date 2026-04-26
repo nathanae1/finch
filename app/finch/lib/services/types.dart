@@ -101,11 +101,17 @@ class FollowRequest {
     required this.pubkey,
     required this.payload,
     required this.createdAt,
+    required this.requestTimestamp,
     this.status = 'pending',
   });
   final String pubkey;
   final Uint8List payload;
+  // Local DB write time. For inbound rows: receive time. For outbound rows:
+  // identical to requestTimestamp.
   final int createdAt;
+  // Wire timestamp the requester signed into the outer CBOR. Used by both
+  // sides to derive the same shared key for the handshake.
+  final int requestTimestamp;
   final String status;
 }
 
@@ -120,6 +126,27 @@ class CachedMedia {
   final String path;
   final int size;
   final int lastAccessed;
+}
+
+/// An EnvelopeItem whose `type` we don't recognize. Stored opaquely so we
+/// can preserve and forward unknown items per the protocol-spec trust
+/// model. v1 has only `type:"event"`, so this type carries no consumers
+/// yet — it exists for forward compat (Plan 11 onward).
+class UnknownEnvelopeItem {
+  const UnknownEnvelopeItem({
+    required this.sourcePubkey,
+    required this.envelopeVersion,
+    required this.type,
+    required this.payload,
+    this.extensions,
+    required this.receivedAt,
+  });
+  final String sourcePubkey;
+  final String envelopeVersion;
+  final String type;
+  final Uint8List payload;
+  final Uint8List? extensions;
+  final int receivedAt;
 }
 
 class QueuedEvent {

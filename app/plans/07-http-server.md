@@ -17,7 +17,7 @@ Run a shelf-based HTTP server inside the app that serves your content to peers.
 ### Endpoints (per protocol spec)
 
 **GET /status**
-- Response: JSON `{ pubkey, version: "2026-03-24", event_count, storage_used }`
+- Response: JSON `{ pubkey, version: "2026-03-24", event_count, media_storage_used }`
 - No auth required
 - Used by peers for version check before sync
 

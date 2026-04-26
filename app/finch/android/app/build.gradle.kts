@@ -42,3 +42,15 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Bespoke QR scanner (Plan 08). CameraX (AndroidX, no Google Play Services)
+    // + ZXing pure-Java decoder (no Google ML Kit). The com.google.zxing
+    // namespace is a historical artifact — the lib has zero runtime Google
+    // dependencies.
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.zxing:core:3.5.3")
+}

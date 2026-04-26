@@ -123,6 +123,7 @@ FollowRequest inboundRequestFromRow(InboundFollowRequestEntry row) =>
       pubkey: row.pubkey,
       payload: row.encryptedEndpoints,
       createdAt: row.createdAt,
+      requestTimestamp: row.requestTimestamp,
       status: row.status,
     );
 
@@ -131,6 +132,7 @@ FollowRequest outboundRequestFromRow(OutboundFollowRequestEntry row) =>
       pubkey: row.pubkey,
       payload: Uint8List.fromList(utf8.encode(row.connectionCard)),
       createdAt: row.createdAt,
+      requestTimestamp: row.createdAt,
       status: row.status,
     );
 

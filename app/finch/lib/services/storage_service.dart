@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '../models/models.dart';
 import 'types.dart';
 
+
 /// Abstract interface for all persistent storage operations.
 ///
 /// Default implementation uses SQLCipher via Drift (Plan 02).
@@ -17,6 +18,8 @@ abstract class StorageService {
   // --- Follows ---
 
   Future<List<Follow>> getFollows();
+
+  Stream<List<Follow>> watchFollows();
 
   Future<Follow?> getFollow(String pubkey);
 
@@ -42,7 +45,22 @@ abstract class StorageService {
   Future<void> deleteEvent(String id);
 
   /// Feed events (own + all followed), ordered by created_at DESC.
+  /// Filters to kind=1 posts and excludes posts with a kind=6 tombstone
+  /// from the same author.
   Future<List<Event>> getFeedEvents({int? since, int? limit});
+
+  /// Posts (kind=1) authored by [pubkey] for profile-grid rendering.
+  /// Excludes tombstoned (kind=6 ref'd) posts. Ordered DESC.
+  Future<List<Event>> getProfilePosts(String pubkey, {int? limit});
+
+  /// Local-only flag: has the viewer bookmarked/saved this post?
+  Future<bool> isEventSaved(String id);
+
+  /// Local-only flag toggle. Never produces a synced event.
+  Future<void> setEventSaved(String id, bool saved);
+
+  /// Updates the local `last_viewed` column used by retention's grace period.
+  Future<void> setEventLastViewed(String id, int timestamp);
 
   // --- Media cache ---
 
@@ -60,15 +78,40 @@ abstract class StorageService {
 
   Future<List<FollowRequest>> getInboundRequests();
 
+  Stream<List<FollowRequest>> watchInboundRequests();
+
+  Future<List<FollowRequest>> getInboundRequestsByStatus(String status);
+
+  Future<FollowRequest?> getInboundRequest(String pubkey);
+
   Future<void> saveInboundRequest(FollowRequest request);
 
   Future<void> updateInboundRequestStatus(String pubkey, String status);
 
+  Future<void> deleteInboundRequest(String pubkey);
+
   Future<List<FollowRequest>> getOutboundRequests();
+
+  Stream<List<FollowRequest>> watchOutboundRequests();
+
+  Future<FollowRequest?> getOutboundRequest(String pubkey);
 
   Future<void> saveOutboundRequest(FollowRequest request);
 
   Future<void> updateOutboundRequestStatus(String pubkey, String status);
+
+  Future<void> deleteOutboundRequest(String pubkey);
+
+  // --- Unknown envelope items (forward compat) ---
+
+  /// Persist an EnvelopeItem with an unrecognized `type` so it can be
+  /// preserved (and, in a later plan, forwarded). v1 has no read-side
+  /// consumer; this is purely receive-and-store.
+  Future<void> saveUnknownEnvelopeItem(UnknownEnvelopeItem item);
+
+  Future<List<UnknownEnvelopeItem>> getUnknownEnvelopeItemsByType(
+    String type,
+  );
 
   // --- Outbound queue ---
 

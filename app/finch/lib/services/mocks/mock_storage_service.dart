@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import '../../models/models.dart';
@@ -13,7 +14,34 @@ class MockStorageService implements StorageService {
   final List<FollowRequest> _inboundRequests = [];
   final List<FollowRequest> _outboundRequests = [];
   final List<QueuedEvent> _queue = [];
+  final Set<String> _savedEventIds = {};
+  final Map<String, int> _lastViewed = {};
   int _nextQueueId = 1;
+
+  final StreamController<List<Follow>> _followsController =
+      StreamController<List<Follow>>.broadcast();
+  final StreamController<List<FollowRequest>> _inboundController =
+      StreamController<List<FollowRequest>>.broadcast();
+  final StreamController<List<FollowRequest>> _outboundController =
+      StreamController<List<FollowRequest>>.broadcast();
+
+  List<Follow> _snapshotFollows() =>
+      _follows.values.where((f) => f.status == 'active').toList();
+  List<FollowRequest> _snapshotInbound() =>
+      _inboundRequests.where((r) => r.status == 'pending').toList();
+  List<FollowRequest> _snapshotOutbound() => _outboundRequests.toList();
+
+  void _emitFollows() => _followsController.add(_snapshotFollows());
+  void _emitInbound() => _inboundController.add(_snapshotInbound());
+  void _emitOutbound() => _outboundController.add(_snapshotOutbound());
+
+  /// Releases broadcast controllers. Call from tearDown when the test
+  /// instance is no longer needed.
+  Future<void> dispose() async {
+    await _followsController.close();
+    await _inboundController.close();
+    await _outboundController.close();
+  }
 
   // --- Identity ---
 
@@ -32,16 +60,24 @@ class MockStorageService implements StorageService {
       _follows.values.where((f) => f.status == 'active').toList();
 
   @override
+  Stream<List<Follow>> watchFollows() async* {
+    yield _snapshotFollows();
+    yield* _followsController.stream;
+  }
+
+  @override
   Future<Follow?> getFollow(String pubkey) async => _follows[pubkey];
 
   @override
   Future<void> saveFollow(Follow follow) async {
     _follows[follow.pubkey] = follow;
+    _emitFollows();
   }
 
   @override
   Future<void> removeFollow(String pubkey) async {
     _follows.remove(pubkey);
+    _emitFollows();
   }
 
   @override
@@ -54,9 +90,11 @@ class MockStorageService implements StorageService {
         avatarHash: follow.avatarHash,
         connectionCard: follow.connectionCard,
         feedKey: follow.feedKey,
+        feedKeyEpoch: follow.feedKeyEpoch,
         lastSyncedAt: timestamp,
         status: follow.status,
       );
+      _emitFollows();
     }
   }
 
@@ -107,8 +145,14 @@ class MockStorageService implements StorageService {
         .toSet();
     final ownPubkey = _identity?.pubkey;
 
+    final tombstoned = _tombstonedIds();
+
     var results = _events.values.where((e) {
-      return e.pubkey == ownPubkey || followedPubkeys.contains(e.pubkey);
+      final fromIncludedAuthor =
+          e.pubkey == ownPubkey || followedPubkeys.contains(e.pubkey);
+      return fromIncludedAuthor &&
+          e.kind.value == 1 &&
+          !tombstoned.contains(e.id);
     }).toList();
 
     if (since != null) {
@@ -119,6 +163,57 @@ class MockStorageService implements StorageService {
       results = results.take(limit).toList();
     }
     return results;
+  }
+
+  @override
+  Future<List<Event>> getProfilePosts(String pubkey, {int? limit}) async {
+    final tombstoned = _tombstonedIds(authorFilter: pubkey);
+    var results = _events.values.where((e) {
+      return e.pubkey == pubkey &&
+          e.kind.value == 1 &&
+          !tombstoned.contains(e.id);
+    }).toList();
+    results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (limit != null) {
+      results = results.take(limit).toList();
+    }
+    return results;
+  }
+
+  @override
+  Future<bool> isEventSaved(String id) async => _savedEventIds.contains(id);
+
+  @override
+  Future<void> setEventSaved(String id, bool saved) async {
+    if (saved) {
+      _savedEventIds.add(id);
+    } else {
+      _savedEventIds.remove(id);
+    }
+  }
+
+  @override
+  Future<void> setEventLastViewed(String id, int timestamp) async {
+    _lastViewed[id] = timestamp;
+  }
+
+  /// Returns the set of event ids that have a kind=6 tombstone from the
+  /// same author. If [authorFilter] is set, restricts the lookup.
+  Set<String> _tombstonedIds({String? authorFilter}) {
+    final byAuthor = <String, Set<String>>{};
+    for (final e in _events.values) {
+      if (e.kind.value != 6) continue;
+      if (e.ref == null) continue;
+      if (authorFilter != null && e.pubkey != authorFilter) continue;
+      byAuthor.putIfAbsent(e.pubkey, () => <String>{}).add(e.ref!);
+    }
+    final out = <String>{};
+    for (final e in _events.values) {
+      if (byAuthor[e.pubkey]?.contains(e.id) ?? false) {
+        out.add(e.id);
+      }
+    }
+    return out;
   }
 
   // --- Media cache ---
@@ -164,8 +259,32 @@ class MockStorageService implements StorageService {
       _inboundRequests.where((r) => r.status == 'pending').toList();
 
   @override
+  Stream<List<FollowRequest>> watchInboundRequests() async* {
+    yield _snapshotInbound();
+    yield* _inboundController.stream;
+  }
+
+  @override
+  Future<List<FollowRequest>> getInboundRequestsByStatus(String status) async =>
+      _inboundRequests.where((r) => r.status == status).toList();
+
+  @override
+  Future<FollowRequest?> getInboundRequest(String pubkey) async {
+    for (final r in _inboundRequests) {
+      if (r.pubkey == pubkey) return r;
+    }
+    return null;
+  }
+
+  @override
   Future<void> saveInboundRequest(FollowRequest request) async {
-    _inboundRequests.add(request);
+    final index = _inboundRequests.indexWhere((r) => r.pubkey == request.pubkey);
+    if (index >= 0) {
+      _inboundRequests[index] = request;
+    } else {
+      _inboundRequests.add(request);
+    }
+    _emitInbound();
   }
 
   @override
@@ -180,9 +299,17 @@ class MockStorageService implements StorageService {
         pubkey: old.pubkey,
         payload: old.payload,
         createdAt: old.createdAt,
+        requestTimestamp: old.requestTimestamp,
         status: status,
       );
+      _emitInbound();
     }
+  }
+
+  @override
+  Future<void> deleteInboundRequest(String pubkey) async {
+    _inboundRequests.removeWhere((r) => r.pubkey == pubkey);
+    _emitInbound();
   }
 
   @override
@@ -190,8 +317,28 @@ class MockStorageService implements StorageService {
       _outboundRequests.toList();
 
   @override
+  Stream<List<FollowRequest>> watchOutboundRequests() async* {
+    yield _snapshotOutbound();
+    yield* _outboundController.stream;
+  }
+
+  @override
+  Future<FollowRequest?> getOutboundRequest(String pubkey) async {
+    for (final r in _outboundRequests) {
+      if (r.pubkey == pubkey) return r;
+    }
+    return null;
+  }
+
+  @override
   Future<void> saveOutboundRequest(FollowRequest request) async {
-    _outboundRequests.add(request);
+    final index = _outboundRequests.indexWhere((r) => r.pubkey == request.pubkey);
+    if (index >= 0) {
+      _outboundRequests[index] = request;
+    } else {
+      _outboundRequests.add(request);
+    }
+    _emitOutbound();
   }
 
   @override
@@ -206,10 +353,33 @@ class MockStorageService implements StorageService {
         pubkey: old.pubkey,
         payload: old.payload,
         createdAt: old.createdAt,
+        requestTimestamp: old.requestTimestamp,
         status: status,
       );
+      _emitOutbound();
     }
   }
+
+  @override
+  Future<void> deleteOutboundRequest(String pubkey) async {
+    _outboundRequests.removeWhere((r) => r.pubkey == pubkey);
+    _emitOutbound();
+  }
+
+  // --- Unknown envelope items ---
+
+  final List<UnknownEnvelopeItem> _unknownItems = [];
+
+  @override
+  Future<void> saveUnknownEnvelopeItem(UnknownEnvelopeItem item) async {
+    _unknownItems.add(item);
+  }
+
+  @override
+  Future<List<UnknownEnvelopeItem>> getUnknownEnvelopeItemsByType(
+    String type,
+  ) async =>
+      _unknownItems.where((i) => i.type == type).toList();
 
   // --- Outbound queue ---
 

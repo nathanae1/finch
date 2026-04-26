@@ -20,6 +20,21 @@ class FollowRequestsDao extends DatabaseAccessor<AppDatabase>
             ..where((r) => r.status.equals('pending')))
           .get();
 
+  Stream<List<InboundFollowRequestEntry>> watchInboundPending() =>
+      (select(inboundFollowRequestEntries)
+            ..where((r) => r.status.equals('pending')))
+          .watch();
+
+  Future<List<InboundFollowRequestEntry>> getInboundByStatus(String status) =>
+      (select(inboundFollowRequestEntries)
+            ..where((r) => r.status.equals(status)))
+          .get();
+
+  Future<InboundFollowRequestEntry?> getInbound(String pubkey) =>
+      (select(inboundFollowRequestEntries)
+            ..where((r) => r.pubkey.equals(pubkey)))
+          .getSingleOrNull();
+
   Future<void> upsertInbound(
     InboundFollowRequestEntriesCompanion entry,
   ) =>
@@ -32,10 +47,23 @@ class FollowRequestsDao extends DatabaseAccessor<AppDatabase>
         status: Value(status),
       ));
 
+  Future<void> deleteInbound(String pubkey) =>
+      (delete(inboundFollowRequestEntries)
+            ..where((r) => r.pubkey.equals(pubkey)))
+          .go();
+
   // --- Outbound ---
 
   Future<List<OutboundFollowRequestEntry>> getOutbound() =>
       select(outboundFollowRequestEntries).get();
+
+  Stream<List<OutboundFollowRequestEntry>> watchOutbound() =>
+      select(outboundFollowRequestEntries).watch();
+
+  Future<OutboundFollowRequestEntry?> getOutboundFor(String pubkey) =>
+      (select(outboundFollowRequestEntries)
+            ..where((r) => r.pubkey.equals(pubkey)))
+          .getSingleOrNull();
 
   Future<void> upsertOutbound(
     OutboundFollowRequestEntriesCompanion entry,
@@ -48,4 +76,9 @@ class FollowRequestsDao extends DatabaseAccessor<AppDatabase>
           .write(OutboundFollowRequestEntriesCompanion(
         status: Value(status),
       ));
+
+  Future<void> deleteOutbound(String pubkey) =>
+      (delete(outboundFollowRequestEntries)
+            ..where((r) => r.pubkey.equals(pubkey)))
+          .go();
 }

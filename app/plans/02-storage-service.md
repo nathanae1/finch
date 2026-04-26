@@ -18,14 +18,16 @@ Implement the encrypted local database that backs all persistent state.
 ```sql
 identity (pubkey, private_key, feed_key, recovery_phrase, created_at)
 follows (pubkey, display_name, avatar_hash, connection_card, feed_key, last_synced_at, status)
-events (id, pubkey, created_at, kind, ref_id, content, media_refs, sig, is_own, fetched_at, last_viewed)
+events (id, pubkey, created_at, kind, ref_id, content, media_refs, sig, is_own, is_saved, fetched_at, last_viewed)
 media_cache (hash, path, size, last_accessed)
 outbound_follow_requests (pubkey, connection_card, created_at, status)
 inbound_follow_requests (pubkey, encrypted_endpoints, created_at, status)
 outbound_queue (id, target_pubkey, event_blob, created_at, retry_count)
 ```
 
-Indexes: `idx_events_feed(created_at DESC)`, `idx_events_pubkey(pubkey, created_at DESC)`, `idx_events_ref(ref_id)`
+- `is_saved` (BOOLEAN, default 0): set when the viewer bookmarks a post from post detail (see Plan 10). Local-only — never synced, never encoded into an event kind. Used by retention as an eviction exception (same semantics as `is_own`).
+
+Indexes: `idx_events_feed(created_at DESC)`, `idx_events_pubkey(pubkey, created_at DESC)`, `idx_events_ref(ref_id)`, `idx_events_saved(is_saved) WHERE is_saved = 1`
 
 ### DAOs
 Typed query classes for each table group:
@@ -43,6 +45,7 @@ Implement the abstract `StorageService` from Plan 01 with the Drift-backed DAOs.
 - Events from others: evict when older than 30 days AND not recently viewed (LRU grace)
 - Media from others: LRU eviction when total cache exceeds 2GB
 - Own content (`is_own=1`): never evicted
+- Saved content (`is_saved=1`): never evicted — same semantics as own. Saving is the viewer's explicit "keep this past the retention window" signal (see Plan 10). Applies to both the event row and its referenced media blobs (media_cache entries for hashes referenced by saved events are pinned, i.e. `last_accessed` updates still happen but LRU eviction skips them).
 - Retention runs on app open (not in a loop, just once per launch)
 
 ### Migration strategy
@@ -70,7 +73,9 @@ Implement the abstract `StorageService` from Plan 01 with the Drift-backed DAOs.
 - DB opens correctly with key from secure storage
 - Retention: insert old events, run eviction, verify removed
 - Retention: own events are never evicted regardless of age
+- Retention: `is_saved=1` events are never evicted regardless of age
 - Media LRU: insert entries exceeding 2GB total, run eviction, verify oldest-accessed removed first
+- Media LRU: media referenced by `is_saved=1` events is not evicted even when over the 2GB limit (verify with a saved-event-heavy cache)
 - App launches with real database on device (both platforms)
 
 ## Key decisions

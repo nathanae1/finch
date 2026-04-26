@@ -13,6 +13,7 @@ import 'daos/follows_dao.dart';
 import 'daos/identity_dao.dart';
 import 'daos/media_cache_dao.dart';
 import 'daos/outbound_queue_dao.dart';
+import 'daos/unknown_items_dao.dart';
 import 'tables/events_table.dart';
 import 'tables/follows_table.dart';
 import 'tables/identity_table.dart';
@@ -20,6 +21,7 @@ import 'tables/inbound_follow_requests_table.dart';
 import 'tables/media_cache_table.dart';
 import 'tables/outbound_follow_requests_table.dart';
 import 'tables/outbound_queue_table.dart';
+import 'tables/unknown_envelope_items_table.dart';
 
 part 'database.g.dart';
 
@@ -32,6 +34,7 @@ part 'database.g.dart';
     InboundFollowRequestEntries,
     OutboundFollowRequestEntries,
     OutboundQueueEntries,
+    UnknownEnvelopeItemEntries,
   ],
   daos: [
     IdentityDao,
@@ -40,6 +43,7 @@ part 'database.g.dart';
     MediaCacheDao,
     FollowRequestsDao,
     OutboundQueueDao,
+    UnknownItemsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -56,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,6 +78,10 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX idx_events_ref '
             'ON event_entries (ref_id)',
           );
+          await customStatement(
+            'CREATE INDEX idx_events_saved '
+            'ON event_entries (is_saved) WHERE is_saved = 1',
+          );
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -90,6 +98,25 @@ class AppDatabase extends _$AppDatabase {
               'ALTER TABLE follow_entries '
               'ADD COLUMN feed_key_epoch INTEGER NOT NULL DEFAULT 0',
             );
+          }
+          if (from < 4) {
+            await customStatement(
+              'ALTER TABLE event_entries '
+              'ADD COLUMN is_saved INTEGER NOT NULL DEFAULT 0',
+            );
+            await customStatement(
+              'CREATE INDEX idx_events_saved '
+              'ON event_entries (is_saved) WHERE is_saved = 1',
+            );
+          }
+          if (from < 5) {
+            await customStatement(
+              'ALTER TABLE inbound_follow_request_entries '
+              'ADD COLUMN request_timestamp INTEGER NOT NULL DEFAULT 0',
+            );
+          }
+          if (from < 6) {
+            await m.createTable(unknownEnvelopeItemEntries);
           }
         },
       );
