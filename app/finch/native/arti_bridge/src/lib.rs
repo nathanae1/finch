@@ -1,0 +1,212 @@
+//! Arti bridge — a C-compatible FFI surface around `arti-client` and
+//! `tor-hsservice` for Finch's mobile app.
+//!
+//! Design:
+//! - One opaque [`ArtiHandle`] owns a tokio runtime + a [`TorClient`] +
+//!   an optional [`OnionService`] + a status snapshot.
+//! - Every FFI call is wrapped in `catch_unwind` so we never unwind into
+//!   Dart. Returned status codes are negative on error, zero on success.
+//! - All long-running work (bootstrap, onion publish) runs on the runtime;
+//!   FFI calls return immediately and progress is observable via
+//!   [`arti_status`].
+//!
+//! See `native/arti_bridge/README.md` for build instructions and the
+//! "Key decisions" section of the Plan 11a plan file for context.
+
+use std::ffi::{c_char, c_int, CStr, CString};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::PathBuf;
+use std::ptr;
+use std::sync::Arc;
+
+use parking_lot::RwLock;
+use tokio::runtime::Runtime;
+
+mod inner;
+use inner::{Inner, StatusSnapshot};
+
+// --- Status codes ---
+
+pub const ARTI_OK: c_int = 0;
+pub const ARTI_ERR_NULL: c_int = -1;
+pub const ARTI_ERR_UTF8: c_int = -2;
+pub const ARTI_ERR_PANIC: c_int = -3;
+pub const ARTI_ERR_INIT: c_int = -4;
+pub const ARTI_ERR_ONION: c_int = -5;
+pub const ARTI_ERR_SHUTDOWN: c_int = -6;
+
+/// Status snapshot mirrored to Dart via an out-pointer. Layout MUST match
+/// the FFI bindings in `lib/services/tor/ffi_bindings.dart`.
+#[repr(C)]
+pub struct ArtiStatus {
+    pub bootstrap_percent: u32,
+    pub circuit_count: u32,
+    pub is_ready: bool,
+    pub socks_port: u16,
+}
+
+/// Opaque handle. All FFI calls take `*mut ArtiHandle`.
+pub struct ArtiHandle {
+    runtime: Runtime,
+    inner: Arc<RwLock<Inner>>,
+}
+
+// --- FFI surface ---
+
+/// Initialize Arti, kick off bootstrap on the embedded runtime, and return
+/// an opaque handle. Bootstrap continues in the background — poll
+/// [`arti_status`] until `is_ready` flips true.
+///
+/// `data_dir` must be a NUL-terminated UTF-8 path; Arti stores its state,
+/// circuit cache, and onion-service keypair here.
+///
+/// On error returns NULL. The handle must be passed to [`arti_shutdown`]
+/// to release resources.
+#[no_mangle]
+pub unsafe extern "C" fn arti_init(data_dir: *const c_char) -> *mut ArtiHandle {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        if data_dir.is_null() {
+            return Err(ARTI_ERR_NULL);
+        }
+        let dir = match CStr::from_ptr(data_dir).to_str() {
+            Ok(s) => PathBuf::from(s),
+            Err(_) => return Err(ARTI_ERR_UTF8),
+        };
+        let runtime = match tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .thread_name("arti-bridge")
+            .build()
+        {
+            Ok(rt) => rt,
+            Err(_) => return Err(ARTI_ERR_INIT),
+        };
+        let inner = match runtime.block_on(Inner::start(dir)) {
+            Ok(i) => Arc::new(RwLock::new(i)),
+            Err(e) => {
+                log::error!("arti_init failed: {e:?}");
+                return Err(ARTI_ERR_INIT);
+            }
+        };
+        Ok(ArtiHandle { runtime, inner })
+    }));
+    match result {
+        Ok(Ok(h)) => Box::into_raw(Box::new(h)),
+        _ => ptr::null_mut(),
+    }
+}
+
+/// Publish the on-device HTTP server (listening on `127.0.0.1:local_port`)
+/// as a v3 onion service. Returns the `<address>.onion` host on success,
+/// or NULL on error. The caller must free the returned string with
+/// [`arti_string_free`].
+///
+/// The keypair lives under `<data_dir>/hs-state/<nickname>` so the address
+/// is stable across restarts.
+#[no_mangle]
+pub unsafe extern "C" fn arti_create_onion_service(
+    handle: *mut ArtiHandle,
+    local_port: u16,
+) -> *mut c_char {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        if handle.is_null() {
+            return Err(ARTI_ERR_NULL);
+        }
+        let h = &*handle;
+        let inner = h.inner.clone();
+        let address = h
+            .runtime
+            .block_on(async move {
+                let mut guard = inner.write();
+                guard.create_onion_service(local_port).await
+            })
+            .map_err(|e| {
+                log::error!("arti_create_onion_service failed: {e:?}");
+                ARTI_ERR_ONION
+            })?;
+        CString::new(address).map_err(|_| ARTI_ERR_UTF8)
+    }));
+    match result {
+        Ok(Ok(c)) => c.into_raw(),
+        _ => ptr::null_mut(),
+    }
+}
+
+/// Returns the local SOCKS5 port Arti uses for outbound connections, or 0
+/// if the SOCKS proxy isn't running. Used by Plan 11b to route the Dart
+/// `http.Client` through Tor.
+#[no_mangle]
+pub unsafe extern "C" fn arti_socks_port(handle: *mut ArtiHandle) -> u16 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        if handle.is_null() {
+            return 0u16;
+        }
+        let h = &*handle;
+        h.inner.read().socks_port()
+    }));
+    result.unwrap_or(0)
+}
+
+/// Fill `out` with the latest status snapshot. Returns [`ARTI_OK`] or a
+/// negative error code. `out` must point to a writable [`ArtiStatus`].
+#[no_mangle]
+pub unsafe extern "C" fn arti_status(
+    handle: *mut ArtiHandle,
+    out: *mut ArtiStatus,
+) -> c_int {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        if handle.is_null() || out.is_null() {
+            return ARTI_ERR_NULL;
+        }
+        let h = &*handle;
+        let StatusSnapshot {
+            bootstrap_percent,
+            circuit_count,
+            is_ready,
+            socks_port,
+        } = h.inner.read().status();
+        ptr::write(
+            out,
+            ArtiStatus {
+                bootstrap_percent,
+                circuit_count,
+                is_ready,
+                socks_port,
+            },
+        );
+        ARTI_OK
+    }));
+    result.unwrap_or(ARTI_ERR_PANIC)
+}
+
+/// Drop the handle, tear down the runtime, and unpublish the onion
+/// service. After this call, `handle` MUST NOT be used again.
+#[no_mangle]
+pub unsafe extern "C" fn arti_shutdown(handle: *mut ArtiHandle) -> c_int {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        if handle.is_null() {
+            return ARTI_ERR_NULL;
+        }
+        let boxed = Box::from_raw(handle);
+        // Drop the inner state on the runtime so any pending tasks wind
+        // down before the runtime itself is dropped.
+        boxed.runtime.block_on(async {
+            let mut guard = boxed.inner.write();
+            guard.shutdown().await;
+        });
+        drop(boxed);
+        ARTI_OK
+    }));
+    result.unwrap_or(ARTI_ERR_PANIC)
+}
+
+/// Free a string returned by [`arti_create_onion_service`].
+#[no_mangle]
+pub unsafe extern "C" fn arti_string_free(s: *mut c_char) {
+    if s.is_null() {
+        return;
+    }
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        drop(CString::from_raw(s));
+    }));
+}

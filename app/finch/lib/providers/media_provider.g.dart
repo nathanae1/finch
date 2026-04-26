@@ -24,7 +24,7 @@ final mediaServiceProvider = AutoDisposeProvider<MediaService>.internal(
 // ignore: unused_element
 typedef MediaServiceRef = AutoDisposeProviderRef<MediaService>;
 String _$remoteMediaFetcherHash() =>
-    r'f4dbb238abf3f263b7df5c6bfb4ea946dd7379f0';
+    r'aeb5e37766a3a3f735bab9719afe9c2ca5b9164b';
 
 /// Lazily fetches media from peers when the local cache misses. Used by
 /// `EncryptedImage` as a fallback path.

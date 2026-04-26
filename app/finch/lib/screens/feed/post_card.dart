@@ -5,13 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../models/models.dart';
+import '../../providers/comments_provider.dart';
 import '../../providers/follow_profile_provider.dart';
+import '../../providers/reactions_provider.dart';
 import '../../providers/service_providers.dart';
 import '../../theme/finch_theme.dart';
 import '../../utils/time_ago.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/encrypted_image.dart';
 import '../../widgets/finch_icon.dart';
+import '../../widgets/reaction_button.dart';
 
 /// A single post in the chronological feed. Plan 06 ships static heart and
 /// comment counts (both 0); Plan 10 wires the real toggles.
@@ -104,21 +107,9 @@ class PostCard extends ConsumerWidget {
                 ),
               ),
             ],
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: Row(
-                children: [
-                  _ActionIcon(
-                    icon: PhosphorIconsRegular.heart,
-                    count: 0,
-                  ),
-                  SizedBox(width: 18),
-                  _ActionIcon(
-                    icon: PhosphorIconsRegular.chatCircle,
-                    count: 0,
-                  ),
-                ],
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: _CardActionRow(eventId: event.id, onComment: onTap),
             ),
           ],
         ),
@@ -154,22 +145,57 @@ class _AuthorAvatar extends StatelessWidget {
   }
 }
 
-class _ActionIcon extends StatelessWidget {
-  const _ActionIcon({required this.icon, required this.count});
+class _CardActionRow extends ConsumerWidget {
+  const _CardActionRow({required this.eventId, required this.onComment});
 
-  final PhosphorIconData icon;
-  final int count;
+  final String eventId;
+  final VoidCallback onComment;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final finch = FinchTheme.of(context);
+    final reactionsAsync = ref.watch(reactionsProvider(eventId));
+    final commentsAsync = ref.watch(commentsProvider(eventId));
+
+    final summary = reactionsAsync.maybeWhen(
+      data: (s) => s,
+      orElse: () => const ReactionSummary(count: 0, likedByMe: false),
+    );
+    final commentCount = commentsAsync.maybeWhen(
+      data: (c) => c.length,
+      orElse: () => 0,
+    );
+
     return Row(
       children: [
-        FinchIcon(icon, size: 22, color: finch.colors.graphite),
-        if (count > 0) ...[
-          const SizedBox(width: 6),
-          Text('$count', style: finch.typography.small),
-        ],
+        ReactionButton(
+          liked: summary.likedByMe,
+          count: summary.count,
+          compact: true,
+          onTap: () =>
+              ref.read(reactionControllerProvider(eventId).notifier).toggle(),
+        ),
+        const SizedBox(width: 18),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onComment,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                FinchIcon(
+                  PhosphorIconsRegular.chatCircle,
+                  size: 22,
+                  color: finch.colors.graphite,
+                ),
+                if (commentCount > 0) ...[
+                  const SizedBox(width: 6),
+                  Text('$commentCount', style: finch.typography.small),
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

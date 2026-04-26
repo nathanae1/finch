@@ -117,4 +117,7 @@ class _StaticTransport implements SyncTransport {
   @override
   Future<Uint8List> fetchMedia(PeerConnection peer, String hash) async =>
       Uint8List(0);
+
+  @override
+  Future<void> pushEnvelope(PeerConnection peer, Envelope envelope) async {}
 }

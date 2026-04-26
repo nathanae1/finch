@@ -52,7 +52,7 @@ final lanNetworkServiceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LanNetworkServiceRef = AutoDisposeProviderRef<LanNetworkService>;
-String _$syncEngineHash() => r'f38e396c3214790103705a2c491c74e165a0bd2f';
+String _$syncEngineHash() => r'bdad0210c6cf1a4249d92ee1495be92c506e128f';
 
 /// See also [syncEngine].
 @ProviderFor(syncEngine)

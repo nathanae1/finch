@@ -8,8 +8,8 @@ part 'bookmark_provider.g.dart';
 /// Local-only — never produces a synced event. See Plan 10's Save discussion.
 @riverpod
 Future<bool> eventSaved(EventSavedRef ref, String id) async {
-  final storage = ref.watch(storageServiceProvider);
-  return storage.isEventSaved(id);
+  final save = ref.watch(saveServiceProvider);
+  return save.isSaved(id);
 }
 
 /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
@@ -20,9 +20,7 @@ class BookmarkController extends _$BookmarkController {
   void build(String id) {}
 
   Future<void> toggle() async {
-    final storage = ref.read(storageServiceProvider);
-    final current = await storage.isEventSaved(id);
-    await storage.setEventSaved(id, !current);
+    await ref.read(saveServiceProvider).toggle(id);
     ref.invalidate(eventSavedProvider(id));
   }
 }

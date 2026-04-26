@@ -7,13 +7,21 @@ import '../../services/storage_service.dart';
 import '../../services/types.dart';
 
 /// `GET /events?since={ts}` — CBOR `Envelope` of `EnvelopeItem(type:'event')`,
-/// each wrapping a freshly re-encrypted `EncryptedEvent` for the owner's
-/// posts in the range.
+/// each wrapping a freshly re-encrypted `EncryptedEvent`.
 ///
-/// Re-encryption uses the current `identity.feedKey` / `feedKeyEpoch`. The
-/// receiver derives the event id from the inner signed `Event`, so a fresh
-/// per-request nonce is fine. Plan 13 will replace this with a timestamp-
-/// keyed historical lookup once feed-key rotation lands.
+/// Returns:
+///   1. The owner's own events (kind=1 posts, kind=4 outgoing comments,
+///      kind=5 likes, kind=6 deletes/unlikes).
+///   2. Events from others whose `ref` points to one of the owner's events
+///      (received comments / likes / tombstones on own posts, pushed via
+///      `POST /events` from followers — see Plan 10 re-distribution).
+///
+/// All items are re-encrypted with the owner's current
+/// `identity.feedKey` / `feedKeyEpoch`. The receiver derives the event id
+/// from the inner signed `Event`, so the wire-level pubkey on the
+/// re-encrypted envelope item may be a third party's pubkey (when we're
+/// re-distributing their comment); the inner Ed25519 signature is what
+/// the syncing peer verifies.
 Handler eventsHandler({
   required StorageService storage,
   required ContentKeyService contentKey,
@@ -33,8 +41,8 @@ Handler eventsHandler({
         return Response(400, body: 'invalid since');
       }
     }
-    final events = await storage.getEvents(
-      pubkey: identity.pubkey,
+    final events = await storage.getOwnAndIncomingRefs(
+      identity.pubkey,
       since: since,
       limit: pageLimit,
     );

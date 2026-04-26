@@ -5,16 +5,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../models/models.dart';
-import '../../providers/bookmark_provider.dart';
 import '../../providers/feed_provider.dart';
 import '../../providers/follow_profile_provider.dart';
+import '../../providers/reactions_provider.dart';
 import '../../providers/service_providers.dart';
 import '../../theme/finch_theme.dart';
 import '../../utils/time_ago.dart';
 import '../../widgets/avatar.dart';
+import '../../widgets/bookmark_button.dart';
 import '../../widgets/buttons.dart';
+import '../../widgets/comment_input.dart';
+import '../../widgets/comment_list.dart';
 import '../../widgets/encrypted_image.dart';
-import '../../widgets/finch_icon.dart';
+import '../../widgets/reaction_button.dart';
 
 /// Full-screen post view. Plan 06 wires the bookmark toggle and stubs the
 /// composer slot (Plan 10 enables it). Marking the post as last_viewed
@@ -139,13 +142,14 @@ class _PostDetailBody extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: _ActionRow(eventId: event.id),
                   ),
-                  const SizedBox(height: 24),
-                  _CommentsPlaceholder(),
+                  const SizedBox(height: 16),
+                  CommentList(postId: event.id),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
           ),
-          const _DisabledComposerBar(),
+          CommentInput(postId: event.id),
         ],
       ),
     );
@@ -212,105 +216,33 @@ class _ActionRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final finch = FinchTheme.of(context);
-    final savedAsync = ref.watch(eventSavedProvider(eventId));
-    final isSaved = savedAsync.maybeWhen(data: (v) => v, orElse: () => false);
+    final reactionsAsync = ref.watch(reactionsProvider(eventId));
+    final summary = reactionsAsync.maybeWhen(
+      data: (s) => s,
+      orElse: () => const ReactionSummary(count: 0, likedByMe: false),
+    );
 
     return Row(
       children: [
-        FinchIcon(
-          PhosphorIconsRegular.heart,
-          size: 24,
-          color: finch.colors.graphite,
+        ReactionButton(
+          liked: summary.likedByMe,
+          count: summary.count,
+          iconSize: 24,
+          onTap: () =>
+              ref.read(reactionControllerProvider(eventId).notifier).toggle(),
         ),
         const SizedBox(width: 18),
-        FinchIcon(
+        // Chat icon is just a visual marker on detail (the comments list
+        // is right below); tapping it focuses the composer would be a
+        // future polish, not load-bearing now.
+        Icon(
           PhosphorIconsRegular.chatCircle,
           size: 24,
           color: finch.colors.graphite,
         ),
         const Spacer(),
-        FinchIconButton(
-          onPressed: () =>
-              ref.read(bookmarkControllerProvider(eventId).notifier).toggle(),
-          child: Icon(
-            isSaved
-                ? PhosphorIconsFill.bookmarkSimple
-                : PhosphorIconsRegular.bookmarkSimple,
-            size: 22,
-            color:
-                isSaved ? finch.colors.sageDeep : finch.colors.graphite,
-          ),
-        ),
+        BookmarkButton(eventId: eventId),
       ],
-    );
-  }
-}
-
-class _CommentsPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final finch = FinchTheme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Center(
-        child: Text(
-          'No comments yet.',
-          style: finch.typography.small.copyWith(color: finch.colors.stone),
-        ),
-      ),
-    );
-  }
-}
-
-/// Layout slot for Plan 10's comment composer. Disabled here so the visual
-/// chrome lands now and Plan 10 just enables it.
-class _DisabledComposerBar extends StatelessWidget {
-  const _DisabledComposerBar();
-
-  @override
-  Widget build(BuildContext context) {
-    final finch = FinchTheme.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: finch.colors.paper,
-        border: Border(top: BorderSide(color: finch.colors.hairline)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
-          child: Row(
-            children: [
-              const Avatar(name: 'You', size: AvatarSize.sm),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: finch.colors.hairline),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Comments come in Plan 10',
-                    style: finch.typography.small
-                        .copyWith(color: finch.colors.stone),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FinchIconButton(
-                onPressed: null,
-                child: Icon(
-                  PhosphorIconsRegular.paperPlaneTilt,
-                  size: 20,
-                  color: finch.colors.stone,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

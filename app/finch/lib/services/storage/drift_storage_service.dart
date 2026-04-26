@@ -108,6 +108,27 @@ class DriftStorageService implements StorageService {
   }
 
   @override
+  Future<List<Event>> getEventsByRef(String refId, {EventKind? kind}) async {
+    final rows =
+        await _db.eventsDao.getEventsByRef(refId, kind: kind?.value);
+    return rows.map(eventFromRow).toList();
+  }
+
+  @override
+  Future<List<Event>> getOwnAndIncomingRefs(
+    String ownerPubkey, {
+    int? since,
+    int? limit,
+  }) async {
+    final rows = await _db.eventsDao.getOwnAndIncomingRefs(
+      ownerPubkey,
+      since: since,
+      limit: limit,
+    );
+    return rows.map(eventFromRow).toList();
+  }
+
+  @override
   Future<bool> isEventSaved(String id) =>
       _db.eventsDao.isEventSaved(id);
 

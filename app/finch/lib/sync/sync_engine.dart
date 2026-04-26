@@ -8,6 +8,7 @@ import '../services/storage_service.dart';
 import '../services/types.dart';
 import 'concurrency.dart';
 import 'manifest_exchange.dart';
+import 'outbound_drain.dart';
 import 'peer_connection_factory.dart';
 
 /// The narrow surface the sync engine needs from a transport. Implemented
@@ -23,6 +24,10 @@ abstract class SyncTransport {
   Future<Envelope> fetchEnvelope(PeerConnection peer, {int? since});
 
   Future<Uint8List> fetchMedia(PeerConnection peer, String hash);
+
+  /// Push an envelope of events to the peer (Plan 10 outbound queue).
+  /// On success the receiver returns 202; transport-level failures throw.
+  Future<void> pushEnvelope(PeerConnection peer, Envelope envelope);
 }
 
 /// One-call orchestration for "pull what's new from every reachable
@@ -111,11 +116,21 @@ class SyncEngine {
     if (diff.missingIds.isEmpty) {
       // Nothing to fetch — but we still advance last_synced_at so the next
       // window is anchored at "now." That requires we at least heard back
-      // from the peer, which we did.
+      // from the peer, which we did. Drain the outbound queue so queued
+      // comments/likes don't sit waiting just because no inbound work
+      // was due.
       await _storage.updateLastSynced(follow.pubkey, _clock.nowUnixSeconds());
+      final drain = await drainOutboundQueueForPeer(
+        storage: _storage,
+        transport: _transport,
+        follow: follow,
+        peer: connection,
+      );
       return PeerSyncReport(
         pubkey: follow.pubkey,
         status: PeerSyncStatus.upToDate,
+        eventsPushed: drain.pushed,
+        eventsPushDropped: drain.dropped,
       );
     }
 
@@ -167,17 +182,35 @@ class SyncEngine {
 
     await _storage.updateLastSynced(follow.pubkey, _clock.nowUnixSeconds());
 
+    final drain = await drainOutboundQueueForPeer(
+      storage: _storage,
+      transport: _transport,
+      follow: follow,
+      peer: connection,
+    );
+
     return PeerSyncReport(
       pubkey: follow.pubkey,
       status: PeerSyncStatus.synced,
       eventsFetched: inserted,
       eventsSkipped: skipped,
       unknownItemsPreserved: unknownPreserved,
+      eventsPushed: drain.pushed,
+      eventsPushDropped: drain.dropped,
     );
   }
 
   /// Processes one envelope item of `type:"event"`. Returns true if the
   /// event was decrypted, verified, and stored; false if it was rejected.
+  ///
+  /// Authorization: the encrypted-blob's claimed `pubkey` may either be
+  /// the source we follow (the source's own event) or a third party's
+  /// pubkey (a re-distributed comment/like/tombstone the source received
+  /// via `POST /events`). For the third-party case we require the inner
+  /// `Event.ref` to anchor to a known event from the source or our own
+  /// — otherwise a misbehaving source could ship arbitrary signed events
+  /// claiming any ref. The inner Ed25519 signature is always verified
+  /// inside `decryptEvent`.
   Future<bool> _processEventItem(EnvelopeItem item, Follow follow) async {
     final EncryptedEvent encrypted;
     try {
@@ -185,17 +218,6 @@ class SyncEngine {
     } catch (e) {
       developer.log(
         'malformed EncryptedEvent from ${follow.pubkey}: $e',
-        name: 'sync_engine',
-      );
-      return false;
-    }
-
-    if (encrypted.pubkey != follow.pubkey) {
-      // Server is serving events from a pubkey other than the one we
-      // follow. We don't trust the envelope wrapper; treat as malicious /
-      // misconfigured and drop.
-      developer.log(
-        'pubkey mismatch from ${follow.pubkey} (got ${encrypted.pubkey})',
         name: 'sync_engine',
       );
       return false;
@@ -210,6 +232,42 @@ class SyncEngine {
         name: 'sync_engine',
       );
       return false;
+    }
+
+    if (plain.pubkey != follow.pubkey) {
+      // Re-distributed event (e.g. a comment from a third party that
+      // landed on the source's device). Anchor it: ref must point to a
+      // local event whose author is the source we're syncing from, or
+      // ourselves. Otherwise drop.
+      if (plain.ref == null) {
+        developer.log(
+          'rejected re-distributed event without ref from '
+          '${follow.pubkey}: pubkey=${plain.pubkey}',
+          name: 'sync_engine',
+        );
+        return false;
+      }
+      final anchor = await _storage.getEvent(plain.ref!);
+      if (anchor == null) {
+        developer.log(
+          'rejected re-distributed event with unknown ref from '
+          '${follow.pubkey}: ref=${plain.ref}',
+          name: 'sync_engine',
+        );
+        return false;
+      }
+      final identity = await _storage.getIdentity();
+      final selfPubkey = identity?.pubkey;
+      final ok = anchor.pubkey == follow.pubkey || anchor.pubkey == selfPubkey;
+      if (!ok) {
+        developer.log(
+          'rejected re-distributed event whose ref does not anchor to '
+          'source or self from ${follow.pubkey}: '
+          'anchor.pubkey=${anchor.pubkey}',
+          name: 'sync_engine',
+        );
+        return false;
+      }
     }
 
     try {
@@ -249,6 +307,8 @@ class PeerSyncReport {
     this.eventsFetched = 0,
     this.eventsSkipped = 0,
     this.unknownItemsPreserved = 0,
+    this.eventsPushed = 0,
+    this.eventsPushDropped = 0,
     this.error,
   });
   final String pubkey;
@@ -256,6 +316,8 @@ class PeerSyncReport {
   final int eventsFetched;
   final int eventsSkipped;
   final int unknownItemsPreserved;
+  final int eventsPushed;
+  final int eventsPushDropped;
   final String? error;
 }
 

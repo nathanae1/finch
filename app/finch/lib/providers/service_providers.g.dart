@@ -147,5 +147,56 @@ final clockProvider = AutoDisposeProvider<Clock>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ClockRef = AutoDisposeProviderRef<Clock>;
+String _$saveServiceHash() => r'6267eb355ad36b693865569557615bc995676665';
+
+/// See also [saveService].
+@ProviderFor(saveService)
+final saveServiceProvider = AutoDisposeProvider<SaveService>.internal(
+  saveService,
+  name: r'saveServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$saveServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SaveServiceRef = AutoDisposeProviderRef<SaveService>;
+String _$commentServiceHash() => r'd422c6ba1f8558e1bc7e512bd234969a5b3a8a39';
+
+/// See also [commentService].
+@ProviderFor(commentService)
+final commentServiceProvider = AutoDisposeProvider<CommentService>.internal(
+  commentService,
+  name: r'commentServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$commentServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CommentServiceRef = AutoDisposeProviderRef<CommentService>;
+String _$reactionServiceHash() => r'7a1b882e70919859a95ccab8400add774ff4fccf';
+
+/// See also [reactionService].
+@ProviderFor(reactionService)
+final reactionServiceProvider = AutoDisposeProvider<ReactionService>.internal(
+  reactionService,
+  name: r'reactionServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$reactionServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ReactionServiceRef = AutoDisposeProviderRef<ReactionService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

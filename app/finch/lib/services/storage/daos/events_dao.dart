@@ -99,6 +99,50 @@ class EventsDao extends DatabaseAccessor<AppDatabase>
     return q.get();
   }
 
+  /// Events whose `ref_id == refId`, ordered ASC by `created_at`. Optional
+  /// `kind` filter narrows to one event kind (4=comment, 5=like, 6=delete).
+  Future<List<EventEntry>> getEventsByRef(String refId, {int? kind}) {
+    final q = select(eventEntries);
+    q.where((e) {
+      Expression<bool> condition = e.refId.equals(refId);
+      if (kind != null) {
+        condition = condition & e.kind.equals(kind);
+      }
+      return condition;
+    });
+    q.orderBy([(e) => OrderingTerm.asc(e.createdAt)]);
+    return q.get();
+  }
+
+  /// Events the local server should hand to peers fetching the owner's
+  /// content: rows authored by [ownerPubkey], plus rows from anyone whose
+  /// `ref_id` points to one of the owner's events. Used by `GET /events`
+  /// to re-distribute received comments/likes to other followers.
+  Future<List<EventEntry>> getOwnAndIncomingRefs(
+    String ownerPubkey, {
+    int? since,
+    int? limit,
+  }) {
+    final ownEventIds = selectOnly(eventEntries)
+      ..addColumns([eventEntries.id])
+      ..where(eventEntries.pubkey.equals(ownerPubkey));
+
+    final q = select(eventEntries);
+    q.where((e) {
+      Expression<bool> condition =
+          e.pubkey.equals(ownerPubkey) | e.refId.isInQuery(ownEventIds);
+      if (since != null) {
+        condition = condition & e.createdAt.isBiggerOrEqualValue(since);
+      }
+      return condition;
+    });
+    q.orderBy([(e) => OrderingTerm.desc(e.createdAt)]);
+    if (limit != null) {
+      q.limit(limit);
+    }
+    return q.get();
+  }
+
   Future<bool> isEventSaved(String id) async {
     final row = await (select(eventEntries)..where((e) => e.id.equals(id)))
         .getSingleOrNull();

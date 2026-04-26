@@ -6,7 +6,7 @@ part of 'bookmark_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$eventSavedHash() => r'79e728b45cf31ecbfa21a6dd9574e287d343c7e4';
+String _$eventSavedHash() => r'666a99ce69a576c269ef432126c6fe948ec4f6a6';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -164,7 +164,7 @@ class _EventSavedProviderElement extends AutoDisposeFutureProviderElement<bool>
 }
 
 String _$bookmarkControllerHash() =>
-    r'0ea1a65c72344f735421e0bfa2a118ca35dc8656';
+    r'ee7a9f787cb15f1e9cc10483be81dbd694c7fa9e';
 
 abstract class _$BookmarkController extends BuildlessAutoDisposeNotifier<void> {
   late final String id;

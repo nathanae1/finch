@@ -12,6 +12,7 @@ import '../services/follow_service.dart';
 import '../services/storage_service.dart';
 import '../services/types.dart';
 import 'handlers/events_handler.dart';
+import 'handlers/events_push_handler.dart';
 import 'handlers/follow_accept_handler.dart';
 import 'handlers/follow_request_handler.dart';
 import 'handlers/manifest_handler.dart';
@@ -137,6 +138,14 @@ class FinchHttpServer {
         storage: _storage,
         contentKey: _contentKey,
         identityLookup: _identityLookup,
+      ),
+    );
+    router.post(
+      '/events',
+      eventsPushHandler(
+        storage: _storage,
+        contentKey: _contentKey,
+        clock: _clock,
       ),
     );
     router.get(

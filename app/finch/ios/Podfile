@@ -31,6 +31,11 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Plan 11: Arti/Tor FFI bridge. The xcframework is produced by
+  # `native/arti_bridge/build.sh ios` and lives at Runner/arti_bridge.xcframework.
+  pod 'arti_bridge', :path => '.'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end

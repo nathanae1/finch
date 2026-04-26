@@ -326,4 +326,18 @@ class _RouteableTransport implements SyncTransport {
   Future<Uint8List> fetchMedia(PeerConnection peer, String hash) async {
     return Uint8List(0);
   }
+
+  @override
+  Future<void> pushEnvelope(PeerConnection peer, Envelope envelope) async {
+    pushedEnvelopes
+        .putIfAbsent(peer.pubkey, () => <Envelope>[])
+        .add(envelope);
+    if (failNextPushFor == peer.pubkey) {
+      failNextPushFor = null;
+      throw Exception('simulated push failure');
+    }
+  }
+
+  String? failNextPushFor;
+  final Map<String, List<Envelope>> pushedEnvelopes = {};
 }

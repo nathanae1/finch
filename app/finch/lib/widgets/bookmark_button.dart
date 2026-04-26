@@ -1,0 +1,39 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import '../providers/bookmark_provider.dart';
+import '../theme/finch_theme.dart';
+import 'buttons.dart';
+
+/// Bookmark/save toggle for an event row. Outline graphite when unsaved,
+/// sage-deep filled when saved. Pure local — no event produced, no sync.
+class BookmarkButton extends ConsumerWidget {
+  const BookmarkButton({
+    super.key,
+    required this.eventId,
+    this.iconSize = 22,
+  });
+
+  final String eventId;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final finch = FinchTheme.of(context);
+    final savedAsync = ref.watch(eventSavedProvider(eventId));
+    final isSaved = savedAsync.maybeWhen(data: (v) => v, orElse: () => false);
+
+    return FinchIconButton(
+      onPressed: () =>
+          ref.read(bookmarkControllerProvider(eventId).notifier).toggle(),
+      child: Icon(
+        isSaved
+            ? PhosphorIconsFill.bookmarkSimple
+            : PhosphorIconsRegular.bookmarkSimple,
+        size: iconSize,
+        color: isSaved ? finch.colors.sageDeep : finch.colors.graphite,
+      ),
+    );
+  }
+}

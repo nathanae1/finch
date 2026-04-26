@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../services/clock.dart';
+import '../services/comment_service.dart';
 import '../services/content_key_service.dart';
 import '../services/crypto_service.dart';
 import '../services/mdns_service.dart';
@@ -12,6 +13,8 @@ import '../services/mocks/mock_signaling_service.dart';
 import '../services/mocks/mock_storage_service.dart';
 import '../services/mocks/mock_tor_service.dart';
 import '../services/network_service.dart';
+import '../services/reaction_service.dart';
+import '../services/save_service.dart';
 import '../services/signaling_service.dart';
 import '../services/storage_service.dart';
 import '../services/tor_service.dart';
@@ -46,3 +49,24 @@ SignalingService signalingService(SignalingServiceRef ref) =>
 
 @riverpod
 Clock clock(ClockRef ref) => const SystemClock();
+
+@riverpod
+SaveService saveService(SaveServiceRef ref) =>
+    DefaultSaveService(ref.watch(storageServiceProvider));
+
+@riverpod
+CommentService commentService(CommentServiceRef ref) => DefaultCommentService(
+      contentKey: ref.watch(contentKeyServiceProvider),
+      storage: ref.watch(storageServiceProvider),
+      clock: ref.watch(clockProvider),
+      identityLookup: () => ref.read(storageServiceProvider).getIdentity(),
+    );
+
+@riverpod
+ReactionService reactionService(ReactionServiceRef ref) =>
+    DefaultReactionService(
+      contentKey: ref.watch(contentKeyServiceProvider),
+      storage: ref.watch(storageServiceProvider),
+      clock: ref.watch(clockProvider),
+      identityLookup: () => ref.read(storageServiceProvider).getIdentity(),
+    );

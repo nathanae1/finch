@@ -200,7 +200,29 @@ class LanNetworkService implements NetworkService, SyncTransport {
     }
   }
 
-  // --- Push to relay (deferred to Plan 15) ---
+  // --- Push: peer-to-peer envelope (Plan 10) and relay (Plan 15) ---
+
+  @override
+  Future<void> pushEnvelope(
+    PeerConnection connection,
+    Envelope envelope,
+  ) async {
+    _requireLan(connection);
+    final uri = Uri.parse('${connection.baseUrl}/events');
+    final res = await _http
+        .post(
+          uri,
+          headers: const {'content-type': 'application/cbor'},
+          body: envelope.toBytes(),
+        )
+        .timeout(_timeout);
+    if (res.statusCode != 202) {
+      throw NetworkException(
+        'pushEnvelope failed: ${res.statusCode}',
+        connection.pubkey,
+      );
+    }
+  }
 
   @override
   Future<void> pushEvents(

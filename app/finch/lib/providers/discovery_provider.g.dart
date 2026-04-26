@@ -7,7 +7,7 @@ part of 'discovery_provider.dart';
 // **************************************************************************
 
 String _$discoveryControllerHash() =>
-    r'21e398e339a87c5dfa4639d924dfa1ff1862f3ad';
+    r'35c7a50e363970b4ed6d8a59614c2533e8fc3a03';
 
 /// Owns the mDNS lifecycle. Once both the identity is loaded and the HTTP
 /// server has bound a port, registers the `_finch._tcp` service and

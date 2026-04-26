@@ -37,6 +37,18 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Plan 11: Arti/Tor FFI bridge. `libarti_bridge.so` is produced by
+    // `native/arti_bridge/build.sh android` for arm64-v8a + x86_64 and
+    // dropped into `src/main/jniLibs/<arch>/`. AGP picks up the default
+    // path automatically — no sourceSets override needed — but we keep
+    // the legacy packaging flag on so the .so survives APK packaging
+    // when the NDK strips symbols differently across build types.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 flutter {

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'providers/deep_link_provider.dart';
 import 'providers/discovery_provider.dart';
@@ -24,6 +27,7 @@ import 'services/follow_retry_pump.dart';
 import 'services/mdns_service.dart';
 import 'services/storage/database.dart';
 import 'services/storage/drift_storage_service.dart';
+import 'services/tor/arti_tor_service.dart';
 import 'theme/finch_theme.dart';
 import 'utils/connection_card_parser.dart';
 import 'widgets/sheet.dart';
@@ -35,11 +39,13 @@ Future<void> main() async {
   final crypto = await SodiumCryptoService.init();
 
   final mdns = MethodChannelMdnsService();
+  final torService = _shouldUseRealTor() ? ArtiTorService() : null;
 
   final overrides = <Override>[
     storageServiceProvider.overrideWithValue(storage),
     cryptoServiceProvider.overrideWithValue(crypto),
     mdnsServiceProvider.overrideWithValue(mdns),
+    if (torService != null) torServiceProvider.overrideWithValue(torService),
   ];
 
   // If identity already exists at launch, hydrate the feed-key cache and
@@ -96,6 +102,15 @@ Future<Uint8List?> _loadSecretKey() async {
   return Uint8List.fromList(base64Decode(encoded));
 }
 
+/// Real Tor only on iOS/Android — those are the only platforms the
+/// `arti_bridge` Rust crate is cross-compiled for in Plan 11. Desktop
+/// `flutter test` and `flutter run` on macOS keep the [MockTorService]
+/// default from `service_providers.dart`.
+bool _shouldUseRealTor() {
+  if (kIsWeb) return false;
+  return Platform.isIOS || Platform.isAndroid;
+}
+
 class FinchApp extends ConsumerStatefulWidget {
   const FinchApp({super.key});
 
@@ -107,6 +122,11 @@ class _FinchAppState extends ConsumerState<FinchApp>
     with WidgetsBindingObserver {
   FollowRetryPump? _retryPump;
   ProviderSubscription<AsyncValue<ParsedInvite>>? _deepLinkSub;
+  ProviderSubscription<AsyncValue<int?>>? _torPortSub;
+  String? _onionAddress;
+  // Memoized init future: any caller (initState, lifecycle, port listener)
+  // gets back the same in-flight Future and races resolve cleanly.
+  Future<void>? _torInitFuture;
 
   @override
   void initState() {
@@ -136,6 +156,23 @@ class _FinchAppState extends ConsumerState<FinchApp>
         }
       },
     );
+    // Plan 11a: bring up Tor in parallel with everything else. Bootstrap
+    // can take 10–30s; we deliberately don't await it so LAN sync stays
+    // available during startup. Failures are logged but never thrown.
+    unawaited(_ensureTorInit());
+    // Re-create the onion service whenever the HTTP server's bound port
+    // changes (initial start, after a lifecycle restart). Arti reuses the
+    // persisted keypair so the .onion address is stable across rebinds.
+    _torPortSub = ref.listenManual<AsyncValue<int?>>(
+      httpServerControllerProvider,
+      (_, next) {
+        final port = next.valueOrNull;
+        if (port != null) {
+          unawaited(_publishOnion(port));
+        }
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -143,21 +180,67 @@ class _FinchAppState extends ConsumerState<FinchApp>
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_retryPump?.stop());
     _deepLinkSub?.close();
+    _torPortSub?.close();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final notifier = ref.read(httpServerControllerProvider.notifier);
+    final tor = ref.read(torServiceProvider);
     switch (state) {
       case AppLifecycleState.resumed:
         unawaited(notifier.restart());
+        unawaited(_ensureTorInit());
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         unawaited(notifier.stop());
+        _onionAddress = null;
+        _torInitFuture = null;
+        unawaited(tor.shutdown());
       case AppLifecycleState.inactive:
         break;
+    }
+  }
+
+  Future<void> _ensureTorInit() {
+    return _torInitFuture ??= () async {
+      try {
+        final tor = ref.read(torServiceProvider);
+        final supportDir = await getApplicationSupportDirectory();
+        final torDir = Directory('${supportDir.path}/tor');
+        await torDir.create(recursive: true);
+        await tor.init(torDir.path);
+        developer.log('tor.init complete', name: 'finch.tor');
+      } catch (e, st) {
+        developer.log(
+          'tor.init failed: $e',
+          name: 'finch.tor',
+          stackTrace: st,
+        );
+        // Drop the cached future on failure so a future port event can
+        // retry from a clean slate.
+        _torInitFuture = null;
+        rethrow;
+      }
+    }();
+  }
+
+  Future<void> _publishOnion(int port) async {
+    if (_onionAddress != null) return;
+    try {
+      await _ensureTorInit();
+      final tor = ref.read(torServiceProvider);
+      final addr = await tor.createOnionService(port);
+      _onionAddress = addr;
+      developer.log('onion=$addr port=$port', name: 'finch.tor');
+    } catch (e, st) {
+      developer.log(
+        'createOnionService failed: $e',
+        name: 'finch.tor',
+        stackTrace: st,
+      );
     }
   }
 

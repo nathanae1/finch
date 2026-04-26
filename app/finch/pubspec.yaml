@@ -68,6 +68,9 @@ dependencies:
   # File paths
   path_provider: ^2.1.5
 
+  # Native FFI for Plan 11 (Arti / Tor bridge — see native/arti_bridge/)
+  ffi: ^2.1.0
+
   # Utilities
   collection: ^1.19.1
   path: ^1.9.1

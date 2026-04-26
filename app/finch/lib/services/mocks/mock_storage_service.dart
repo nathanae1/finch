@@ -181,6 +181,40 @@ class MockStorageService implements StorageService {
   }
 
   @override
+  Future<List<Event>> getEventsByRef(String refId, {EventKind? kind}) async {
+    var results = _events.values.where((e) => e.ref == refId).toList();
+    if (kind != null) {
+      results = results.where((e) => e.kind == kind).toList();
+    }
+    results.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return results;
+  }
+
+  @override
+  Future<List<Event>> getOwnAndIncomingRefs(
+    String ownerPubkey, {
+    int? since,
+    int? limit,
+  }) async {
+    final ownIds = _events.values
+        .where((e) => e.pubkey == ownerPubkey)
+        .map((e) => e.id)
+        .toSet();
+    var results = _events.values.where((e) {
+      return e.pubkey == ownerPubkey ||
+          (e.ref != null && ownIds.contains(e.ref));
+    }).toList();
+    if (since != null) {
+      results = results.where((e) => e.createdAt >= since).toList();
+    }
+    results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (limit != null) {
+      results = results.take(limit).toList();
+    }
+    return results;
+  }
+
+  @override
   Future<bool> isEventSaved(String id) async => _savedEventIds.contains(id);
 
   @override

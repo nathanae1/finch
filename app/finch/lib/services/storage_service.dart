@@ -53,6 +53,22 @@ abstract class StorageService {
   /// Excludes tombstoned (kind=6 ref'd) posts. Ordered DESC.
   Future<List<Event>> getProfilePosts(String pubkey, {int? limit});
 
+  /// Events whose `ref` points to [refId]. Used to load comments (kind=4),
+  /// likes (kind=5), and tombstones (kind=6) for a single post. Ordered
+  /// ASC by `created_at`. If [kind] is provided, filters to that kind.
+  Future<List<Event>> getEventsByRef(String refId, {EventKind? kind});
+
+  /// Events the local server should hand out to peers asking for the
+  /// owner's content: own-authored events plus events from others whose
+  /// `ref` points to an own event (received comments/likes/deletes that
+  /// the owner re-distributes to other followers). Ordered DESC by
+  /// `created_at`. Used by `GET /events`.
+  Future<List<Event>> getOwnAndIncomingRefs(
+    String ownerPubkey, {
+    int? since,
+    int? limit,
+  });
+
   /// Local-only flag: has the viewer bookmarked/saved this post?
   Future<bool> isEventSaved(String id);
 
