@@ -89,5 +89,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Plan 14 Phase D — iOS background sync via BGTaskScheduler. Both
+	     task types are registered. BGAppRefreshTask fires in ~30s windows
+	     and runs LAN-only sync. BGProcessingTask fires when the device is
+	     plugged in and idle (often overnight) and runs Tor warm-bootstrap
+	     before sync. Identifiers must match the strings registered in
+	     AppDelegate.swift. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>dev.finch.app.background_sync</string>
+		<string>dev.finch.app.background_processing</string>
+	</array>
 </dict>
 </plist>

@@ -79,6 +79,14 @@ dependencies:
   # Native FFI for Plan 11 (Arti / Tor bridge — see native/arti_bridge/)
   ffi: ^2.1.0
 
+  # Background sync (Plan 14). On Android `workmanager` wraps AndroidX
+  # WorkManager (no Google Play Services dep); `flutter_foreground_task`
+  # owns the opt-in foreground service that keeps the HTTP server + Tor
+  # alive in background. iOS uses BGTaskScheduler directly via native
+  # AppDelegate code — no Dart package needed for that path.
+  workmanager: ^0.5.2
+  flutter_foreground_task: ^9.1.0
+
   # Utilities
   collection: ^1.19.1
   path: ^1.9.1

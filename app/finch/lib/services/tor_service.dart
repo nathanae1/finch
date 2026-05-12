@@ -4,8 +4,27 @@ import 'types.dart';
 ///
 /// Default implementation wraps Arti via Rust FFI (Plan 11).
 /// Mock implementation simulates bootstrap and connections.
+/// Bootstrap mode for [TorService.init]. The constants mirror
+/// `ArtiBootstrapMode` in `tor/ffi_bindings.dart` so call sites can use
+/// either without importing FFI details.
+class TorBootstrapMode {
+  /// Synchronous full bootstrap; [init] only returns when the client is
+  /// ready for traffic. Foreground default.
+  static const int full = 0;
+
+  /// Lazy bootstrap; [init] returns immediately. Circuits build on first
+  /// stream, or eagerly via [TorService.bootstrap]. Plan 14 Phase D iOS
+  /// BGProcessingTask warm path.
+  static const int onDemand = 1;
+}
+
 abstract class TorService {
-  Future<void> init(String dataDir);
+  Future<void> init(String dataDir, {int bootstrapMode = TorBootstrapMode.full});
+
+  /// Drive bootstrap explicitly. Idempotent. Useful with
+  /// [TorBootstrapMode.onDemand] when the caller wants to bound how long
+  /// it waits for circuits to be ready.
+  Future<void> bootstrap({Duration? timeout}) async {}
 
   Future<String> createOnionService(int localPort);
 

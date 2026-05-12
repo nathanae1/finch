@@ -4,6 +4,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <!-- Plan 14 Phase B/C — background sync + foreground service.
+         WorkManager survives reboots when this is granted. The foreground
+         service runs with type=dataSync (Android 14+ requires the granular
+         permission). POST_NOTIFICATIONS is requested at runtime when the
+         user enables the FG-service toggle. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="finch"
         android:name="${applicationName}"

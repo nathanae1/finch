@@ -19,6 +19,20 @@ class ArtiStatusCode {
   static const int errInit = -4;
   static const int errOnion = -5;
   static const int errShutdown = -6;
+  static const int errBootstrap = -7;
+}
+
+/// Bootstrap modes accepted by [ArtiBindings.init]. Mirrors the
+/// `ARTI_BOOTSTRAP_*` constants in `arti_bridge/src/lib.rs`.
+class ArtiBootstrapMode {
+  /// Synchronous full bootstrap. `arti_init` blocks until the client is
+  /// ready for traffic. Foreground default.
+  static const int full = 0;
+
+  /// Return immediately after the client is constructed. Circuits build
+  /// lazily on first stream, or eagerly via `arti_bootstrap`. Plan 14
+  /// Phase D iOS BGProcessingTask warm path.
+  static const int onDemand = 1;
 }
 
 /// Mirror of `ArtiStatus` in `lib.rs`. Layout-sensitive: 4-byte aligned with
@@ -40,8 +54,11 @@ final class ArtiStatusStruct extends Struct {
   external int socksPort;
 }
 
-typedef ArtiInitNative = Pointer<Void> Function(Pointer<Utf8>);
-typedef ArtiInitDart = Pointer<Void> Function(Pointer<Utf8>);
+typedef ArtiInitNative = Pointer<Void> Function(Pointer<Utf8>, Uint8);
+typedef ArtiInitDart = Pointer<Void> Function(Pointer<Utf8>, int);
+
+typedef ArtiBootstrapNative = Int32 Function(Pointer<Void>);
+typedef ArtiBootstrapDart = int Function(Pointer<Void>);
 
 typedef ArtiCreateOnionServiceNative = Pointer<Utf8> Function(
     Pointer<Void>, Uint16);
@@ -69,6 +86,9 @@ class ArtiBindings {
   ArtiBindings._(DynamicLibrary lib)
       : init = lib
             .lookupFunction<ArtiInitNative, ArtiInitDart>('arti_init'),
+        bootstrap = lib
+            .lookupFunction<ArtiBootstrapNative, ArtiBootstrapDart>(
+                'arti_bootstrap'),
         createOnionService = lib.lookupFunction<ArtiCreateOnionServiceNative,
             ArtiCreateOnionServiceDart>('arti_create_onion_service'),
         socksPort = lib.lookupFunction<ArtiSocksPortNative, ArtiSocksPortDart>(
@@ -85,6 +105,7 @@ class ArtiBindings {
                 'arti_last_error');
 
   final ArtiInitDart init;
+  final ArtiBootstrapDart bootstrap;
   final ArtiCreateOnionServiceDart createOnionService;
   final ArtiSocksPortDart socksPort;
   final ArtiStatusDart status;

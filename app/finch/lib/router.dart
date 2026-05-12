@@ -17,6 +17,7 @@ import 'screens/placeholder_screen.dart';
 import 'screens/profile/other_profile_screen.dart';
 import 'screens/profile/own_profile_screen.dart';
 import 'screens/settings/connection_settings_screen.dart';
+import 'screens/settings/network_settings_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/settings/storage_settings_screen.dart';
 import 'shell/app_shell.dart';
@@ -95,6 +96,11 @@ GoRouter buildRouter(Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, _) => const SettingsScreen(),
         routes: [
+          GoRoute(
+            path: 'network',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (_, _) => const NetworkSettingsScreen(),
+          ),
           GoRoute(
             path: 'storage',
             parentNavigatorKey: _rootNavigatorKey,

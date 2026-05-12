@@ -29,6 +29,18 @@
 
 #define ARTI_ERR_SHUTDOWN -6
 
+#define ARTI_ERR_BOOTSTRAP -7
+
+/**
+ * Bootstrap mode passed to [`arti_init`].
+ * - `0` — full bootstrap (synchronous; returns when ready). Foreground default.
+ * - `1` — on-demand (returns immediately; circuits build lazily on first
+ *   stream, or eagerly via [`arti_bootstrap`]). iOS BGProcessingTask warm path.
+ */
+#define ARTI_BOOTSTRAP_FULL 0
+
+#define ARTI_BOOTSTRAP_ON_DEMAND 1
+
 /**
  * Opaque handle. All FFI calls take `*mut ArtiHandle`.
  */
@@ -46,9 +58,15 @@ typedef struct {
 } ArtiStatus;
 
 /**
- * Initialize Arti, kick off bootstrap on the embedded runtime, and return
- * an opaque handle. Bootstrap continues in the background — poll
- * [`arti_status`] until `is_ready` flips true.
+ * Initialize Arti and return an opaque handle.
+ *
+ * `bootstrap_mode` selects how bootstrap proceeds:
+ *   - [`ARTI_BOOTSTRAP_FULL`] (`0`) — synchronous full bootstrap; this call
+ *     blocks until the client is ready for traffic. Foreground default.
+ *   - [`ARTI_BOOTSTRAP_ON_DEMAND`] (`1`) — returns immediately after the
+ *     client object is constructed; circuits are built lazily on first
+ *     stream, or eagerly via [`arti_bootstrap`]. Plan 14 Phase D warm path
+ *     for iOS BGProcessingTask.
  *
  * `data_dir` must be a NUL-terminated UTF-8 path; Arti stores its state,
  * circuit cache, and onion-service keypair here.
@@ -56,7 +74,7 @@ typedef struct {
  * On error returns NULL. The handle must be passed to [`arti_shutdown`]
  * to release resources.
  */
-ArtiHandle *arti_init(const char *data_dir);
+ArtiHandle *arti_init(const char *data_dir, uint8_t bootstrap_mode);
 
 /**
  * Return a heap-allocated copy of the most recent error message produced
@@ -78,6 +96,17 @@ char *arti_last_error(void);
  * is stable across restarts.
  */
 char *arti_create_onion_service(ArtiHandle *handle, uint16_t local_port);
+
+/**
+ * Drive bootstrap explicitly. Idempotent and safe to call multiple times;
+ * concurrent calls coalesce on the in-flight attempt (per
+ * `TorClient::bootstrap`). Useful with [`ARTI_BOOTSTRAP_ON_DEMAND`] when
+ * the caller wants to ensure the client is ready before issuing requests
+ * — bound the wait via a Dart-side timeout, not in Rust.
+ *
+ * Returns [`ARTI_OK`] on success, [`ARTI_ERR_BOOTSTRAP`] on failure.
+ */
+int arti_bootstrap(ArtiHandle *handle);
 
 /**
  * Returns the local SOCKS5 port Arti uses for outbound connections, or 0

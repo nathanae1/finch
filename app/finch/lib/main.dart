@@ -10,12 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'providers/deep_link_provider.dart';
-import 'providers/discovery_provider.dart';
-import 'providers/follow_provider.dart';
 import 'providers/identity_provider.dart';
-import 'providers/server_provider.dart';
 import 'providers/service_providers.dart';
-import 'providers/sync_provider.dart';
 import 'router.dart';
 import 'screens/friends/confirm_request_sheet.dart';
 import 'services/clock.dart';
@@ -24,15 +20,13 @@ import 'services/crypto/crockford_base32.dart';
 import 'services/crypto/key_cache.dart';
 import 'services/crypto/pairwise_content_key_service.dart';
 import 'services/crypto/sodium_crypto_service.dart';
-import 'services/follow_retry_pump.dart';
+import 'services/lifecycle/lifecycle_manager.dart';
 import 'services/mdns_service.dart';
-import 'services/sync_pump.dart';
 import 'services/storage/database.dart';
 import 'services/storage/drift_storage_service.dart';
 import 'services/storage/keychain_manager.dart';
 import 'services/storage/retention.dart';
 import 'services/tor/arti_tor_service.dart';
-import 'sync/peer_reachability_provider.dart';
 import 'theme/finch_theme.dart';
 import 'utils/connection_card_parser.dart';
 import 'widgets/sheet.dart';
@@ -228,36 +222,14 @@ class FinchApp extends ConsumerStatefulWidget {
 
 class _FinchAppState extends ConsumerState<FinchApp>
     with WidgetsBindingObserver {
-  FollowRetryPump? _retryPump;
-  SyncPump? _syncPump;
+  LifecycleManager? _lifecycle;
   ProviderSubscription<AsyncValue<ParsedInvite>>? _deepLinkSub;
-  ProviderSubscription<AsyncValue<int?>>? _torPortSub;
-  String? _onionAddress;
-  // Memoized init future: any caller (initState, lifecycle, port listener)
-  // gets back the same in-flight Future and races resolve cleanly.
-  Future<void>? _torInitFuture;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Eagerly start the embedded HTTP server. The provider waits for
-    // identity to be loaded before it actually binds a port.
-    ref.read(httpServerControllerProvider);
-    // Eagerly bring up mDNS discovery; the controller no-ops until both
-    // identity and the server port are ready.
-    ref.read(discoveryControllerProvider);
-    // Bring up the peer reachability monitor (Plan 11c). Probes run in
-    // the background; consumers ask `bestConnectionFor(pubkey)` for a
-    // pre-validated transport instead of doing their own cascade.
-    unawaited(ref.read(peerReachabilityMonitorProvider).start());
-    _retryPump = FollowRetryPump(followService: ref.read(followServiceProvider))
-      ..start();
-    _syncPump = SyncPump(
-      runSync: () =>
-          ref.read(syncControllerProvider.notifier).syncNow().then((_) {}),
-    )..start();
-    ref.read(reconnectPusherProvider).start();
+    _lifecycle = LifecycleManager(ref: ref)..start();
     _deepLinkSub = ref.listenManual<AsyncValue<ParsedInvite>>(
       deepLinkInvitesProvider,
       (_, next) {
@@ -274,10 +246,6 @@ class _FinchAppState extends ConsumerState<FinchApp>
         }
       },
     );
-    // Plan 11a: bring up Tor in parallel with everything else. Bootstrap
-    // can take 10–30s; we deliberately don't await it so LAN sync stays
-    // available during startup. Failures are logged but never thrown.
-    unawaited(_ensureTorInit());
     // Debug: dump identity + per-follow key state every time the
     // identity controller hydrates. Fires on first launch and again
     // after any subsequent identity refresh — so a hot restart is
@@ -291,106 +259,28 @@ class _FinchAppState extends ConsumerState<FinchApp>
       },
       fireImmediately: true,
     );
-    // Re-create the onion service whenever the HTTP server's bound port
-    // changes (initial start, after a lifecycle restart). Arti reuses the
-    // persisted keypair so the .onion address is stable across rebinds.
-    _torPortSub = ref.listenManual<AsyncValue<int?>>(
-      httpServerControllerProvider,
-      (_, next) {
-        final port = next.value;
-        if (port != null) {
-          unawaited(_publishOnion(port));
-        }
-      },
-      fireImmediately: true,
-    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_retryPump?.stop());
-    unawaited(_syncPump?.stop());
-    unawaited(ref.read(reconnectPusherProvider).stop());
+    unawaited(_lifecycle?.stop());
     _deepLinkSub?.close();
-    _torPortSub?.close();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _torLog('lifecycle=$state');
-    final notifier = ref.read(httpServerControllerProvider.notifier);
-    final tor = ref.read(torServiceProvider);
     switch (state) {
       case AppLifecycleState.resumed:
-        unawaited(notifier.restart());
-        unawaited(_ensureTorInit());
-        _syncPump?.start();
-        ref.read(reconnectPusherProvider).start();
+        unawaited(_lifecycle?.onResume());
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        unawaited(notifier.stop());
-        _onionAddress = null;
-        ref.read(onionAddressProvider.notifier).set(null);
-        _torInitFuture = null;
-        unawaited(tor.shutdown());
-        unawaited(_syncPump?.stop());
-        unawaited(ref.read(reconnectPusherProvider).stop());
+        unawaited(_lifecycle?.onPause());
       case AppLifecycleState.inactive:
         break;
     }
-  }
-
-  Future<void> _ensureTorInit() {
-    return _torInitFuture ??= () async {
-      try {
-        _torLog('tor.init begin');
-        final tor = ref.read(torServiceProvider);
-        _torLog('tor.init service=${tor.runtimeType}');
-        final supportDir = await getApplicationSupportDirectory();
-        final torDir = Directory('${supportDir.path}/tor');
-        await torDir.create(recursive: true);
-        _torLog('tor.init dataDir=${torDir.path}');
-        await tor.init(torDir.path);
-        _torLog('tor.init complete socksPort=${tor.socksPort}');
-      } catch (e, st) {
-        _torLog('tor.init failed: $e\n$st');
-        // Drop the cached future on failure so a future port event can
-        // retry from a clean slate.
-        _torInitFuture = null;
-        rethrow;
-      }
-    }();
-  }
-
-  Future<void> _publishOnion(int port) async {
-    if (_onionAddress != null) {
-      _torLog('publishOnion skipped (already have $_onionAddress)');
-      return;
-    }
-    try {
-      _torLog('publishOnion begin port=$port');
-      await _ensureTorInit();
-      final tor = ref.read(torServiceProvider);
-      _torLog('publishOnion calling createOnionService isReady=${tor.isReady}');
-      final addr = await tor.createOnionService(port);
-      _onionAddress = addr;
-      ref.read(onionAddressProvider.notifier).set(addr);
-      _torLog('onion=$addr port=$port');
-    } catch (e, st) {
-      _torLog('createOnionService failed: $e\n$st');
-    }
-  }
-
-  /// Mirrors Tor lifecycle traces to both DevTools and stdout. `print` is
-  /// what actually shows up in `adb logcat -s flutter` on Android — without
-  /// it we have no visibility into whether Arti boots at all.
-  void _torLog(String msg) {
-    developer.log(msg, name: 'finch.tor');
-    // ignore: avoid_print
-    print('[finch.tor] $msg');
   }
 
   Future<void> _debugDumpKeyState() async {

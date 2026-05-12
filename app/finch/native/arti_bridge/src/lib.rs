@@ -24,7 +24,7 @@ use parking_lot::{Mutex, RwLock};
 use tokio::runtime::Runtime;
 
 mod inner;
-use inner::{Inner, StatusSnapshot};
+use inner::{InitMode, Inner, StatusSnapshot};
 
 thread_local! {
     /// Most recent error message produced by an FFI call on this thread.
@@ -61,6 +61,14 @@ pub const ARTI_ERR_PANIC: c_int = -3;
 pub const ARTI_ERR_INIT: c_int = -4;
 pub const ARTI_ERR_ONION: c_int = -5;
 pub const ARTI_ERR_SHUTDOWN: c_int = -6;
+pub const ARTI_ERR_BOOTSTRAP: c_int = -7;
+
+/// Bootstrap mode passed to [`arti_init`].
+/// - `0` — full bootstrap (synchronous; returns when ready). Foreground default.
+/// - `1` — on-demand (returns immediately; circuits build lazily on first
+///   stream, or eagerly via [`arti_bootstrap`]). iOS BGProcessingTask warm path.
+pub const ARTI_BOOTSTRAP_FULL: u8 = 0;
+pub const ARTI_BOOTSTRAP_ON_DEMAND: u8 = 1;
 
 /// Status snapshot mirrored to Dart via an out-pointer. Layout MUST match
 /// the FFI bindings in `lib/services/tor/ffi_bindings.dart`.
@@ -80,9 +88,15 @@ pub struct ArtiHandle {
 
 // --- FFI surface ---
 
-/// Initialize Arti, kick off bootstrap on the embedded runtime, and return
-/// an opaque handle. Bootstrap continues in the background — poll
-/// [`arti_status`] until `is_ready` flips true.
+/// Initialize Arti and return an opaque handle.
+///
+/// `bootstrap_mode` selects how bootstrap proceeds:
+///   - [`ARTI_BOOTSTRAP_FULL`] (`0`) — synchronous full bootstrap; this call
+///     blocks until the client is ready for traffic. Foreground default.
+///   - [`ARTI_BOOTSTRAP_ON_DEMAND`] (`1`) — returns immediately after the
+///     client object is constructed; circuits are built lazily on first
+///     stream, or eagerly via [`arti_bootstrap`]. Plan 14 Phase D warm path
+///     for iOS BGProcessingTask.
 ///
 /// `data_dir` must be a NUL-terminated UTF-8 path; Arti stores its state,
 /// circuit cache, and onion-service keypair here.
@@ -90,7 +104,10 @@ pub struct ArtiHandle {
 /// On error returns NULL. The handle must be passed to [`arti_shutdown`]
 /// to release resources.
 #[no_mangle]
-pub unsafe extern "C" fn arti_init(data_dir: *const c_char) -> *mut ArtiHandle {
+pub unsafe extern "C" fn arti_init(
+    data_dir: *const c_char,
+    bootstrap_mode: u8,
+) -> *mut ArtiHandle {
     clear_last_error();
     let result = catch_unwind(AssertUnwindSafe(|| {
         // Hot-restart cleanup: if a prior Dart isolate left an Arti handle
@@ -129,7 +146,15 @@ pub unsafe extern "C" fn arti_init(data_dir: *const c_char) -> *mut ArtiHandle {
                 return Err(ARTI_ERR_INIT);
             }
         };
-        let inner = match runtime.block_on(Inner::start(dir)) {
+        let mode = match bootstrap_mode {
+            ARTI_BOOTSTRAP_FULL => InitMode::Full,
+            ARTI_BOOTSTRAP_ON_DEMAND => InitMode::OnDemand,
+            other => {
+                set_last_error(format!("unknown bootstrap_mode {other}"));
+                return Err(ARTI_ERR_INIT);
+            }
+        };
+        let inner = match runtime.block_on(Inner::start(dir, mode)) {
             Ok(i) => Arc::new(RwLock::new(i)),
             Err(e) => {
                 let msg = format!("arti_init failed: {e:?}");
@@ -220,6 +245,40 @@ pub unsafe extern "C" fn arti_create_onion_service(
             ptr::null_mut()
         }
     }
+}
+
+/// Drive bootstrap explicitly. Idempotent and safe to call multiple times;
+/// concurrent calls coalesce on the in-flight attempt (per
+/// `TorClient::bootstrap`). Useful with [`ARTI_BOOTSTRAP_ON_DEMAND`] when
+/// the caller wants to ensure the client is ready before issuing requests
+/// — bound the wait via a Dart-side timeout, not in Rust.
+///
+/// Returns [`ARTI_OK`] on success, [`ARTI_ERR_BOOTSTRAP`] on failure.
+#[no_mangle]
+pub unsafe extern "C" fn arti_bootstrap(handle: *mut ArtiHandle) -> c_int {
+    clear_last_error();
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        if handle.is_null() {
+            set_last_error("handle is NULL");
+            return ARTI_ERR_NULL;
+        }
+        let h = &*handle;
+        let inner = h.inner.clone();
+        let res = h.runtime.block_on(async move {
+            let guard = inner.read();
+            guard.bootstrap().await
+        });
+        match res {
+            Ok(()) => ARTI_OK,
+            Err(e) => {
+                let msg = format!("arti_bootstrap failed: {e:?}");
+                log::error!("{msg}");
+                set_last_error(msg);
+                ARTI_ERR_BOOTSTRAP
+            }
+        }
+    }));
+    result.unwrap_or(ARTI_ERR_PANIC)
 }
 
 /// Returns the local SOCKS5 port Arti uses for outbound connections, or 0

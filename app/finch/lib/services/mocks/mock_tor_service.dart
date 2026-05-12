@@ -7,8 +7,16 @@ class MockTorService implements TorService {
   String? _onionAddress;
 
   @override
-  Future<void> init(String dataDir) async {
+  Future<void> init(
+    String dataDir, {
+    int bootstrapMode = TorBootstrapMode.full,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
+    _isReady = bootstrapMode == TorBootstrapMode.full;
+  }
+
+  @override
+  Future<void> bootstrap({Duration? timeout}) async {
     _isReady = true;
   }
 

@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use arti_client::config::CfgPath;
-use arti_client::{TorClient, TorClientConfig};
+use arti_client::{BootstrapBehavior, TorClient, TorClientConfig};
 use safelog::DisplayRedacted;
 use tokio::io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -57,10 +57,23 @@ struct OnionState {
     _proxy_task: tokio::task::JoinHandle<()>,
 }
 
+/// How [`Inner::start`] should treat bootstrap. `Full` (the foreground app
+/// default) runs `create_bootstrapped` and only returns when the client is
+/// ready for traffic. `OnDemand` (Plan 14 Phase D — iOS BGProcessingTask
+/// warm path) returns immediately after `create_unbootstrapped`; the first
+/// outbound connection lazily kicks bootstrap and benefits from the
+/// on-disk consensus + guard cache.
+#[derive(Clone, Copy, Debug)]
+pub enum InitMode {
+    Full,
+    OnDemand,
+}
+
 impl Inner {
-    /// Bootstrap a new Tor client. Returns once the client object is
-    /// constructed; bootstrap continues in the background.
-    pub async fn start(data_dir: PathBuf) -> Result<Self> {
+    /// Bootstrap a new Tor client. With `InitMode::Full`, returns once
+    /// bootstrap completes; with `InitMode::OnDemand`, returns as soon as
+    /// the client is constructed and lets bootstrap happen lazily.
+    pub async fn start(data_dir: PathBuf, mode: InitMode) -> Result<Self> {
         std::fs::create_dir_all(&data_dir)
             .with_context(|| format!("create data dir {}", data_dir.display()))?;
 
@@ -86,11 +99,18 @@ impl Inner {
         let runtime = TokioRustlsRuntime::current()
             .context("acquire current tokio+rustls runtime")?;
 
-        let client = TorClient::with_runtime(runtime.clone())
-            .config(cfg)
-            .create_bootstrapped()
-            .await
-            .context("bootstrap TorClient")?;
+        let client = match mode {
+            InitMode::Full => TorClient::with_runtime(runtime.clone())
+                .config(cfg)
+                .create_bootstrapped()
+                .await
+                .context("bootstrap TorClient")?,
+            InitMode::OnDemand => TorClient::with_runtime(runtime.clone())
+                .config(cfg)
+                .bootstrap_behavior(BootstrapBehavior::OnDemand)
+                .create_unbootstrapped()
+                .context("construct unbootstrapped TorClient")?,
+        };
 
         // Spawn an in-process SOCKS5 listener bound to a kernel-assigned
         // loopback port. Dart's `http.Client` connects to this port and
@@ -179,6 +199,20 @@ impl Inner {
 
     pub fn socks_port(&self) -> u16 {
         self.socks_port
+    }
+
+    /// Drive bootstrap explicitly. Idempotent (per `TorClient::bootstrap`
+    /// docs — "If a bootstrap is in progress, waits for it to finish, then
+    /// retries it if it failed"). Useful with [`InitMode::OnDemand`] when
+    /// the caller wants to ensure the client is ready before issuing
+    /// requests, or to fast-fail rather than wait for the first stream to
+    /// trigger bootstrap.
+    pub async fn bootstrap(&self) -> Result<()> {
+        self.client
+            .bootstrap()
+            .await
+            .context("explicit TorClient bootstrap")?;
+        Ok(())
     }
 
     pub fn status(&self) -> StatusSnapshot {

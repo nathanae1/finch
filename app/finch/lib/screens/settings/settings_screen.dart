@@ -48,6 +48,12 @@ class SettingsScreen extends StatelessWidget {
               child: ListView(
                 children: [
                   _SettingsRow(
+                    icon: LucideIcons.globe,
+                    label: 'Network',
+                    detail: 'Sync, Tor, Wi-Fi, background mode',
+                    onTap: () => context.push('/settings/network'),
+                  ),
+                  _SettingsRow(
                     icon: LucideIcons.hardDrive,
                     label: 'Storage',
                     detail: 'Cache size, clear cache, export',

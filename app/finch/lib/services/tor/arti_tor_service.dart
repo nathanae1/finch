@@ -20,17 +20,55 @@ class ArtiTorService implements TorService {
   Pointer<Void>? _handle;
   String? _onionAddress;
 
+  /// Initialize Arti. [bootstrapMode] selects between full synchronous
+  /// bootstrap ([TorBootstrapMode.full], the foreground default) and the
+  /// fast `onDemand` path used by Plan 14 Phase D background sync — that
+  /// path returns immediately after the client is constructed and lets
+  /// circuits build lazily on first stream.
   @override
-  Future<void> init(String dataDir) async {
+  Future<void> init(
+    String dataDir, {
+    int bootstrapMode = TorBootstrapMode.full,
+  }) async {
     if (_handle != null) return;
     final (handleAddr, errorMessage) =
-        await Isolate.run<(int, String?)>(() => _initInIsolate(dataDir));
+        await Isolate.run<(int, String?)>(
+      () => _initInIsolate(dataDir, bootstrapMode),
+    );
     if (handleAddr == 0) {
       final detail = errorMessage ?? 'no detail (arti_last_error empty)';
       throw TorServiceException('arti_init returned null: $detail');
     }
     _handle = Pointer<Void>.fromAddress(handleAddr);
-    developer.log('Arti initialized', name: 'arti_tor_service');
+    developer.log(
+      'Arti initialized mode=$bootstrapMode',
+      name: 'arti_tor_service',
+    );
+  }
+
+  /// Drive bootstrap explicitly. Idempotent. Pair with
+  /// `init(.., bootstrapMode: ArtiBootstrapMode.onDemand)` to defer the
+  /// network round-trips until you're ready to wait for them.
+  @override
+  Future<void> bootstrap({Duration? timeout}) async {
+    final handle = _handle;
+    if (handle == null) {
+      throw const TorServiceException('init() must be called first');
+    }
+    final handleAddr = handle.address;
+    final fut = Isolate.run<(int, String?)>(
+      () => _bootstrapInIsolate(handleAddr),
+    );
+    final (code, errorMessage) = timeout == null
+        ? await fut
+        : await fut.timeout(
+            timeout,
+            onTimeout: () => (ArtiStatusCode.errBootstrap, 'timeout'),
+          );
+    if (code != ArtiStatusCode.ok) {
+      final detail = errorMessage ?? 'arti_bootstrap returned $code';
+      throw TorServiceException('arti_bootstrap failed: $detail');
+    }
   }
 
   @override
@@ -145,11 +183,11 @@ class ArtiTorService implements TorService {
 // isolate so we never have to ship a non-primitive across the boundary —
 // only ints and Strings cross.
 
-(int, String?) _initInIsolate(String dataDir) {
+(int, String?) _initInIsolate(String dataDir, int bootstrapMode) {
   final bindings = ArtiBindings.load();
   final cstr = dataDir.toNativeUtf8();
   try {
-    final handle = bindings.init(cstr);
+    final handle = bindings.init(cstr, bootstrapMode);
     if (handle.address != 0) {
       return (handle.address, null);
     }
@@ -164,6 +202,19 @@ class ArtiTorService implements TorService {
     }
   } finally {
     malloc.free(cstr);
+  }
+}
+
+(int, String?) _bootstrapInIsolate(int handleAddr) {
+  final bindings = ArtiBindings.load();
+  final code = bindings.bootstrap(Pointer<Void>.fromAddress(handleAddr));
+  if (code == ArtiStatusCode.ok) return (code, null);
+  final msgPtr = bindings.lastError();
+  if (msgPtr == nullptr) return (code, null);
+  try {
+    return (code, msgPtr.toDartString());
+  } finally {
+    bindings.stringFree(msgPtr);
   }
 }
 
