@@ -6,8 +6,17 @@ part of 'app_paths_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$appSupportDirectoryHash() =>
-    r'3984c3a19ab48e137c73b94c123e83333f97229f';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// The platform's application-support directory. Finch writes media blobs,
+/// indexes, and other non-user-visible state here — not into the user's
+/// Documents dir (which is surfaced in the iOS Files app / iTunes file
+/// sharing).
+///
+/// Tests override this with a tmp dir.
+
+@ProviderFor(appSupportDirectory)
+final appSupportDirectoryProvider = AppSupportDirectoryProvider._();
 
 /// The platform's application-support directory. Finch writes media blobs,
 /// indexes, and other non-user-visible state here — not into the user's
@@ -15,22 +24,94 @@ String _$appSupportDirectoryHash() =>
 /// sharing).
 ///
 /// Tests override this with a tmp dir.
-///
-/// Copied from [appSupportDirectory].
-@ProviderFor(appSupportDirectory)
-final appSupportDirectoryProvider =
-    AutoDisposeFutureProvider<Directory>.internal(
-      appSupportDirectory,
-      name: r'appSupportDirectoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$appSupportDirectoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AppSupportDirectoryRef = AutoDisposeFutureProviderRef<Directory>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class AppSupportDirectoryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Directory>,
+          Directory,
+          FutureOr<Directory>
+        >
+    with $FutureModifier<Directory>, $FutureProvider<Directory> {
+  /// The platform's application-support directory. Finch writes media blobs,
+  /// indexes, and other non-user-visible state here — not into the user's
+  /// Documents dir (which is surfaced in the iOS Files app / iTunes file
+  /// sharing).
+  ///
+  /// Tests override this with a tmp dir.
+  AppSupportDirectoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appSupportDirectoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appSupportDirectoryHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Directory> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Directory> create(Ref ref) {
+    return appSupportDirectory(ref);
+  }
+}
+
+String _$appSupportDirectoryHash() =>
+    r'103efe5195d364ebdd944f0dedbcd370148fc17c';
+
+/// User-visible export drop. The bundle is written here and then handed to
+/// the OS share sheet; the user picks the final destination (Files, iCloud,
+/// AirDrop, etc.). Cleared opportunistically — no retention policy yet.
+
+@ProviderFor(exportDirectory)
+final exportDirectoryProvider = ExportDirectoryProvider._();
+
+/// User-visible export drop. The bundle is written here and then handed to
+/// the OS share sheet; the user picks the final destination (Files, iCloud,
+/// AirDrop, etc.). Cleared opportunistically — no retention policy yet.
+
+final class ExportDirectoryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Directory>,
+          Directory,
+          FutureOr<Directory>
+        >
+    with $FutureModifier<Directory>, $FutureProvider<Directory> {
+  /// User-visible export drop. The bundle is written here and then handed to
+  /// the OS share sheet; the user picks the final destination (Files, iCloud,
+  /// AirDrop, etc.). Cleared opportunistically — no retention policy yet.
+  ExportDirectoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'exportDirectoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$exportDirectoryHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Directory> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Directory> create(Ref ref) {
+    return exportDirectory(ref);
+  }
+}
+
+String _$exportDirectoryHash() => r'aca60d69b64748f2f2168a661bfcbb124150ba0d';

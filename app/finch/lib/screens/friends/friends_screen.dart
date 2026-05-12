@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../providers/follow_provider.dart';
 import '../../providers/follow_requests_provider.dart';
@@ -27,9 +27,18 @@ class FriendsScreen extends ConsumerWidget {
     final inboundAsync = ref.watch(inboundRequestsStreamProvider);
     final outboundAsync = ref.watch(outboundRequestsStreamProvider);
 
-    final follows = followsAsync.valueOrNull ?? const <Follow>[];
-    final inbound = inboundAsync.valueOrNull ?? const <FollowRequest>[];
-    final outbound = outboundAsync.valueOrNull ?? const <FollowRequest>[];
+    final follows = followsAsync.value ?? const <Follow>[];
+    final inbound = inboundAsync.value ?? const <FollowRequest>[];
+    final outbound = outboundAsync.value ?? const <FollowRequest>[];
+    final inboundFollowersAsync = ref.watch(inboundFollowersStreamProvider);
+    final inboundFollowers =
+        inboundFollowersAsync.value ?? const <FollowRequest>[];
+    // A peer who shows up here AND in `follows` is mutual — drop them
+    // from the "Follows you" section to avoid duplication.
+    final mutualPubkeys = follows.map((f) => f.pubkey).toSet();
+    final followersOnly = inboundFollowers
+        .where((r) => !mutualPubkeys.contains(r.pubkey))
+        .toList();
 
     return Scaffold(
       backgroundColor: finch.colors.paper,
@@ -41,7 +50,7 @@ class FriendsScreen extends ConsumerWidget {
               title: 'Friends',
               right: FinchIconButton(
                 onPressed: () => _showInvite(context),
-                child: const Icon(PhosphorIconsRegular.plus, size: 20),
+                child: const Icon(LucideIcons.plus, size: 20),
               ),
             ),
             Expanded(
@@ -59,12 +68,26 @@ class FriendsScreen extends ConsumerWidget {
                       style: finch.typography.micro,
                     ),
                   ),
-                  if (follows.isEmpty && outbound.isEmpty)
+                  if (follows.isEmpty &&
+                      outbound.isEmpty &&
+                      followersOnly.isEmpty)
                     _EmptyHint()
                   else ...[
                     for (final follow in follows) _FriendRow(follow: follow),
                     for (final pending in outbound)
                       _OutboundPendingRow(request: pending),
+                    if (followersOnly.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          'Follows you',
+                          style: finch.typography.micro,
+                        ),
+                      ),
+                      for (final r in followersOnly)
+                        _FollowerOnlyRow(request: r),
+                    ],
                   ],
                 ],
               ),
@@ -202,7 +225,7 @@ class _AddFriendCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Icon(
-                  PhosphorIconsRegular.qrCode,
+                  LucideIcons.qrCode,
                   size: 22,
                   color: finch.colors.sageDeep,
                 ),
@@ -287,11 +310,102 @@ class _FriendRow extends ConsumerWidget {
               context: context,
               builder: (_) => FriendActionsSheet(follow: follow),
             ),
-            child: const Icon(PhosphorIconsRegular.dotsThree, size: 20),
+            child: const Icon(LucideIcons.ellipsis, size: 20),
           ),
         ],
       ),
     );
+  }
+}
+
+/// Row for a peer who follows us but whom we don't follow back. Surfaces
+/// the asymmetric handshake state so users can see who has connected to
+/// them without having to scan the other direction first.
+class _FollowerOnlyRow extends ConsumerStatefulWidget {
+  const _FollowerOnlyRow({required this.request});
+  final FollowRequest request;
+
+  @override
+  ConsumerState<_FollowerOnlyRow> createState() => _FollowerOnlyRowState();
+}
+
+class _FollowerOnlyRowState extends ConsumerState<_FollowerOnlyRow> {
+  bool _sending = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final finch = FinchTheme.of(context);
+    final shortPubkey = widget.request.pubkey.length > 8
+        ? widget.request.pubkey.substring(0, 8)
+        : widget.request.pubkey;
+    final ourOnionReady = ref
+        .watch(ownEndpointsProvider)
+        .any((e) => e.type == 'onion');
+    final statusText = switch (widget.request.status) {
+      'accepted' => ourOnionReady ? 'Follows you' : 'Follows you — Tor starting…',
+      'pending-send' => 'Follows you — accept queued',
+      'send-failed' => 'Follows you — accept undelivered',
+      _ => 'Follows you',
+    };
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: finch.colors.hairline),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Avatar(name: shortPubkey, size: AvatarSize.md),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(shortPubkey, style: finch.typography.body),
+                const SizedBox(height: 2),
+                Text(
+                  statusText,
+                  style: finch.typography.micro
+                      .copyWith(color: finch.colors.stone),
+                ),
+              ],
+            ),
+          ),
+          PrimaryButton(
+            label: _sending ? 'Sending…' : 'Follow back',
+            onPressed:
+                (_sending || !ourOnionReady) ? null : _followBack,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _followBack() async {
+    setState(() => _sending = true);
+    try {
+      // PeerReachabilityMonitor.probeCard handles live mDNS resolution
+      // inside FollowService now — no caller-side endpoint juggling.
+      await ref.read(followServiceProvider).followBack(widget.request.pubkey);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Follow request sent'),
+        duration: Duration(seconds: 2),
+      ));
+    } on FollowFailure catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Follow back failed: ${e.message}'),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Follow back failed: $e'),
+      ));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 }
 
@@ -355,7 +469,7 @@ class _EmptyHint extends StatelessWidget {
       child: Column(
         children: [
           Icon(
-            PhosphorIconsRegular.usersThree,
+            LucideIcons.users,
             size: 32,
             color: finch.colors.stone,
           ),

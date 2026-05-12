@@ -40,4 +40,13 @@ class MockTorService implements TorService {
     _isReady = false;
     _onionAddress = null;
   }
+
+  @override
+  String? get onionAddress => _onionAddress;
+
+  @override
+  int get socksPort => _isReady ? 9999 : 0;
+
+  @override
+  bool get isReady => _isReady;
 }

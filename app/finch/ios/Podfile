@@ -44,5 +44,19 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # share_plus 12.x ships its iOS sources in a Swift Package Manager
+    # layout (`Sources/share_plus/include/...`) that doesn't play nice with
+    # `use_modular_headers!`. The auto-generated umbrella header emits a
+    # quoted `#import "FPPSharePlusPlugin.h"` which Xcode's modular-headers
+    # lint promotes to an error, and the same target fails to find
+    # `Flutter/Flutter.h`. Suppressing the modulemap+lint for this pod
+    # restores the build without affecting the Dart-side API surface.
+    if target.name == 'share_plus'
+      target.build_configurations.each do |config|
+        config.build_settings['DEFINES_MODULE'] = 'NO'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+      end
+    end
   end
 end

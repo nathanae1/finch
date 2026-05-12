@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../providers/search_provider.dart';
 import '../../providers/sync_status_provider.dart';
@@ -86,7 +86,7 @@ class _FeedSyncSearchBarState extends ConsumerState<FeedSyncSearchBar> {
         ),
         FinchIconButton(
           onPressed: _enterSearch,
-          child: const Icon(PhosphorIconsRegular.magnifyingGlass, size: 18),
+          child: const Icon(LucideIcons.search, size: 18),
         ),
       ],
     );
@@ -98,7 +98,7 @@ class _FeedSyncSearchBarState extends ConsumerState<FeedSyncSearchBar> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: FinchIcon(
-            PhosphorIconsRegular.magnifyingGlass,
+            LucideIcons.search,
             size: 18,
             color: finch.colors.graphite,
           ),

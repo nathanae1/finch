@@ -63,7 +63,7 @@ void main() {
       final f = await buildFixture();
       final event = unsignedEvent(pubkey: f.ownPubkey);
 
-      final enc = f.service.encryptForAudience(event, Audience.broadcast);
+      final enc = f.service.encryptForAudience(event, Audience.broadcast, msgSeq: 0);
       expect(enc.pubkey, f.ownPubkey);
       expect(enc.createdAt, event.createdAt);
       expect(enc.epoch, 0);
@@ -82,7 +82,7 @@ void main() {
     test('decrypt with wrong key throws', () async {
       final f = await buildFixture();
       final event = unsignedEvent(pubkey: f.ownPubkey);
-      final enc = f.service.encryptForAudience(event, Audience.broadcast);
+      final enc = f.service.encryptForAudience(event, Audience.broadcast, msgSeq: 0);
       final wrongKey = crypto.randomBytes(32);
       expect(
         () => f.service.decryptEvent(enc, wrongKey),
@@ -96,7 +96,7 @@ void main() {
       f.cache.put(f.ownPubkey, epoch3Key, 3);
 
       final event = unsignedEvent(pubkey: f.ownPubkey);
-      final enc = f.service.encryptForAudience(event, Audience.broadcast);
+      final enc = f.service.encryptForAudience(event, Audience.broadcast, msgSeq: 0);
       expect(enc.epoch, 3);
 
       final decrypted = f.service.decryptEvent(enc, epoch3Key);
@@ -109,7 +109,7 @@ void main() {
       f.cache.remove(f.ownPubkey);
       final event = unsignedEvent(pubkey: f.ownPubkey);
       expect(
-        () => f.service.encryptForAudience(event, Audience.broadcast),
+        () => f.service.encryptForAudience(event, Audience.broadcast, msgSeq: 0),
         throwsStateError,
       );
     });
@@ -205,6 +205,7 @@ void main() {
       final result = f.service.signAndEncryptForAudience(
         unsigned,
         Audience.broadcast,
+        msgSeq: 0,
       );
 
       expect(result.signed.id, isNotEmpty);
@@ -233,9 +234,10 @@ void main() {
       final pair = f.service.signAndEncryptForAudience(
         unsigned,
         Audience.broadcast,
+        msgSeq: 0,
       );
-      final viaEncryptOnly =
-          f.service.encryptForAudience(unsigned, Audience.broadcast);
+      final viaEncryptOnly = f.service
+          .encryptForAudience(unsigned, Audience.broadcast, msgSeq: 0);
       final a = f.service.decryptEvent(pair.encrypted, f.feedKey);
       final b = f.service.decryptEvent(viaEncryptOnly, f.feedKey);
       expect(a.id, equals(b.id));

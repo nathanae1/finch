@@ -10,13 +10,14 @@ import 'mdns_service.dart';
 import 'network_service.dart';
 import 'types.dart';
 
-/// Concrete `NetworkService` for LAN sync (Plan 09). Wraps the bespoke
-/// mDNS plugin for discovery and `package:http` for the manifest / events
-/// / media fetches.
+/// HTTP-based `NetworkService` + `SyncTransport`. Used for LAN sync
+/// (Plan 09) and, with a [TorHttpClient] swapped in for [httpClient],
+/// for Tor sync (Plan 11b). Plan 15 will add a relay tier.
 ///
-/// Tor and relay tiers (Plans 11 and 15) will land alongside this as
-/// additional `PeerTransport` enum branches. The current implementation
-/// rejects non-LAN transports because it has no way to dial them.
+/// The class is transport-agnostic at the wire level: the difference
+/// between LAN and Tor is just which `http.Client` does the dialing.
+/// `TransportRouter` (in `sync/transport_router.dart`) picks the right
+/// instance per [PeerConnection.transport].
 class LanNetworkService implements NetworkService, SyncTransport {
   LanNetworkService({
     required MdnsService mdns,
@@ -63,11 +64,16 @@ class LanNetworkService implements NetworkService, SyncTransport {
     PeerConnection connection, {
     int? since,
     int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
   }) async {
-    _requireLan(connection);
     final query = <String, String>{};
     if (since != null) query['since'] = since.toString();
     if (until != null) query['until'] = until.toString();
+    if (requesterPubkey != null) query['requester_pubkey'] = requesterPubkey;
+    if (ackRotationAt != null && ackRotationAt > 0) {
+      query['ack_rotation_at'] = ackRotationAt.toString();
+    }
     final uri = Uri.parse('${connection.baseUrl}/manifest')
         .replace(queryParameters: query.isEmpty ? null : query);
     final res = await _http.get(uri).timeout(_timeout);
@@ -88,10 +94,29 @@ class LanNetworkService implements NetworkService, SyncTransport {
               createdAt: e['created_at'] as int,
             ))
         .toList();
+    RotatedFeedKeyDelivery? newFeedKey;
+    final rawNewKey = decoded['new_feed_key'];
+    if (rawNewKey is Map) {
+      newFeedKey = RotatedFeedKeyDelivery(
+        encryptedFeedKey: _toBytes(rawNewKey['encrypted_feed_key']),
+        nonce: _toBytes(rawNewKey['nonce']),
+        createdAt: rawNewKey['created_at'] as int,
+      );
+    }
     return Manifest(
       pubkey: decoded['pubkey'] as String,
       events: events,
       hasOlder: (decoded['has_older'] as bool?) ?? false,
+      newFeedKey: newFeedKey,
+    );
+  }
+
+  Uint8List _toBytes(dynamic value) {
+    if (value is Uint8List) return value;
+    if (value is List<int>) return Uint8List.fromList(value);
+    throw NetworkException(
+      'expected bytes in new_feed_key, got ${value.runtimeType}',
+      '',
     );
   }
 
@@ -100,7 +125,6 @@ class LanNetworkService implements NetworkService, SyncTransport {
     PeerConnection connection, {
     int? since,
   }) async {
-    _requireLan(connection);
     final query = <String, String>{};
     if (since != null) query['since'] = since.toString();
     final uri = Uri.parse('${connection.baseUrl}/events')
@@ -132,7 +156,6 @@ class LanNetworkService implements NetworkService, SyncTransport {
     PeerConnection connection, {
     int? since,
   }) async {
-    _requireLan(connection);
     final query = <String, String>{};
     if (since != null) query['since'] = since.toString();
     final uri = Uri.parse('${connection.baseUrl}/events')
@@ -149,7 +172,6 @@ class LanNetworkService implements NetworkService, SyncTransport {
 
   @override
   Future<Uint8List> fetchMedia(PeerConnection connection, String hash) async {
-    _requireLan(connection);
     final uri = Uri.parse('${connection.baseUrl}/media/$hash');
     final res = await _http.get(uri).timeout(_timeout);
     if (res.statusCode != 200) {
@@ -207,7 +229,6 @@ class LanNetworkService implements NetworkService, SyncTransport {
     PeerConnection connection,
     Envelope envelope,
   ) async {
-    _requireLan(connection);
     final uri = Uri.parse('${connection.baseUrl}/events');
     final res = await _http
         .post(
@@ -239,16 +260,6 @@ class LanNetworkService implements NetworkService, SyncTransport {
     Uint8List blob,
   ) async {
     throw UnimplementedError('pushMedia arrives in Plan 15 (relay).');
-  }
-
-  void _requireLan(PeerConnection connection) {
-    if (connection.transport != PeerTransport.lan) {
-      throw NetworkException(
-        'LanNetworkService only handles PeerTransport.lan, got '
-        '${connection.transport}',
-        connection.pubkey,
-      );
-    }
   }
 
   /// Closes the underlying HTTP client. Tests should call this in tearDown

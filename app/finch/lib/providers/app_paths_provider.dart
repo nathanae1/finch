@@ -12,5 +12,18 @@ part 'app_paths_provider.g.dart';
 ///
 /// Tests override this with a tmp dir.
 @riverpod
-Future<Directory> appSupportDirectory(AppSupportDirectoryRef ref) =>
+Future<Directory> appSupportDirectory(Ref ref) =>
     getApplicationSupportDirectory();
+
+/// User-visible export drop. The bundle is written here and then handed to
+/// the OS share sheet; the user picks the final destination (Files, iCloud,
+/// AirDrop, etc.). Cleared opportunistically — no retention policy yet.
+@riverpod
+Future<Directory> exportDirectory(Ref ref) async {
+  final support = await ref.watch(appSupportDirectoryProvider.future);
+  final dir = Directory('${support.path}/exports');
+  if (!dir.existsSync()) {
+    await dir.create(recursive: true);
+  }
+  return dir;
+}

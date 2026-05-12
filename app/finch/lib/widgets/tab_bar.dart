@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/finch_theme.dart';
 
@@ -22,20 +22,20 @@ class FinchBottomTabBar extends StatelessWidget {
     _TabDef(FinchTab.you, 'You'),
   ];
 
-  PhosphorIconData _iconFor(FinchTab tab, bool active) {
+  IconData _iconFor(FinchTab tab, bool active) {
     switch (tab) {
       case FinchTab.feed:
-        return active ? PhosphorIconsFill.house : PhosphorIconsRegular.house;
+        return active ? LucideIcons.house : LucideIcons.house;
       case FinchTab.friends:
         return active
-            ? PhosphorIconsFill.usersThree
-            : PhosphorIconsRegular.usersThree;
+            ? LucideIcons.users
+            : LucideIcons.users;
       case FinchTab.post:
         return active
-            ? PhosphorIconsFill.plusCircle
-            : PhosphorIconsRegular.plusCircle;
+            ? LucideIcons.circlePlus
+            : LucideIcons.circlePlus;
       case FinchTab.you:
-        return active ? PhosphorIconsFill.user : PhosphorIconsRegular.user;
+        return active ? LucideIcons.user : LucideIcons.user;
     }
   }
 
@@ -85,7 +85,7 @@ class _TabButton extends StatelessWidget {
   });
 
   final String label;
-  final PhosphorIconData icon;
+  final IconData icon;
   final bool active;
   final VoidCallback onTap;
 

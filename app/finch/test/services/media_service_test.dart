@@ -72,7 +72,7 @@ void main() {
     final src = _makePng(3000, 2000);
     final result = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     expect(result.compressedMime, 'image/jpeg');
     // Decrypt the compressed blob, decode, verify dimensions.
@@ -88,7 +88,7 @@ void main() {
     final src = _makePng(400, 300);
     final result = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     final plaintext = await media.readPlaintext(result.compressedHash, feedKey);
     final decoded = img.decodeImage(plaintext!)!;
@@ -101,7 +101,7 @@ void main() {
     final src = _makePng(600, 400);
     final result = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     final plaintext = await media.readPlaintext(result.compressedHash, feedKey);
     final rehash = _hex(crypto.blake2b256(plaintext!));
@@ -113,7 +113,7 @@ void main() {
     final src = _makePng(500, 500);
     final result = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     final compressedFile =
         File('${tmp.path}/${mediaRelativePath(result.compressedHash)}');
@@ -129,7 +129,7 @@ void main() {
     final src = _makePng(500, 500);
     final result = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     final compressedRow = await storage.getMedia(result.compressedHash);
     final originalRow = await storage.getMedia(result.originalHash);
@@ -147,7 +147,7 @@ void main() {
     final src = _makePng(800, 600);
     final result = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     expect(result.originalHash, isNot(equals(result.compressedHash)));
   });
@@ -157,12 +157,12 @@ void main() {
     final src = _makePng(300, 300);
     final r1 = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     // Rewrite the file (path is identical — that's fine, upsert replaces).
     final r2 = await media.processAndStoreOwnPhoto(
       photoBytes: src,
-      feedKey: feedKey,
+      msgKey: feedKey,
     );
     expect(r2.compressedHash, equals(r1.compressedHash));
     expect(r2.originalHash, equals(r1.originalHash));

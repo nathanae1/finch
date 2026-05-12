@@ -6,45 +6,115 @@ part of 'search_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$searchResultsHash() => r'71a115c44c7fc53a7dce9a3fa56280110d099d93';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Local-only search query. Debounced so each keystroke doesn't fan out to
+/// a fresh storage scan + UI rebuild.
 
-/// Filters the feed events (caption substring) and follows (display-name
-/// substring) by the current [searchQueryProvider]. Empty query returns
-/// empty results so the feed list-view falls back to its normal source.
-///
-/// Copied from [searchResults].
-@ProviderFor(searchResults)
-final searchResultsProvider = AutoDisposeFutureProvider<SearchResults>.internal(
-  searchResults,
-  name: r'searchResultsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$searchResultsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(SearchQuery)
+final searchQueryProvider = SearchQueryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SearchResultsRef = AutoDisposeFutureProviderRef<SearchResults>;
+/// Local-only search query. Debounced so each keystroke doesn't fan out to
+/// a fresh storage scan + UI rebuild.
+final class SearchQueryProvider extends $NotifierProvider<SearchQuery, String> {
+  /// Local-only search query. Debounced so each keystroke doesn't fan out to
+  /// a fresh storage scan + UI rebuild.
+  SearchQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'searchQueryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$searchQueryHash();
+
+  @$internal
+  @override
+  SearchQuery create() => SearchQuery();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
+  }
+}
+
 String _$searchQueryHash() => r'e1c5350a9cd6d99e2467260cca2c613f11c88299';
 
 /// Local-only search query. Debounced so each keystroke doesn't fan out to
 /// a fresh storage scan + UI rebuild.
-///
-/// Copied from [SearchQuery].
-@ProviderFor(SearchQuery)
-final searchQueryProvider =
-    AutoDisposeNotifierProvider<SearchQuery, String>.internal(
-      SearchQuery.new,
-      name: r'searchQueryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$searchQueryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-typedef _$SearchQuery = AutoDisposeNotifier<String>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$SearchQuery extends $Notifier<String> {
+  String build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<String, String>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<String, String>,
+              String,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+/// Filters the feed events (caption substring) and follows (display-name
+/// substring) by the current [searchQueryProvider]. Empty query returns
+/// empty results so the feed list-view falls back to its normal source.
+
+@ProviderFor(searchResults)
+final searchResultsProvider = SearchResultsProvider._();
+
+/// Filters the feed events (caption substring) and follows (display-name
+/// substring) by the current [searchQueryProvider]. Empty query returns
+/// empty results so the feed list-view falls back to its normal source.
+
+final class SearchResultsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<SearchResults>,
+          SearchResults,
+          FutureOr<SearchResults>
+        >
+    with $FutureModifier<SearchResults>, $FutureProvider<SearchResults> {
+  /// Filters the feed events (caption substring) and follows (display-name
+  /// substring) by the current [searchQueryProvider]. Empty query returns
+  /// empty results so the feed list-view falls back to its normal source.
+  SearchResultsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'searchResultsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$searchResultsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<SearchResults> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<SearchResults> create(Ref ref) {
+    return searchResults(ref);
+  }
+}
+
+String _$searchResultsHash() => r'eee763d553bff9008e4fef947d3c6eee4ae83021';

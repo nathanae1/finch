@@ -25,7 +25,6 @@ class HttpServerController extends _$HttpServerController {
     final contentKey = ref.watch(contentKeyServiceProvider);
     final clock = ref.watch(clockProvider);
     final appSupportDir = await ref.watch(appSupportDirectoryProvider.future);
-    final followService = ref.watch(followServiceProvider);
 
     final server = FinchHttpServer(
       storage: storage,
@@ -33,7 +32,10 @@ class HttpServerController extends _$HttpServerController {
       identityLookup: storage.getIdentity,
       appSupportDir: appSupportDir,
       clock: clock,
-      followService: followService,
+      // Lazy lookup avoids a build-time cycle:
+      //   ownEndpoints → httpServerController → followService → ownEndpoints.
+      // followService is only needed at /follow-accept request time.
+      followServiceLookup: () => ref.read(followServiceProvider),
     );
     await server.start();
     _server = server;

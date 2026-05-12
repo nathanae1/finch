@@ -8,4 +8,22 @@ mixin _$FollowRequestsDaoMixin on DatabaseAccessor<AppDatabase> {
       attachedDatabase.inboundFollowRequestEntries;
   $OutboundFollowRequestEntriesTable get outboundFollowRequestEntries =>
       attachedDatabase.outboundFollowRequestEntries;
+  FollowRequestsDaoManager get managers => FollowRequestsDaoManager(this);
+}
+
+class FollowRequestsDaoManager {
+  final _$FollowRequestsDaoMixin _db;
+  FollowRequestsDaoManager(this._db);
+  $$InboundFollowRequestEntriesTableTableManager
+  get inboundFollowRequestEntries =>
+      $$InboundFollowRequestEntriesTableTableManager(
+        _db.attachedDatabase,
+        _db.inboundFollowRequestEntries,
+      );
+  $$OutboundFollowRequestEntriesTableTableManager
+  get outboundFollowRequestEntries =>
+      $$OutboundFollowRequestEntriesTableTableManager(
+        _db.attachedDatabase,
+        _db.outboundFollowRequestEntries,
+      );
 }

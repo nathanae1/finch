@@ -47,13 +47,16 @@ class SearchResults {
 /// substring) by the current [searchQueryProvider]. Empty query returns
 /// empty results so the feed list-view falls back to its normal source.
 @riverpod
-Future<SearchResults> searchResults(SearchResultsRef ref) async {
+Future<SearchResults> searchResults(Ref ref) async {
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
   if (query.isEmpty) {
     return const SearchResults(events: [], follows: []);
   }
-  final feed = await ref.watch(feedProvider.future);
+  // Subscribe synchronously before any await — using `ref` after an await
+  // is illegal if the provider was invalidated during the await.
+  final feedFuture = ref.watch(feedProvider.future);
   final storage = ref.watch(storageServiceProvider);
+  final feed = await feedFuture;
   final allFollows = await storage.getFollows();
 
   final matchedEvents = feed.where((e) {

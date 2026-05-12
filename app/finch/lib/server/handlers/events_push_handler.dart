@@ -66,7 +66,12 @@ Handler eventsPushHandler({
           rejected++;
           continue;
         }
-        final plain = contentKey.decryptEvent(encrypted, follow.feedKey);
+        // Mirror sync_engine: msgSeq is local-only metadata excluded from
+        // wire serialization, so the decrypted Event has it null. Carry
+        // the wire-format msgSeq through so media decryption can later
+        // re-derive the per-message AEAD key without re-fetching.
+        final decrypted = contentKey.decryptEvent(encrypted, follow.feedKey);
+        final plain = decrypted.copyWith(msgSeq: encrypted.msgSeq);
         await storage.saveEvent(plain);
         accepted++;
       } catch (e) {

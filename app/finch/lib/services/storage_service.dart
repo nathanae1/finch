@@ -29,6 +29,10 @@ abstract class StorageService {
 
   Future<void> updateLastSynced(String pubkey, int timestamp);
 
+  /// Stamps the most recent decrypt-failure time on the follow row.
+  /// Pass `null` to clear. Drives the "Key fresh / stale" status tile.
+  Future<void> setLastDecryptFailureAt(String pubkey, int? timestamp);
+
   // --- Events ---
 
   Future<List<Event>> getEvents({
@@ -41,6 +45,20 @@ abstract class StorageService {
   Future<Event?> getEvent(String id);
 
   Future<void> saveEvent(Event event);
+
+  /// Persist [event] AND its wire-format `EncryptedEvent` bytes captured at
+  /// author time. Used by the publish path so `GET /events` can later serve
+  /// the original encryption verbatim — preserving the author-time
+  /// `msgSeq` that media blobs on disk are encrypted under. Caller is
+  /// responsible for ensuring [event.pubkey] is the local identity.
+  Future<void> saveOwnEventWithEncrypted(
+    Event event,
+    Uint8List encryptedPayload,
+  );
+
+  /// Returns the persisted wire-EncryptedEvent bytes for [id], if any.
+  /// Null for received events and for own events from before schema v2.
+  Future<Uint8List?> getEncryptedPayload(String id);
 
   Future<void> deleteEvent(String id);
 
@@ -90,11 +108,79 @@ abstract class StorageService {
 
   Future<void> evictMedia(int targetSize);
 
+  // --- Followers (people whose accepted follow request lets them read my feed) ---
+
+  /// Pubkeys of inbound followers we've accepted. These are the targets for
+  /// feed-key distribution on rotation.
+  Future<List<String>> getAcceptedFollowerPubkeys();
+
+  Future<bool> isAcceptedFollower(String pubkey);
+
+  /// Removes the accepted inbound row for [pubkey]. Used by Plan 13's
+  /// removeFollower path before triggering rotation.
+  Future<void> removeAcceptedFollower(String pubkey);
+
+  // --- Feed key history (Plan 13) ---
+
+  Future<void> appendFeedKeyHistory({
+    required Uint8List feedKey,
+    required int feedKeyEpoch,
+    required int validFrom,
+    required int validUntil,
+  });
+
+  /// Returns the retired feed key whose `[validFrom, validUntil)` window
+  /// contains [timestamp], or null if none. The current (in-use) key lives
+  /// on `Identity.feedKey`; this only consults retired keys.
+  Future<RetiredFeedKey?> retiredFeedKeyAt(int timestamp);
+
+  Future<List<RetiredFeedKey>> getFeedKeyHistory();
+
+  // --- Per-follow feed-key history (MegOLM archive) ---
+
+  /// Append a retired chain root for [followPubkey] when their rotation
+  /// arrives. Caller supplies the `[validFrom, validUntil)` window the
+  /// key was active. Lets cached content from before the rotation stay
+  /// decryptable.
+  Future<void> appendFollowFeedKeyHistory({
+    required String followPubkey,
+    required Uint8List feedKey,
+    required int feedKeyEpoch,
+    required int validFrom,
+    required int validUntil,
+  });
+
+  /// All archived chain roots for [followPubkey], oldest first. Used as
+  /// fallback candidates when decrypting events/media authored before the
+  /// peer's most recent rotation.
+  Future<List<RetiredFeedKey>> getFollowFeedKeyHistory(String followPubkey);
+
+  // --- Pending key distributions (Plan 13) ---
+
+  Future<void> addPendingKeyDistribution({
+    required String targetPubkey,
+    required Uint8List encryptedFeedKey,
+    required Uint8List nonce,
+    required int createdAt,
+  });
+
+  Future<PendingKeyDistribution?> latestPendingDistributionFor(
+    String targetPubkey,
+  );
+
+  Future<void> markDistributionsDelivered(String targetPubkey, int upTo);
+
+  Future<void> clearPendingDistributionsFor(String targetPubkey);
+
   // --- Follow requests ---
 
   Future<List<FollowRequest>> getInboundRequests();
 
   Stream<List<FollowRequest>> watchInboundRequests();
+
+  /// Inbound rows we've already actioned (accepted / pending-send /
+  /// send-failed). Powers the "Follows you" rows in the friends list.
+  Stream<List<FollowRequest>> watchInboundFollowers();
 
   Future<List<FollowRequest>> getInboundRequestsByStatus(String status);
 
@@ -146,4 +232,26 @@ abstract class StorageService {
 
   /// Returns number of media entries evicted.
   Future<int> evictMediaOverLimit(int maxBytes);
+
+  /// Hashes referenced by `is_saved=1` and `is_own=1` events. Used by
+  /// retention and the cache-clear path to skip pinned media.
+  Future<Set<String>> getPinnedMediaHashes();
+
+  /// Hashes the caller currently has on disk.
+  Future<List<String>> getAllCachedMediaHashes();
+
+  /// Plain-text size in bytes of the on-disk DB (excluding WAL/SHM).
+  /// Returns 0 if the file doesn't exist (e.g. tests using in-memory DB).
+  Future<int> getDatabaseFileSize();
+
+  /// Evict media over [maxBytes], skipping [pinned]. Returns the entries
+  /// removed from the index so the caller can delete the underlying files.
+  Future<List<CachedMedia>> evictMediaExcluding(
+    int maxBytes,
+    Set<String> pinned,
+  );
+
+  /// Delete every cached media row whose hash isn't in [pinned]. Returns
+  /// the removed entries so the caller can also delete on-disk files.
+  Future<List<CachedMedia>> clearCachedMediaExcluding(Set<String> pinned);
 }

@@ -47,25 +47,34 @@ class PairwiseContentKeyService implements ContentKeyService {
   // --- Event encryption (sign-then-encrypt / decrypt-then-verify) ---
 
   @override
-  EncryptedEvent encryptEvent(Event event, Uint8List epochKey, int epoch) {
+  EncryptedEvent encryptEvent(
+    Event event,
+    Uint8List chainRoot,
+    int epoch,
+    int msgSeq,
+  ) {
+    final msgKey = deriveMsgKey(chainRoot, msgSeq, _crypto);
     final serialized = event.toBytes();
     final nonce = _crypto.randomBytes(24);
-    final payload = _crypto.encrypt(serialized, nonce, epochKey);
+    final payload = _crypto.encrypt(serialized, nonce, msgKey);
     return EncryptedEvent(
       pubkey: event.pubkey,
       createdAt: event.createdAt,
       epoch: epoch,
+      msgSeq: msgSeq,
       nonce: nonce,
       payload: payload,
     );
   }
 
   @override
-  Event decryptEvent(EncryptedEvent encryptedEvent, Uint8List epochKey) {
+  Event decryptEvent(EncryptedEvent encryptedEvent, Uint8List chainRoot) {
+    final msgKey =
+        deriveMsgKey(chainRoot, encryptedEvent.msgSeq, _crypto);
     final serialized = _crypto.decrypt(
       encryptedEvent.payload,
       encryptedEvent.nonce,
-      epochKey,
+      msgKey,
     );
     final event = Event.fromBytes(serialized);
 
@@ -121,14 +130,19 @@ class PairwiseContentKeyService implements ContentKeyService {
   // --- Publish pipeline ---
 
   @override
-  EncryptedEvent encryptForAudience(Event event, Audience audience) =>
-      signAndEncryptForAudience(event, audience).encrypted;
+  EncryptedEvent encryptForAudience(
+    Event event,
+    Audience audience, {
+    required int msgSeq,
+  }) =>
+      signAndEncryptForAudience(event, audience, msgSeq: msgSeq).encrypted;
 
   @override
   ({Event signed, EncryptedEvent encrypted}) signAndEncryptForAudience(
     Event event,
-    Audience audience,
-  ) {
+    Audience audience, {
+    required int msgSeq,
+  }) {
     // v1 supports only broadcast audience; future audiences will branch here.
     switch (audience) {
       case Audience.broadcast:
@@ -151,11 +165,14 @@ class PairwiseContentKeyService implements ContentKeyService {
     final idBytes = crockfordBase32Decode(id);
     final sig = _crypto.sign(_ownSecretKey, idBytes);
 
-    // Step 3: attach id + sig.
-    final signed = event.copyWith(id: id, sig: sig);
+    // Step 3: attach id + sig + msgSeq (msgSeq is local-only metadata,
+    // excluded from `toMap`/`toIdFields`/wire serialization — but kept on
+    // the in-memory model so the caller persists it to event_entries).
+    final signed = event.copyWith(id: id, sig: sig, msgSeq: msgSeq);
 
-    // Step 4: encrypt with the current epoch key.
-    final encrypted = encryptEvent(signed, entry.key, entry.epoch);
+    // Step 4: encrypt with a per-message key derived from the chain root
+    // for this epoch + msgSeq.
+    final encrypted = encryptEvent(signed, entry.key, entry.epoch, msgSeq);
 
     return (signed: signed, encrypted: encrypted);
   }

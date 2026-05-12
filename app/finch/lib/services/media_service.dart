@@ -48,14 +48,20 @@ typedef CompressFn = Future<CompressResult> Function(CompressRequest);
 abstract class MediaService {
   /// Compress + hash + encrypt + persist an own photo. Returns hashes and
   /// sizes the caller needs to build a `MediaRef` and a signed `Event`.
+  ///
+  /// [msgKey] is the per-message AEAD key derived by the caller via
+  /// `deriveMsgKey(chainRoot, msgSeq)`. The same key encrypts both the
+  /// post body and every media blob attached to that post — letting the
+  /// receiver re-derive once from the post's `msgSeq`.
   Future<MediaProcessingResult> processAndStoreOwnPhoto({
     required Uint8List photoBytes,
-    required Uint8List feedKey,
+    required Uint8List msgKey,
   });
 
   /// Decrypt and return the plaintext bytes for a known media hash. Returns
-  /// null if the blob is not on disk.
-  Future<Uint8List?> readPlaintext(String hexHash, Uint8List feedKey);
+  /// null if the blob is not on disk. [msgKey] is the per-message AEAD
+  /// key the caller derived from the owning post's chain root + msgSeq.
+  Future<Uint8List?> readPlaintext(String hexHash, Uint8List msgKey);
 
   /// Persist an already-encrypted blob received from a peer. Atomic write
   /// + media_cache row insert, mirroring the own-photo path. Caller is
@@ -63,6 +69,11 @@ abstract class MediaService {
   /// decryption (the wire `MediaRef.hash` is the plaintext hash, so the
   /// encrypted bytes themselves can't be hash-verified before decrypt).
   Future<void> storeReceivedBlob(String hexHash, Uint8List encryptedBytes);
+
+  /// True if the encrypted blob for [hexHash] is present on disk. Lets the
+  /// fetcher self-heal when a `CachedMedia` row outlives its file (OS-side
+  /// app-cache eviction, partial retention, fresh install over old DB).
+  Future<bool> hasBlobOnDisk(String hexHash);
 }
 
 class DefaultMediaService implements MediaService {
@@ -90,7 +101,7 @@ class DefaultMediaService implements MediaService {
   @override
   Future<MediaProcessingResult> processAndStoreOwnPhoto({
     required Uint8List photoBytes,
-    required Uint8List feedKey,
+    required Uint8List msgKey,
   }) async {
     // 1. Compress in an isolate (JPEG decode + resize + re-encode is the
     //    expensive step; everything else stays on main so libsodium's
@@ -103,10 +114,25 @@ class DefaultMediaService implements MediaService {
     final compressedHash = _hex(_crypto.blake2b256(compressed.compressedBytes));
     final originalHash = _hex(_crypto.blake2b256(photoBytes));
 
-    // 3. Encrypt both with the current feed key (nonce || ct framing).
+    // 3. Encrypt both with the per-message key (nonce || ct framing).
+    _logMedia(
+      'enc compressed hash=${_shortHex(compressedHash)} '
+      'plainLen=${compressed.compressedBytes.length} '
+      'msgKeyFp=${_shortBytesFp(msgKey)}',
+    );
     final compressedEncrypted =
-        _crypto.encryptMedia(compressed.compressedBytes, feedKey);
-    final originalEncrypted = _crypto.encryptMedia(photoBytes, feedKey);
+        _crypto.encryptMedia(compressed.compressedBytes, msgKey);
+    _logMedia(
+      'enc original hash=${_shortHex(originalHash)} '
+      'plainLen=${photoBytes.length} '
+      'msgKeyFp=${_shortBytesFp(msgKey)}',
+    );
+    final originalEncrypted = _crypto.encryptMedia(photoBytes, msgKey);
+    _logMedia(
+      'enc result compressedLen=${compressedEncrypted.length} '
+      'originalLen=${originalEncrypted.length} '
+      '(includes 24-byte nonce prefix)',
+    );
 
     // 4. Write both blobs atomically into the sharded media dir.
     //    File writes come before the DB upserts so we never end up with a
@@ -142,12 +168,35 @@ class DefaultMediaService implements MediaService {
   }
 
   @override
-  Future<Uint8List?> readPlaintext(String hexHash, Uint8List feedKey) async {
+  Future<Uint8List?> readPlaintext(String hexHash, Uint8List msgKey) async {
     final root = await _appSupportDir;
     final file = File('${root.path}/${mediaRelativePath(hexHash)}');
-    if (!file.existsSync()) return null;
+    if (!file.existsSync()) {
+      _logMedia('dec MISS hash=${_shortHex(hexHash)} (no file on disk)');
+      return null;
+    }
     final bytes = await file.readAsBytes();
-    return _crypto.decryptMedia(bytes, feedKey);
+    final noncePreview = bytes.length >= 24
+        ? _shortBytesFp(bytes.sublist(0, 24))
+        : 'short(${bytes.length})';
+    _logMedia(
+      'dec attempt hash=${_shortHex(hexHash)} '
+      'blobLen=${bytes.length} noncePrefix=$noncePreview '
+      'msgKeyFp=${_shortBytesFp(msgKey)}',
+    );
+    try {
+      final pt = _crypto.decryptMedia(bytes, msgKey);
+      _logMedia(
+        'dec OK hash=${_shortHex(hexHash)} ptLen=${pt.length}',
+      );
+      return pt;
+    } catch (e) {
+      _logMedia(
+        'dec FAIL hash=${_shortHex(hexHash)} '
+        'msgKeyFp=${_shortBytesFp(msgKey)} err=$e',
+      );
+      rethrow;
+    }
   }
 
   @override
@@ -155,6 +204,13 @@ class DefaultMediaService implements MediaService {
     String hexHash,
     Uint8List encryptedBytes,
   ) async {
+    final noncePreview = encryptedBytes.length >= 24
+        ? _shortBytesFp(encryptedBytes.sublist(0, 24))
+        : 'short(${encryptedBytes.length})';
+    _logMedia(
+      'rcv hash=${_shortHex(hexHash)} blobLen=${encryptedBytes.length} '
+      'noncePrefix=$noncePreview',
+    );
     final root = await _appSupportDir;
     await _atomicWrite(root, hexHash, encryptedBytes);
     await _storage.saveMedia(CachedMedia(
@@ -163,6 +219,13 @@ class DefaultMediaService implements MediaService {
       size: encryptedBytes.length,
       lastAccessed: _clock.nowUnixSeconds(),
     ));
+  }
+
+  @override
+  Future<bool> hasBlobOnDisk(String hexHash) async {
+    final root = await _appSupportDir;
+    final file = File('${root.path}/${mediaRelativePath(hexHash)}');
+    return file.existsSync();
   }
 
   Future<void> _atomicWrite(
@@ -183,4 +246,22 @@ String _hex(Uint8List bytes) {
     sb.write(b.toRadixString(16).padLeft(2, '0'));
   }
   return sb.toString();
+}
+
+String _shortHex(String hex) {
+  if (hex.length <= 8) return hex;
+  return '${hex.substring(0, 8)}…';
+}
+
+String _shortBytesFp(Uint8List bytes) {
+  final hex = bytes
+      .take(4)
+      .map((b) => b.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '$hex…';
+}
+
+void _logMedia(String msg) {
+  // ignore: avoid_print
+  print('[finch.media] $msg');
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/finch_theme.dart';
 import 'buttons.dart';
@@ -69,8 +69,8 @@ class _ReactionButtonState extends State<ReactionButton>
     final finch = FinchTheme.of(context);
     final color = widget.liked ? finch.colors.clay : finch.colors.graphite;
     final iconData = widget.liked
-        ? PhosphorIconsFill.heart
-        : PhosphorIconsRegular.heart;
+        ? LucideIcons.heart
+        : LucideIcons.heart;
 
     final scaled = ScaleTransition(
       scale: Tween<double>(begin: 1, end: 1.25).animate(

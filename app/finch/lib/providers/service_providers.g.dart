@@ -6,197 +6,658 @@ part of 'service_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$cryptoServiceHash() => r'b3971ba489b0bd2e8236919e113833fe41e64eee';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [cryptoService].
 @ProviderFor(cryptoService)
-final cryptoServiceProvider = AutoDisposeProvider<CryptoService>.internal(
-  cryptoService,
-  name: r'cryptoServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$cryptoServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final cryptoServiceProvider = CryptoServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CryptoServiceRef = AutoDisposeProviderRef<CryptoService>;
-String _$contentKeyServiceHash() => r'a78a53238dac79c497d480c88673c44293bacb5e';
+final class CryptoServiceProvider
+    extends $FunctionalProvider<CryptoService, CryptoService, CryptoService>
+    with $Provider<CryptoService> {
+  CryptoServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cryptoServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [contentKeyService].
-@ProviderFor(contentKeyService)
-final contentKeyServiceProvider =
-    AutoDisposeProvider<ContentKeyService>.internal(
-      contentKeyService,
-      name: r'contentKeyServiceProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$contentKeyServiceHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
+  @override
+  String debugGetCreateSourceHash() => _$cryptoServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CryptoService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CryptoService create(Ref ref) {
+    return cryptoService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CryptoService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CryptoService>(value),
     );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ContentKeyServiceRef = AutoDisposeProviderRef<ContentKeyService>;
-String _$storageServiceHash() => r'65689112479ea1a2c03829881e8ce7d280c0376f';
+String _$cryptoServiceHash() => r'0d58462786084107e55cab9a337007c6d99a3d48';
 
-/// See also [storageService].
+@ProviderFor(contentKeyService)
+final contentKeyServiceProvider = ContentKeyServiceProvider._();
+
+final class ContentKeyServiceProvider
+    extends
+        $FunctionalProvider<
+          ContentKeyService,
+          ContentKeyService,
+          ContentKeyService
+        >
+    with $Provider<ContentKeyService> {
+  ContentKeyServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'contentKeyServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$contentKeyServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ContentKeyService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ContentKeyService create(Ref ref) {
+    return contentKeyService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ContentKeyService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ContentKeyService>(value),
+    );
+  }
+}
+
+String _$contentKeyServiceHash() => r'e5a059e84dbf336859ec1cc80a195848b61f9cd3';
+
 @ProviderFor(storageService)
-final storageServiceProvider = AutoDisposeProvider<StorageService>.internal(
-  storageService,
-  name: r'storageServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$storageServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final storageServiceProvider = StorageServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef StorageServiceRef = AutoDisposeProviderRef<StorageService>;
-String _$torServiceHash() => r'96c95b690ac893bbb4ef7828d06332afc5be0b2e';
+final class StorageServiceProvider
+    extends $FunctionalProvider<StorageService, StorageService, StorageService>
+    with $Provider<StorageService> {
+  StorageServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'storageServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [torService].
+  @override
+  String debugGetCreateSourceHash() => _$storageServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<StorageService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  StorageService create(Ref ref) {
+    return storageService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(StorageService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<StorageService>(value),
+    );
+  }
+}
+
+String _$storageServiceHash() => r'4180349da34ceeca8d362aecfdd8707bbb91d0a9';
+
 @ProviderFor(torService)
-final torServiceProvider = AutoDisposeProvider<TorService>.internal(
-  torService,
-  name: r'torServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$torServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final torServiceProvider = TorServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TorServiceRef = AutoDisposeProviderRef<TorService>;
-String _$networkServiceHash() => r'a5cf09c5974bfb3ac732cbbc8da881d3828f63c8';
+final class TorServiceProvider
+    extends $FunctionalProvider<TorService, TorService, TorService>
+    with $Provider<TorService> {
+  TorServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'torServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [networkService].
+  @override
+  String debugGetCreateSourceHash() => _$torServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<TorService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TorService create(Ref ref) {
+    return torService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TorService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TorService>(value),
+    );
+  }
+}
+
+String _$torServiceHash() => r'6a60f20b0aef7d7e85eb959e970dc1e9f7eb6435';
+
+/// Reactive holder for the local `.onion` address. Updated by `main.dart`
+/// after `TorService.createOnionService` returns; watched by
+/// `ownEndpoints` so the published connection card picks up the onion
+/// endpoint as soon as it's available.
+
+@ProviderFor(OnionAddress)
+final onionAddressProvider = OnionAddressProvider._();
+
+/// Reactive holder for the local `.onion` address. Updated by `main.dart`
+/// after `TorService.createOnionService` returns; watched by
+/// `ownEndpoints` so the published connection card picks up the onion
+/// endpoint as soon as it's available.
+final class OnionAddressProvider
+    extends $NotifierProvider<OnionAddress, String?> {
+  /// Reactive holder for the local `.onion` address. Updated by `main.dart`
+  /// after `TorService.createOnionService` returns; watched by
+  /// `ownEndpoints` so the published connection card picks up the onion
+  /// endpoint as soon as it's available.
+  OnionAddressProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'onionAddressProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$onionAddressHash();
+
+  @$internal
+  @override
+  OnionAddress create() => OnionAddress();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$onionAddressHash() => r'f1d213aee3b6e1dcde4a6b9f7b5b805d9ab4a40a';
+
+/// Reactive holder for the local `.onion` address. Updated by `main.dart`
+/// after `TorService.createOnionService` returns; watched by
+/// `ownEndpoints` so the published connection card picks up the onion
+/// endpoint as soon as it's available.
+
+abstract class _$OnionAddress extends $Notifier<String?> {
+  String? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<String?, String?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<String?, String?>,
+              String?,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(networkService)
-final networkServiceProvider = AutoDisposeProvider<NetworkService>.internal(
-  networkService,
-  name: r'networkServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$networkServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final networkServiceProvider = NetworkServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef NetworkServiceRef = AutoDisposeProviderRef<NetworkService>;
-String _$mdnsServiceHash() => r'051622a3658f2a1dd5614400fc63fd4c6973cf20';
+final class NetworkServiceProvider
+    extends $FunctionalProvider<NetworkService, NetworkService, NetworkService>
+    with $Provider<NetworkService> {
+  NetworkServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'networkServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$networkServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<NetworkService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  NetworkService create(Ref ref) {
+    return networkService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(NetworkService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<NetworkService>(value),
+    );
+  }
+}
+
+String _$networkServiceHash() => r'f6bf0f4d4e0db8fda9cf980e02b35c63da50c02b';
 
 /// Default binding is the in-memory mock so tests don't trigger native
 /// channel activity. Production code overrides this in `main.dart` with
 /// the real `MethodChannelMdnsService`.
-///
-/// Copied from [mdnsService].
+
 @ProviderFor(mdnsService)
-final mdnsServiceProvider = AutoDisposeProvider<MdnsService>.internal(
-  mdnsService,
-  name: r'mdnsServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$mdnsServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final mdnsServiceProvider = MdnsServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef MdnsServiceRef = AutoDisposeProviderRef<MdnsService>;
-String _$signalingServiceHash() => r'be3614e3457f3ea6318245b432c89f36af2bb5e9';
+/// Default binding is the in-memory mock so tests don't trigger native
+/// channel activity. Production code overrides this in `main.dart` with
+/// the real `MethodChannelMdnsService`.
 
-/// See also [signalingService].
+final class MdnsServiceProvider
+    extends $FunctionalProvider<MdnsService, MdnsService, MdnsService>
+    with $Provider<MdnsService> {
+  /// Default binding is the in-memory mock so tests don't trigger native
+  /// channel activity. Production code overrides this in `main.dart` with
+  /// the real `MethodChannelMdnsService`.
+  MdnsServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'mdnsServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$mdnsServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<MdnsService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  MdnsService create(Ref ref) {
+    return mdnsService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(MdnsService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<MdnsService>(value),
+    );
+  }
+}
+
+String _$mdnsServiceHash() => r'4c871553ae885ba8c6083dd18390f67ff1075fe2';
+
 @ProviderFor(signalingService)
-final signalingServiceProvider = AutoDisposeProvider<SignalingService>.internal(
-  signalingService,
-  name: r'signalingServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$signalingServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final signalingServiceProvider = SignalingServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SignalingServiceRef = AutoDisposeProviderRef<SignalingService>;
-String _$clockHash() => r'326d25ac11404b1e97639d8209a9a8f2e2b68163';
+final class SignalingServiceProvider
+    extends
+        $FunctionalProvider<
+          SignalingService,
+          SignalingService,
+          SignalingService
+        >
+    with $Provider<SignalingService> {
+  SignalingServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'signalingServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [clock].
+  @override
+  String debugGetCreateSourceHash() => _$signalingServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<SignalingService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SignalingService create(Ref ref) {
+    return signalingService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SignalingService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SignalingService>(value),
+    );
+  }
+}
+
+String _$signalingServiceHash() => r'a078f428cc39d2f9f30be0f3ace88968744e83ce';
+
 @ProviderFor(clock)
-final clockProvider = AutoDisposeProvider<Clock>.internal(
-  clock,
-  name: r'clockProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$clockHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final clockProvider = ClockProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ClockRef = AutoDisposeProviderRef<Clock>;
-String _$saveServiceHash() => r'6267eb355ad36b693865569557615bc995676665';
+final class ClockProvider extends $FunctionalProvider<Clock, Clock, Clock>
+    with $Provider<Clock> {
+  ClockProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'clockProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [saveService].
+  @override
+  String debugGetCreateSourceHash() => _$clockHash();
+
+  @$internal
+  @override
+  $ProviderElement<Clock> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Clock create(Ref ref) {
+    return clock(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Clock value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Clock>(value),
+    );
+  }
+}
+
+String _$clockHash() => r'51dfbf45b6f587fbcfbb074c52c85416118b4ff3';
+
+/// Shared in-memory feed-key cache. Hydrated at launch (main.dart) with
+/// the identity's current key + the keys we've received from each follow,
+/// then mutated by KeyRotationService and the sync engine. Tests get a
+/// fresh empty cache.
+
+@ProviderFor(feedKeyCache)
+final feedKeyCacheProvider = FeedKeyCacheProvider._();
+
+/// Shared in-memory feed-key cache. Hydrated at launch (main.dart) with
+/// the identity's current key + the keys we've received from each follow,
+/// then mutated by KeyRotationService and the sync engine. Tests get a
+/// fresh empty cache.
+
+final class FeedKeyCacheProvider
+    extends $FunctionalProvider<FeedKeyCache, FeedKeyCache, FeedKeyCache>
+    with $Provider<FeedKeyCache> {
+  /// Shared in-memory feed-key cache. Hydrated at launch (main.dart) with
+  /// the identity's current key + the keys we've received from each follow,
+  /// then mutated by KeyRotationService and the sync engine. Tests get a
+  /// fresh empty cache.
+  FeedKeyCacheProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'feedKeyCacheProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$feedKeyCacheHash();
+
+  @$internal
+  @override
+  $ProviderElement<FeedKeyCache> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  FeedKeyCache create(Ref ref) {
+    return feedKeyCache(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FeedKeyCache value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FeedKeyCache>(value),
+    );
+  }
+}
+
+String _$feedKeyCacheHash() => r'2e97e74cbc64b8a06b7dc0d767bb649815525c32';
+
+/// Shared mutex serializing post publication against feed-key rotation
+/// (Plan 13). All post-publish services and the rotation service must
+/// pull from this single instance — without it, a post in flight could
+/// be encrypted with a stale key mid-rotation.
+
+@ProviderFor(publishLock)
+final publishLockProvider = PublishLockProvider._();
+
+/// Shared mutex serializing post publication against feed-key rotation
+/// (Plan 13). All post-publish services and the rotation service must
+/// pull from this single instance — without it, a post in flight could
+/// be encrypted with a stale key mid-rotation.
+
+final class PublishLockProvider
+    extends $FunctionalProvider<PublishLock, PublishLock, PublishLock>
+    with $Provider<PublishLock> {
+  /// Shared mutex serializing post publication against feed-key rotation
+  /// (Plan 13). All post-publish services and the rotation service must
+  /// pull from this single instance — without it, a post in flight could
+  /// be encrypted with a stale key mid-rotation.
+  PublishLockProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'publishLockProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$publishLockHash();
+
+  @$internal
+  @override
+  $ProviderElement<PublishLock> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PublishLock create(Ref ref) {
+    return publishLock(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PublishLock value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PublishLock>(value),
+    );
+  }
+}
+
+String _$publishLockHash() => r'2e4b82c49bcb0fa8a4072951aa7ccb3c3b0cb9e2';
+
 @ProviderFor(saveService)
-final saveServiceProvider = AutoDisposeProvider<SaveService>.internal(
-  saveService,
-  name: r'saveServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$saveServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final saveServiceProvider = SaveServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SaveServiceRef = AutoDisposeProviderRef<SaveService>;
-String _$commentServiceHash() => r'd422c6ba1f8558e1bc7e512bd234969a5b3a8a39';
+final class SaveServiceProvider
+    extends $FunctionalProvider<SaveService, SaveService, SaveService>
+    with $Provider<SaveService> {
+  SaveServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'saveServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [commentService].
+  @override
+  String debugGetCreateSourceHash() => _$saveServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<SaveService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SaveService create(Ref ref) {
+    return saveService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SaveService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SaveService>(value),
+    );
+  }
+}
+
+String _$saveServiceHash() => r'9d95bea13731c72442485145daa07bab5f97fe31';
+
 @ProviderFor(commentService)
-final commentServiceProvider = AutoDisposeProvider<CommentService>.internal(
-  commentService,
-  name: r'commentServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$commentServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final commentServiceProvider = CommentServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CommentServiceRef = AutoDisposeProviderRef<CommentService>;
-String _$reactionServiceHash() => r'7a1b882e70919859a95ccab8400add774ff4fccf';
+final class CommentServiceProvider
+    extends $FunctionalProvider<CommentService, CommentService, CommentService>
+    with $Provider<CommentService> {
+  CommentServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'commentServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [reactionService].
+  @override
+  String debugGetCreateSourceHash() => _$commentServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CommentService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CommentService create(Ref ref) {
+    return commentService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CommentService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CommentService>(value),
+    );
+  }
+}
+
+String _$commentServiceHash() => r'd3cc2c7daf83634d841cda24bbe124f77a122d89';
+
 @ProviderFor(reactionService)
-final reactionServiceProvider = AutoDisposeProvider<ReactionService>.internal(
-  reactionService,
-  name: r'reactionServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$reactionServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final reactionServiceProvider = ReactionServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ReactionServiceRef = AutoDisposeProviderRef<ReactionService>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class ReactionServiceProvider
+    extends
+        $FunctionalProvider<ReactionService, ReactionService, ReactionService>
+    with $Provider<ReactionService> {
+  ReactionServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reactionServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reactionServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ReactionService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ReactionService create(Ref ref) {
+    return reactionService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ReactionService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ReactionService>(value),
+    );
+  }
+}
+
+String _$reactionServiceHash() => r'd1f0c6141b6ec35b0a8bc17e16f45a292712375a';

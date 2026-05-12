@@ -10,6 +10,7 @@ class MockStorageService implements StorageService {
   Identity? _identity;
   final Map<String, Follow> _follows = {};
   final Map<String, Event> _events = {};
+  final Map<String, Uint8List> _encryptedPayloads = {};
   final Map<String, CachedMedia> _mediaCache = {};
   final List<FollowRequest> _inboundRequests = [];
   final List<FollowRequest> _outboundRequests = [];
@@ -22,6 +23,8 @@ class MockStorageService implements StorageService {
       StreamController<List<Follow>>.broadcast();
   final StreamController<List<FollowRequest>> _inboundController =
       StreamController<List<FollowRequest>>.broadcast();
+  final StreamController<List<FollowRequest>> _inboundFollowersController =
+      StreamController<List<FollowRequest>>.broadcast();
   final StreamController<List<FollowRequest>> _outboundController =
       StreamController<List<FollowRequest>>.broadcast();
 
@@ -29,10 +32,15 @@ class MockStorageService implements StorageService {
       _follows.values.where((f) => f.status == 'active').toList();
   List<FollowRequest> _snapshotInbound() =>
       _inboundRequests.where((r) => r.status == 'pending').toList();
+  List<FollowRequest> _snapshotInboundFollowers() =>
+      _inboundRequests.where((r) => r.status != 'pending').toList();
   List<FollowRequest> _snapshotOutbound() => _outboundRequests.toList();
 
   void _emitFollows() => _followsController.add(_snapshotFollows());
-  void _emitInbound() => _inboundController.add(_snapshotInbound());
+  void _emitInbound() {
+    _inboundController.add(_snapshotInbound());
+    _inboundFollowersController.add(_snapshotInboundFollowers());
+  }
   void _emitOutbound() => _outboundController.add(_snapshotOutbound());
 
   /// Releases broadcast controllers. Call from tearDown when the test
@@ -40,6 +48,7 @@ class MockStorageService implements StorageService {
   Future<void> dispose() async {
     await _followsController.close();
     await _inboundController.close();
+    await _inboundFollowersController.close();
     await _outboundController.close();
   }
 
@@ -84,15 +93,21 @@ class MockStorageService implements StorageService {
   Future<void> updateLastSynced(String pubkey, int timestamp) async {
     final follow = _follows[pubkey];
     if (follow != null) {
-      _follows[pubkey] = Follow(
-        pubkey: follow.pubkey,
-        displayName: follow.displayName,
-        avatarHash: follow.avatarHash,
-        connectionCard: follow.connectionCard,
-        feedKey: follow.feedKey,
-        feedKeyEpoch: follow.feedKeyEpoch,
-        lastSyncedAt: timestamp,
-        status: follow.status,
+      _follows[pubkey] = follow.copyWith(lastSyncedAt: timestamp);
+      _emitFollows();
+    }
+  }
+
+  @override
+  Future<void> setLastDecryptFailureAt(
+    String pubkey,
+    int? timestamp,
+  ) async {
+    final follow = _follows[pubkey];
+    if (follow != null) {
+      _follows[pubkey] = follow.copyWith(
+        lastDecryptFailureAt: timestamp,
+        clearLastDecryptFailureAt: timestamp == null,
       );
       _emitFollows();
     }
@@ -133,8 +148,22 @@ class MockStorageService implements StorageService {
   }
 
   @override
+  Future<void> saveOwnEventWithEncrypted(
+    Event event,
+    Uint8List encryptedPayload,
+  ) async {
+    _events[event.id] = event;
+    _encryptedPayloads[event.id] = encryptedPayload;
+  }
+
+  @override
+  Future<Uint8List?> getEncryptedPayload(String id) async =>
+      _encryptedPayloads[id];
+
+  @override
   Future<void> deleteEvent(String id) async {
     _events.remove(id);
+    _encryptedPayloads.remove(id);
   }
 
   @override
@@ -286,6 +315,155 @@ class MockStorageService implements StorageService {
     }
   }
 
+  // --- Followers (Plan 13) ---
+
+  @override
+  Future<List<String>> getAcceptedFollowerPubkeys() async => _inboundRequests
+      .where((r) => r.status == 'accepted')
+      .map((r) => r.pubkey)
+      .toList();
+
+  @override
+  Future<bool> isAcceptedFollower(String pubkey) async {
+    for (final r in _inboundRequests) {
+      if (r.pubkey == pubkey) return r.status == 'accepted';
+    }
+    return false;
+  }
+
+  @override
+  Future<void> removeAcceptedFollower(String pubkey) async {
+    _inboundRequests.removeWhere((r) => r.pubkey == pubkey);
+    _emitInbound();
+  }
+
+  // --- Feed key history (Plan 13) ---
+
+  final List<RetiredFeedKey> _feedKeyHistory = [];
+
+  @override
+  Future<void> appendFeedKeyHistory({
+    required Uint8List feedKey,
+    required int feedKeyEpoch,
+    required int validFrom,
+    required int validUntil,
+  }) async {
+    _feedKeyHistory.add(RetiredFeedKey(
+      feedKey: feedKey,
+      feedKeyEpoch: feedKeyEpoch,
+      validFrom: validFrom,
+      validUntil: validUntil,
+    ));
+  }
+
+  @override
+  Future<RetiredFeedKey?> retiredFeedKeyAt(int timestamp) async {
+    for (final h in _feedKeyHistory) {
+      if (h.validFrom <= timestamp && timestamp < h.validUntil) return h;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<RetiredFeedKey>> getFeedKeyHistory() async {
+    final sorted = [..._feedKeyHistory];
+    sorted.sort((a, b) => a.validFrom.compareTo(b.validFrom));
+    return sorted;
+  }
+
+  // --- Per-follow feed-key history (MegOLM archive) ---
+
+  final Map<String, List<RetiredFeedKey>> _followFeedKeyHistory = {};
+
+  @override
+  Future<void> appendFollowFeedKeyHistory({
+    required String followPubkey,
+    required Uint8List feedKey,
+    required int feedKeyEpoch,
+    required int validFrom,
+    required int validUntil,
+  }) async {
+    _followFeedKeyHistory
+        .putIfAbsent(followPubkey, () => [])
+        .add(RetiredFeedKey(
+          feedKey: feedKey,
+          feedKeyEpoch: feedKeyEpoch,
+          validFrom: validFrom,
+          validUntil: validUntil,
+        ));
+  }
+
+  @override
+  Future<List<RetiredFeedKey>> getFollowFeedKeyHistory(
+    String followPubkey,
+  ) async {
+    final list = _followFeedKeyHistory[followPubkey];
+    if (list == null) return const [];
+    final sorted = [...list];
+    sorted.sort((a, b) => a.validFrom.compareTo(b.validFrom));
+    return sorted;
+  }
+
+  // --- Pending key distributions (Plan 13) ---
+
+  final List<PendingKeyDistribution> _pendingDistributions = [];
+  final Set<String> _deliveredKeys = {}; // "pubkey|createdAt" markers
+
+  String _distKey(String pubkey, int createdAt) => '$pubkey|$createdAt';
+
+  @override
+  Future<void> addPendingKeyDistribution({
+    required String targetPubkey,
+    required Uint8List encryptedFeedKey,
+    required Uint8List nonce,
+    required int createdAt,
+  }) async {
+    _pendingDistributions
+      ..removeWhere(
+        (d) => d.targetPubkey == targetPubkey && d.createdAt == createdAt,
+      )
+      ..add(PendingKeyDistribution(
+        targetPubkey: targetPubkey,
+        encryptedFeedKey: encryptedFeedKey,
+        nonce: nonce,
+        createdAt: createdAt,
+      ));
+    _deliveredKeys.remove(_distKey(targetPubkey, createdAt));
+  }
+
+  @override
+  Future<PendingKeyDistribution?> latestPendingDistributionFor(
+    String targetPubkey,
+  ) async {
+    PendingKeyDistribution? best;
+    for (final d in _pendingDistributions) {
+      if (d.targetPubkey != targetPubkey) continue;
+      if (_deliveredKeys.contains(_distKey(d.targetPubkey, d.createdAt))) {
+        continue;
+      }
+      if (best == null || d.createdAt > best.createdAt) best = d;
+    }
+    return best;
+  }
+
+  @override
+  Future<void> markDistributionsDelivered(
+    String targetPubkey,
+    int upTo,
+  ) async {
+    for (final d in _pendingDistributions) {
+      if (d.targetPubkey == targetPubkey && d.createdAt <= upTo) {
+        _deliveredKeys.add(_distKey(d.targetPubkey, d.createdAt));
+      }
+    }
+  }
+
+  @override
+  Future<void> clearPendingDistributionsFor(String targetPubkey) async {
+    _pendingDistributions.removeWhere((d) => d.targetPubkey == targetPubkey);
+    _deliveredKeys.removeWhere((k) => k.startsWith('$targetPubkey|'));
+  }
+
   // --- Follow requests ---
 
   @override
@@ -296,6 +474,12 @@ class MockStorageService implements StorageService {
   Stream<List<FollowRequest>> watchInboundRequests() async* {
     yield _snapshotInbound();
     yield* _inboundController.stream;
+  }
+
+  @override
+  Stream<List<FollowRequest>> watchInboundFollowers() async* {
+    yield _snapshotInboundFollowers();
+    yield* _inboundFollowersController.stream;
   }
 
   @override
@@ -465,5 +649,64 @@ class MockStorageService implements StorageService {
   @override
   Future<int> evictMediaOverLimit(int maxBytes) async {
     return 0;
+  }
+
+  @override
+  Future<Set<String>> getPinnedMediaHashes() async {
+    final pinned = <String>{};
+    final ownPubkey = _identity?.pubkey;
+    for (final event in _events.values) {
+      final pinnedByOwn = ownPubkey != null && event.pubkey == ownPubkey;
+      final pinnedBySave = _savedEventIds.contains(event.id);
+      if (!pinnedByOwn && !pinnedBySave) continue;
+      for (final m in event.media) {
+        if (m.hash.isNotEmpty) pinned.add(m.hash);
+      }
+    }
+    return pinned;
+  }
+
+  @override
+  Future<List<String>> getAllCachedMediaHashes() async =>
+      _mediaCache.keys.toList();
+
+  @override
+  Future<int> getDatabaseFileSize() async => 0;
+
+  @override
+  Future<List<CachedMedia>> evictMediaExcluding(
+    int maxBytes,
+    Set<String> pinned,
+  ) async {
+    var totalSize = 0;
+    final all = _mediaCache.values.toList()
+      ..sort((a, b) => a.lastAccessed.compareTo(b.lastAccessed));
+    for (final m in all) {
+      totalSize += m.size;
+    }
+    if (totalSize <= maxBytes) return const [];
+    final removed = <CachedMedia>[];
+    for (final entry in all) {
+      if (totalSize <= maxBytes) break;
+      if (pinned.contains(entry.hash)) continue;
+      _mediaCache.remove(entry.hash);
+      totalSize -= entry.size;
+      removed.add(entry);
+    }
+    return removed;
+  }
+
+  @override
+  Future<List<CachedMedia>> clearCachedMediaExcluding(
+    Set<String> pinned,
+  ) async {
+    final removed = <CachedMedia>[];
+    final hashes = _mediaCache.keys.toList();
+    for (final hash in hashes) {
+      if (pinned.contains(hash)) continue;
+      final m = _mediaCache.remove(hash);
+      if (m != null) removed.add(m);
+    }
+    return removed;
   }
 }

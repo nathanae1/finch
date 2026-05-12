@@ -48,6 +48,17 @@ class EventsDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertEvent(EventEntriesCompanion entry) =>
       into(eventEntries).insertOnConflictUpdate(entry);
 
+  /// Returns the persisted wire-EncryptedEvent bytes for [id], if any.
+  /// Set at author time on own posts; null for received events and for
+  /// own posts authored before the schema v2 migration.
+  Future<Uint8List?> getEncryptedPayload(String id) async {
+    final row = await (selectOnly(eventEntries)
+          ..addColumns([eventEntries.encryptedPayload])
+          ..where(eventEntries.id.equals(id)))
+        .getSingleOrNull();
+    return row?.read(eventEntries.encryptedPayload);
+  }
+
   Future<void> deleteEvent(String id) =>
       (delete(eventEntries)..where((e) => e.id.equals(id))).go();
 
@@ -177,6 +188,21 @@ class EventsDao extends DatabaseAccessor<AppDatabase>
                     e.lastViewed.isSmallerThanValue(graceCutoff)),
           ))
         .go();
+  }
+
+  /// Returns the raw `media_refs` JSON strings for events flagged is_saved=1
+  /// or is_own=1. Used by retention to compute the pin set — media hashes
+  /// referenced from saved/own events must survive cache eviction.
+  Future<List<String>> getPinnedMediaRefsJson() async {
+    final rows = await (select(eventEntries)
+          ..where((e) =>
+              (e.isSaved.equals(1) | e.isOwn.equals(1)) &
+              e.mediaRefs.isNotNull()))
+        .get();
+    return [
+      for (final r in rows)
+        if (r.mediaRefs != null && r.mediaRefs!.isNotEmpty) r.mediaRefs!,
+    ];
   }
 
   /// `id NOT IN (SELECT ref_id FROM event_entries WHERE kind=6 AND

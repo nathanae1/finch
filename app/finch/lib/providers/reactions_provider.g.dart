@@ -6,274 +6,171 @@ part of 'reactions_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$reactionsHash() => r'85badbd87deeabebbca1ce7a06cf074a8422d967';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-/// See also [reactions].
 @ProviderFor(reactions)
-const reactionsProvider = ReactionsFamily();
+final reactionsProvider = ReactionsFamily._();
 
-/// See also [reactions].
-class ReactionsFamily extends Family<AsyncValue<ReactionSummary>> {
-  /// See also [reactions].
-  const ReactionsFamily();
+final class ReactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ReactionSummary>,
+          ReactionSummary,
+          FutureOr<ReactionSummary>
+        >
+    with $FutureModifier<ReactionSummary>, $FutureProvider<ReactionSummary> {
+  ReactionsProvider._({
+    required ReactionsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'reactionsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// See also [reactions].
-  ReactionsProvider call(String postId) {
-    return ReactionsProvider(postId);
+  @override
+  String debugGetCreateSourceHash() => _$reactionsHash();
+
+  @override
+  String toString() {
+    return r'reactionsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  ReactionsProvider getProviderOverride(covariant ReactionsProvider provider) {
-    return call(provider.postId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+  $FutureProviderElement<ReactionSummary> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'reactionsProvider';
-}
-
-/// See also [reactions].
-class ReactionsProvider extends AutoDisposeFutureProvider<ReactionSummary> {
-  /// See also [reactions].
-  ReactionsProvider(String postId)
-    : this._internal(
-        (ref) => reactions(ref as ReactionsRef, postId),
-        from: reactionsProvider,
-        name: r'reactionsProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$reactionsHash,
-        dependencies: ReactionsFamily._dependencies,
-        allTransitiveDependencies: ReactionsFamily._allTransitiveDependencies,
-        postId: postId,
-      );
-
-  ReactionsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.postId,
-  }) : super.internal();
-
-  final String postId;
-
-  @override
-  Override overrideWith(
-    FutureOr<ReactionSummary> Function(ReactionsRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ReactionsProvider._internal(
-        (ref) => create(ref as ReactionsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        postId: postId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<ReactionSummary> createElement() {
-    return _ReactionsProviderElement(this);
+  FutureOr<ReactionSummary> create(Ref ref) {
+    final argument = this.argument as String;
+    return reactions(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ReactionsProvider && other.postId == postId;
+    return other is ReactionsProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, postId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ReactionsRef on AutoDisposeFutureProviderRef<ReactionSummary> {
-  /// The parameter `postId` of this provider.
-  String get postId;
-}
+String _$reactionsHash() => r'2814bb84b12ec38aff61bf9c558da36124a1c02b';
 
-class _ReactionsProviderElement
-    extends AutoDisposeFutureProviderElement<ReactionSummary>
-    with ReactionsRef {
-  _ReactionsProviderElement(super.provider);
+final class ReactionsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<ReactionSummary>, String> {
+  ReactionsFamily._()
+    : super(
+        retry: null,
+        name: r'reactionsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  ReactionsProvider call(String postId) =>
+      ReactionsProvider._(argument: postId, from: this);
 
   @override
-  String get postId => (origin as ReactionsProvider).postId;
+  String toString() => r'reactionsProvider';
+}
+
+@ProviderFor(ReactionController)
+final reactionControllerProvider = ReactionControllerFamily._();
+
+final class ReactionControllerProvider
+    extends $NotifierProvider<ReactionController, void> {
+  ReactionControllerProvider._({
+    required ReactionControllerFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'reactionControllerProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$reactionControllerHash();
+
+  @override
+  String toString() {
+    return r'reactionControllerProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  ReactionController create() => ReactionController();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ReactionControllerProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$reactionControllerHash() =>
     r'e62f573743ae5870ca12a68033def4b67a5627dd';
 
-abstract class _$ReactionController extends BuildlessAutoDisposeNotifier<void> {
-  late final String postId;
-
-  void build(String postId);
-}
-
-/// See also [ReactionController].
-@ProviderFor(ReactionController)
-const reactionControllerProvider = ReactionControllerFamily();
-
-/// See also [ReactionController].
-class ReactionControllerFamily extends Family<void> {
-  /// See also [ReactionController].
-  const ReactionControllerFamily();
-
-  /// See also [ReactionController].
-  ReactionControllerProvider call(String postId) {
-    return ReactionControllerProvider(postId);
-  }
-
-  @override
-  ReactionControllerProvider getProviderOverride(
-    covariant ReactionControllerProvider provider,
-  ) {
-    return call(provider.postId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'reactionControllerProvider';
-}
-
-/// See also [ReactionController].
-class ReactionControllerProvider
-    extends AutoDisposeNotifierProviderImpl<ReactionController, void> {
-  /// See also [ReactionController].
-  ReactionControllerProvider(String postId)
-    : this._internal(
-        () => ReactionController()..postId = postId,
-        from: reactionControllerProvider,
+final class ReactionControllerFamily extends $Family
+    with $ClassFamilyOverride<ReactionController, void, void, void, String> {
+  ReactionControllerFamily._()
+    : super(
+        retry: null,
         name: r'reactionControllerProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$reactionControllerHash,
-        dependencies: ReactionControllerFamily._dependencies,
-        allTransitiveDependencies:
-            ReactionControllerFamily._allTransitiveDependencies,
-        postId: postId,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
       );
 
-  ReactionControllerProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.postId,
-  }) : super.internal();
-
-  final String postId;
+  ReactionControllerProvider call(String postId) =>
+      ReactionControllerProvider._(argument: postId, from: this);
 
   @override
-  void runNotifierBuild(covariant ReactionController notifier) {
-    return notifier.build(postId);
-  }
-
-  @override
-  Override overrideWith(ReactionController Function() create) {
-    return ProviderOverride(
-      origin: this,
-      override: ReactionControllerProvider._internal(
-        () => create()..postId = postId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        postId: postId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeNotifierProviderElement<ReactionController, void> createElement() {
-    return _ReactionControllerProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is ReactionControllerProvider && other.postId == postId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, postId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'reactionControllerProvider';
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ReactionControllerRef on AutoDisposeNotifierProviderRef<void> {
-  /// The parameter `postId` of this provider.
-  String get postId;
-}
+abstract class _$ReactionController extends $Notifier<void> {
+  late final _$args = ref.$arg as String;
+  String get postId => _$args;
 
-class _ReactionControllerProviderElement
-    extends AutoDisposeNotifierProviderElement<ReactionController, void>
-    with ReactionControllerRef {
-  _ReactionControllerProviderElement(super.provider);
-
+  void build(String postId);
+  @$mustCallSuper
   @override
-  String get postId => (origin as ReactionControllerProvider).postId;
+  void runBuild() {
+    final ref = this.ref as $Ref<void, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<void, void>,
+              void,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }
-
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

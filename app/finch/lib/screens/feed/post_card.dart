@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../models/models.dart';
 import '../../providers/comments_provider.dart';
+import '../../providers/feed_provider.dart';
 import '../../providers/follow_profile_provider.dart';
+import '../../providers/identity_provider.dart';
 import '../../providers/reactions_provider.dart';
 import '../../providers/service_providers.dart';
 import '../../theme/finch_theme.dart';
@@ -15,6 +17,8 @@ import '../../widgets/avatar.dart';
 import '../../widgets/encrypted_image.dart';
 import '../../widgets/finch_icon.dart';
 import '../../widgets/reaction_button.dart';
+import '../../widgets/sheet.dart';
+import 'post_actions_sheet.dart';
 
 /// A single post in the chronological feed. Plan 06 ships static heart and
 /// comment counts (both 0); Plan 10 wires the real toggles.
@@ -29,6 +33,12 @@ class PostCard extends ConsumerWidget {
     final finch = FinchTheme.of(context);
     final profile = ref.watch(followProfileProvider(event.pubkey));
     final clock = ref.watch(clockProvider);
+    final isOwnPost = ref.watch(identityControllerProvider).value?.pubkey ==
+        event.pubkey;
+    // First time this card builds in the session marks the event as
+    // viewed — `ListView.builder` only constructs items near the viewport,
+    // which is good enough for the retention grace period.
+    ref.read(lastViewedTrackerProvider).markViewed(event.id);
     final caption = event.content.isEmpty
         ? ''
         : utf8.decode(event.content, allowMalformed: true);
@@ -78,6 +88,10 @@ class PostCard extends ConsumerWidget {
                         nowUnixSeconds: clock.nowUnixSeconds()),
                     style: finch.typography.micro,
                   ),
+                  if (isOwnPost) ...[
+                    const SizedBox(width: 4),
+                    _OverflowButton(eventId: event.id),
+                  ],
                 ],
               ),
             ),
@@ -93,6 +107,7 @@ class PostCard extends ConsumerWidget {
                 child: EncryptedImage(
                   hash: mediaHash,
                   pubkey: event.pubkey,
+                  msgSeq: event.msgSeq,
                   aspectRatio: 4 / 5,
                 ),
               ),
@@ -112,6 +127,32 @@ class PostCard extends ConsumerWidget {
               child: _CardActionRow(eventId: event.id, onComment: onTap),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverflowButton extends StatelessWidget {
+  const _OverflowButton({required this.eventId});
+
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context) {
+    final finch = FinchTheme.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => showFinchSheet(
+        context: context,
+        builder: (_) => PostActionsSheet(eventId: eventId),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: FinchIcon(
+          LucideIcons.ellipsis,
+          size: 18,
+          color: finch.colors.graphite,
         ),
       ),
     );
@@ -184,7 +225,7 @@ class _CardActionRow extends ConsumerWidget {
             child: Row(
               children: [
                 FinchIcon(
-                  PhosphorIconsRegular.chatCircle,
+                  LucideIcons.messageCircle,
                   size: 22,
                   color: finch.colors.graphite,
                 ),

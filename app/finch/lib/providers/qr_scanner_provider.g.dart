@@ -6,25 +6,58 @@ part of 'qr_scanner_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$qrScannerServiceHash() => r'525d54bd8cbc1e08e8463ffb0922da3224d08b2c';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Default to the real method-channel scanner; widget tests override with
+/// `MockQrScannerService` via `ProviderScope.overrides`.
+
+@ProviderFor(qrScannerService)
+final qrScannerServiceProvider = QrScannerServiceProvider._();
 
 /// Default to the real method-channel scanner; widget tests override with
 /// `MockQrScannerService` via `ProviderScope.overrides`.
-///
-/// Copied from [qrScannerService].
-@ProviderFor(qrScannerService)
-final qrScannerServiceProvider = AutoDisposeProvider<QrScannerService>.internal(
-  qrScannerService,
-  name: r'qrScannerServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$qrScannerServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef QrScannerServiceRef = AutoDisposeProviderRef<QrScannerService>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class QrScannerServiceProvider
+    extends
+        $FunctionalProvider<
+          QrScannerService,
+          QrScannerService,
+          QrScannerService
+        >
+    with $Provider<QrScannerService> {
+  /// Default to the real method-channel scanner; widget tests override with
+  /// `MockQrScannerService` via `ProviderScope.overrides`.
+  QrScannerServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'qrScannerServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$qrScannerServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<QrScannerService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  QrScannerService create(Ref ref) {
+    return qrScannerService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(QrScannerService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<QrScannerService>(value),
+    );
+  }
+}
+
+String _$qrScannerServiceHash() => r'188e6d0c1c2f793510b412b4a97e6460fc90383b';

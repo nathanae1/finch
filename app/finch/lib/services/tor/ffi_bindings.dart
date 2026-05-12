@@ -62,6 +62,9 @@ typedef ArtiShutdownDart = int Function(Pointer<Void>);
 typedef ArtiStringFreeNative = Void Function(Pointer<Utf8>);
 typedef ArtiStringFreeDart = void Function(Pointer<Utf8>);
 
+typedef ArtiLastErrorNative = Pointer<Utf8> Function();
+typedef ArtiLastErrorDart = Pointer<Utf8> Function();
+
 class ArtiBindings {
   ArtiBindings._(DynamicLibrary lib)
       : init = lib
@@ -76,7 +79,10 @@ class ArtiBindings {
             'arti_shutdown'),
         stringFree =
             lib.lookupFunction<ArtiStringFreeNative, ArtiStringFreeDart>(
-                'arti_string_free');
+                'arti_string_free'),
+        lastError =
+            lib.lookupFunction<ArtiLastErrorNative, ArtiLastErrorDart>(
+                'arti_last_error');
 
   final ArtiInitDart init;
   final ArtiCreateOnionServiceDart createOnionService;
@@ -84,6 +90,7 @@ class ArtiBindings {
   final ArtiStatusDart status;
   final ArtiShutdownDart shutdown;
   final ArtiStringFreeDart stringFree;
+  final ArtiLastErrorDart lastError;
 
   static ArtiBindings? _instance;
 

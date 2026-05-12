@@ -29,6 +29,9 @@ class _ConfirmRequestSheetState extends ConsumerState<ConfirmRequestSheet> {
         ? widget.card.pubkey.substring(0, 8)
         : widget.card.pubkey;
     final endpointCount = widget.card.endpoints.length;
+    final ownEndpoints = ref.watch(ownEndpointsProvider);
+    final ourOnionReady =
+        ownEndpoints.any((e) => e.type == 'onion');
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -49,6 +52,14 @@ class _ConfirmRequestSheetState extends ConsumerState<ConfirmRequestSheet> {
           style: finch.typography.body,
           textAlign: TextAlign.center,
         ),
+        if (!ourOnionReady) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Waiting for Tor to come up — try again in a moment.',
+            style: finch.typography.small.copyWith(color: finch.colors.stone),
+            textAlign: TextAlign.center,
+          ),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 12),
           Text(
@@ -73,7 +84,8 @@ class _ConfirmRequestSheetState extends ConsumerState<ConfirmRequestSheet> {
             Expanded(
               child: PrimaryButton(
                 label: _sending ? 'Sending…' : 'Send follow request',
-                onPressed: _sending ? null : _send,
+                onPressed:
+                    (_sending || !ourOnionReady) ? null : _send,
                 block: true,
               ),
             ),

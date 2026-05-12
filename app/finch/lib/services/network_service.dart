@@ -26,6 +26,8 @@ abstract class NetworkService {
     PeerConnection connection, {
     int? since,
     int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
   });
 
   Future<List<EncryptedEvent>> fetchEvents(

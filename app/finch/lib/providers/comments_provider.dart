@@ -15,7 +15,7 @@ part 'comments_provider.g.dart';
 /// filter is at the read layer so following someone retroactively reveals
 /// their old comments without a backfill.
 @riverpod
-Future<List<Event>> comments(CommentsRef ref, String postId) async {
+Future<List<Event>> comments(Ref ref, String postId) async {
   final storage = ref.watch(storageServiceProvider);
   final identity = await ref.watch(identityControllerProvider.future);
   final follows = await storage.getFollows();

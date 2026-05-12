@@ -32,6 +32,7 @@ class FinchHttpServer {
     required Directory appSupportDir,
     required Clock clock,
     FollowService? followService,
+    FollowService? Function()? followServiceLookup,
     int maxBindAttempts = 5,
     int rateLimitPerMinute = 120,
     int maxBodyBytes = 1024 * 1024,
@@ -41,7 +42,7 @@ class FinchHttpServer {
         _identityLookup = identityLookup,
         _appSupportDir = appSupportDir,
         _clock = clock,
-        _followService = followService,
+        _followServiceLookup = followServiceLookup ?? (() => followService),
         _maxBindAttempts = maxBindAttempts,
         _rateLimitPerMinute = rateLimitPerMinute,
         _maxBodyBytes = maxBodyBytes,
@@ -55,7 +56,7 @@ class FinchHttpServer {
   final Future<Identity?> Function() _identityLookup;
   final Directory _appSupportDir;
   final Clock _clock;
-  final FollowService? _followService;
+  final FollowService? Function() _followServiceLookup;
   final int _maxBindAttempts;
   final int _rateLimitPerMinute;
   final int _maxBodyBytes;
@@ -162,13 +163,13 @@ class FinchHttpServer {
         clock: _clock,
       ),
     );
-    final followService = _followService;
-    if (followService != null) {
-      router.post(
-        '/follow-accept',
-        followAcceptHandler(followService: followService),
-      );
-    }
+    router.post('/follow-accept', (Request request) async {
+      final followService = _followServiceLookup();
+      if (followService == null) {
+        return Response.notFound('follow service unavailable');
+      }
+      return followAcceptHandler(followService: followService)(request);
+    });
     return router;
   }
 }

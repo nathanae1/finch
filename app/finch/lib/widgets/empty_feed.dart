@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/finch_theme.dart';
 import 'buttons.dart';
 import 'finch_icon.dart';
+import 'qr_invite_sheet.dart';
+import 'sheet.dart';
 
 /// Empty feed state — shown when the user has no follows and no own posts.
-/// The CTA opens the share-invite sheet (Plan 08); for Plan 06 it pushes
-/// the `/invite` placeholder route.
+/// The CTA opens the share-invite sheet.
 class EmptyFeed extends StatelessWidget {
   const EmptyFeed({super.key});
 
@@ -40,6 +40,13 @@ class EmptyFeed extends StatelessWidget {
   }
 }
 
+void _openInviteSheet(BuildContext context) {
+  showFinchSheet(
+    context: context,
+    builder: (_) => const QrInviteSheet(),
+  );
+}
+
 class _InviteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -49,7 +56,7 @@ class _InviteCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => context.push('/invite'),
+        onTap: () => _openInviteSheet(context),
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: finch.colors.hairline),
@@ -67,7 +74,7 @@ class _InviteCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: FinchIcon(
-                  PhosphorIconsRegular.qrCode,
+                  LucideIcons.qrCode,
                   size: 22,
                   color: finch.colors.sageDeep,
                 ),
@@ -91,7 +98,7 @@ class _InviteCard extends StatelessWidget {
               const SizedBox(width: 8),
               PrimaryButton(
                 label: 'Open',
-                onPressed: () => context.push('/invite'),
+                onPressed: () => _openInviteSheet(context),
               ),
             ],
           ),

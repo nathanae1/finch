@@ -6,22 +6,46 @@ part of 'post_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$postServiceHash() => r'177e85907737b9f0f879a2ba1f64f69568900bda';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [postService].
 @ProviderFor(postService)
-final postServiceProvider = AutoDisposeProvider<PostService>.internal(
-  postService,
-  name: r'postServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$postServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final postServiceProvider = PostServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PostServiceRef = AutoDisposeProviderRef<PostService>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class PostServiceProvider
+    extends $FunctionalProvider<PostService, PostService, PostService>
+    with $Provider<PostService> {
+  PostServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'postServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$postServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<PostService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PostService create(Ref ref) {
+    return postService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PostService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PostService>(value),
+    );
+  }
+}
+
+String _$postServiceHash() => r'fee69b4d635b754d867389104896210117405b32';

@@ -6,13 +6,28 @@ import 'package:shelf/shelf.dart';
 import '../../services/storage_service.dart';
 import '../../services/types.dart';
 
-/// `GET /manifest?since={ts}&until={ts}` — lightweight CBOR list of
-/// `{id, created_at}` for the owner's events in the requested range,
-/// ordered newest-first (the underlying DAO's order).
+/// `GET /manifest?since={ts}&until={ts}&requester_pubkey={pk}&ack_rotation_at={ts}`
 ///
-/// `has_older` means "more events exist beyond the returned window at the
-/// older end." Callers iterate by setting `until = oldest.createdAt - 1`
-/// on the next request.
+/// Returns a CBOR map:
+/// - `pubkey`: owner's pubkey
+/// - `events`: list of `{id, created_at}` for the requested window
+///   (newest-first by the underlying DAO's order)
+/// - `has_older`: more events exist beyond the returned window
+/// - `new_feed_key` *(optional, Plan 13)*: when `requester_pubkey` is set
+///   and there's an undelivered key rotation pending for that follower,
+///   the latest wrapped payload is included as `{encrypted_feed_key,
+///   nonce, created_at}`. The follower decrypts it with the X25519 DH
+///   shared key derived against this device's pubkey, persists it as
+///   their `follow.feedKey`, and acks via `ack_rotation_at` on the next
+///   request.
+///
+/// `has_older` paging works as before: clients set `until = oldest.createdAt
+/// - 1` on the next call.
+///
+/// `requester_pubkey` is unauthenticated on LAN by design (Plan 09 makes
+/// no auth claim for `/manifest`). A LAN attacker can request someone
+/// else's pending payload but can't decrypt it without the follower's
+/// secret key — the X25519 DH shared key derivation is what gates access.
 Handler manifestHandler({
   required StorageService storage,
   required Future<Identity?> Function() identityLookup,
@@ -32,6 +47,20 @@ Handler manifestHandler({
     if (params.containsKey('until') && until == null) {
       return Response(400, body: 'invalid until');
     }
+    final requesterPubkey = params['requester_pubkey'];
+    final ackRotationAt = _parseInt(params['ack_rotation_at']);
+    if (params.containsKey('ack_rotation_at') && ackRotationAt == null) {
+      return Response(400, body: 'invalid ack_rotation_at');
+    }
+
+    // Apply ack first so the freshly-acked rows aren't included below.
+    if (requesterPubkey != null && ackRotationAt != null) {
+      await storage.markDistributionsDelivered(
+        requesterPubkey,
+        ackRotationAt,
+      );
+    }
+
     final fetched = await storage.getEvents(
       pubkey: identity.pubkey,
       since: since,
@@ -40,18 +69,31 @@ Handler manifestHandler({
     );
     final hasOlder = fetched.length > pageLimit;
     final events = hasOlder ? fetched.sublist(0, pageLimit) : fetched;
-    final body = Uint8List.fromList(
-      cbor.encode(<String, dynamic>{
-        'pubkey': identity.pubkey,
-        'events': events
-            .map((e) => <String, dynamic>{
-                  'id': e.id,
-                  'created_at': e.createdAt,
-                })
-            .toList(),
-        'has_older': hasOlder,
-      }),
-    );
+
+    final response = <String, dynamic>{
+      'pubkey': identity.pubkey,
+      'events': events
+          .map((e) => <String, dynamic>{
+                'id': e.id,
+                'created_at': e.createdAt,
+              })
+          .toList(),
+      'has_older': hasOlder,
+    };
+
+    if (requesterPubkey != null) {
+      final pending =
+          await storage.latestPendingDistributionFor(requesterPubkey);
+      if (pending != null) {
+        response['new_feed_key'] = <String, dynamic>{
+          'encrypted_feed_key': pending.encryptedFeedKey,
+          'nonce': pending.nonce,
+          'created_at': pending.createdAt,
+        };
+      }
+    }
+
+    final body = Uint8List.fromList(cbor.encode(response));
     return Response.ok(
       body,
       headers: const {'content-type': 'application/cbor'},

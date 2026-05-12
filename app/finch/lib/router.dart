@@ -16,7 +16,9 @@ import 'screens/onboarding/welcome_screen.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/profile/other_profile_screen.dart';
 import 'screens/profile/own_profile_screen.dart';
+import 'screens/settings/connection_settings_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/settings/storage_settings_screen.dart';
 import 'shell/app_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -31,12 +33,16 @@ GoRouter buildRouter(Ref ref) {
     refreshListenable: _IdentityRefresh(ref),
     redirect: (context, state) {
       final identity = ref.read(identityControllerProvider);
-      final hasIdentity = identity.valueOrNull != null;
+      final hasIdentity = identity.value != null;
       final isOnboarding = state.matchedLocation.startsWith('/onboarding');
 
       if (identity.isLoading) return null;
       if (!hasIdentity && !isOnboarding) return '/onboarding/welcome';
       if (hasIdentity && isOnboarding) return '/feed';
+      // iOS reports `/` as the platform's initial route, which overrides
+      // `initialLocation`. We don't define a `/` route, so bounce it to
+      // the feed for already-onboarded users.
+      if (hasIdentity && state.matchedLocation == '/') return '/feed';
       return null;
     },
     routes: [
@@ -88,6 +94,18 @@ GoRouter buildRouter(Ref ref) {
         path: '/settings',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, _) => const SettingsScreen(),
+        routes: [
+          GoRoute(
+            path: 'storage',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (_, _) => const StorageSettingsScreen(),
+          ),
+          GoRoute(
+            path: 'connection',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (_, _) => const ConnectionSettingsScreen(),
+          ),
+        ],
       ),
 
       // Plan 15 (or sooner) replaces /profile/edit with the profile editor.

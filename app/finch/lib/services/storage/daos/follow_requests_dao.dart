@@ -25,6 +25,14 @@ class FollowRequestsDao extends DatabaseAccessor<AppDatabase>
             ..where((r) => r.status.equals('pending')))
           .watch();
 
+  /// Inbound rows we've already actioned (accepted / pending-send /
+  /// send-failed). Used to surface "Follows you" entries in the friends
+  /// list — peers who scanned our QR but whom we haven't followed back.
+  Stream<List<InboundFollowRequestEntry>> watchInboundActioned() =>
+      (select(inboundFollowRequestEntries)
+            ..where((r) => r.status.isNotValue('pending')))
+          .watch();
+
   Future<List<InboundFollowRequestEntry>> getInboundByStatus(String status) =>
       (select(inboundFollowRequestEntries)
             ..where((r) => r.status.equals(status)))

@@ -26,22 +26,28 @@ class MockContentKeyService implements ContentKeyService {
   }
 
   @override
-  EncryptedEvent encryptEvent(Event event, Uint8List epochKey, int epoch) {
+  EncryptedEvent encryptEvent(
+    Event event,
+    Uint8List chainRoot,
+    int epoch,
+    int msgSeq,
+  ) {
     // No real encryption: CBOR-encode the event directly as the payload.
     final payload = Uint8List.fromList(cbor.encode(event.toMap()));
     return EncryptedEvent(
       pubkey: event.pubkey,
       createdAt: event.createdAt,
       epoch: epoch,
+      msgSeq: msgSeq,
       nonce: Uint8List(24), // zero nonce
       payload: payload,
     );
   }
 
   @override
-  Event decryptEvent(EncryptedEvent encryptedEvent, Uint8List epochKey) {
+  Event decryptEvent(EncryptedEvent encryptedEvent, Uint8List chainRoot) {
     final map = cbor.decode(encryptedEvent.payload) as Map<dynamic, dynamic>;
-    return Event.fromMap(map);
+    return Event.fromMap(map).copyWith(msgSeq: encryptedEvent.msgSeq);
   }
 
   @override
@@ -70,14 +76,19 @@ class MockContentKeyService implements ContentKeyService {
   }
 
   @override
-  EncryptedEvent encryptForAudience(Event event, Audience audience) =>
-      signAndEncryptForAudience(event, audience).encrypted;
+  EncryptedEvent encryptForAudience(
+    Event event,
+    Audience audience, {
+    required int msgSeq,
+  }) =>
+      signAndEncryptForAudience(event, audience, msgSeq: msgSeq).encrypted;
 
   @override
   ({Event signed, EncryptedEvent encrypted}) signAndEncryptForAudience(
     Event event,
-    Audience audience,
-  ) {
+    Audience audience, {
+    required int msgSeq,
+  }) {
     // Deterministic, non-cryptographic stand-in: compute the id the same way
     // the mock would, attach a sentinel signature (all 0xBB), and return both
     // the "signed" event and an encrypted (really CBOR) payload.
@@ -85,8 +96,9 @@ class MockContentKeyService implements ContentKeyService {
     final signed = event.copyWith(
       id: id,
       sig: Uint8List.fromList(List.filled(64, 0xBB)),
+      msgSeq: msgSeq,
     );
-    final encrypted = encryptEvent(signed, _mockFeedKey, 0);
+    final encrypted = encryptEvent(signed, _mockFeedKey, 0, msgSeq);
     return (signed: signed, encrypted: encrypted);
   }
 }

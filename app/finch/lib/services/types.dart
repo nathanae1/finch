@@ -48,10 +48,16 @@ class Manifest {
     required this.pubkey,
     required this.events,
     required this.hasOlder,
+    this.newFeedKey,
   });
   final String pubkey;
   final List<ManifestEntry> events;
   final bool hasOlder;
+  // Plan 13: when present, the requester is being told about a feed-key
+  // rotation by the remote peer. Decrypt with the X25519 DH shared key
+  // derived against the peer's pubkey, then persist as `follow.feedKey`
+  // and ack via `ack_rotation_at` on the next /manifest call.
+  final RotatedFeedKeyDelivery? newFeedKey;
 }
 
 class ManifestEntry {
@@ -60,18 +66,89 @@ class ManifestEntry {
   final int createdAt;
 }
 
+/// Wire-level payload of an inline feed-key rotation in a manifest
+/// response (Plan 13). Decrypted and applied by the syncing follower.
+class RotatedFeedKeyDelivery {
+  const RotatedFeedKeyDelivery({
+    required this.encryptedFeedKey,
+    required this.nonce,
+    required this.createdAt,
+  });
+  final Uint8List encryptedFeedKey;
+  final Uint8List nonce;
+  final int createdAt;
+}
+
 class Identity {
   const Identity({
     required this.pubkey,
     required this.feedKey,
     this.feedKeyEpoch = 0,
+    this.feedKeyValidFrom = 0,
+    this.msgSeqCounter = 0,
     this.recoveryPhrase,
     required this.createdAt,
   });
   final String pubkey;
   final Uint8List feedKey;
   final int feedKeyEpoch;
+  // Unix-seconds timestamp at which `feedKey` became the current key.
+  // Identities created pre-Plan-13 backfill this to `createdAt` on migration.
+  final int feedKeyValidFrom;
+  // MegOLM-shaped per-message counter. Bumped under PublishLock for every
+  // event we publish; reset to 0 when `feedKey` rotates. The currently
+  // stored value is the next `msg_seq` to allocate.
+  final int msgSeqCounter;
   final String? recoveryPhrase;
+  final int createdAt;
+
+  Identity copyWith({
+    Uint8List? feedKey,
+    int? feedKeyEpoch,
+    int? feedKeyValidFrom,
+    int? msgSeqCounter,
+  }) =>
+      Identity(
+        pubkey: pubkey,
+        feedKey: feedKey ?? this.feedKey,
+        feedKeyEpoch: feedKeyEpoch ?? this.feedKeyEpoch,
+        feedKeyValidFrom: feedKeyValidFrom ?? this.feedKeyValidFrom,
+        msgSeqCounter: msgSeqCounter ?? this.msgSeqCounter,
+        recoveryPhrase: recoveryPhrase,
+        createdAt: createdAt,
+      );
+}
+
+/// A retired feed key (Plan 13). `feedKey` was the current key during the
+/// half-open window `[validFrom, validUntil)` and was rotated out at
+/// `validUntil`. Used to decrypt own content (e.g. media files) that was
+/// encrypted under this key before the rotation.
+class RetiredFeedKey {
+  const RetiredFeedKey({
+    required this.feedKey,
+    required this.feedKeyEpoch,
+    required this.validFrom,
+    required this.validUntil,
+  });
+  final Uint8List feedKey;
+  final int feedKeyEpoch;
+  final int validFrom;
+  final int validUntil;
+}
+
+/// A wrapped feed key waiting to be delivered to a follower (Plan 13).
+/// The plaintext (32-byte feed key) was encrypted with the X25519 DH
+/// shared key derived against [targetPubkey] at the moment of rotation.
+class PendingKeyDistribution {
+  const PendingKeyDistribution({
+    required this.targetPubkey,
+    required this.encryptedFeedKey,
+    required this.nonce,
+    required this.createdAt,
+  });
+  final String targetPubkey;
+  final Uint8List encryptedFeedKey;
+  final Uint8List nonce;
   final int createdAt;
 }
 
@@ -84,6 +161,8 @@ class Follow {
     required this.feedKey,
     this.feedKeyEpoch = 0,
     this.lastSyncedAt = 0,
+    this.lastReceivedRotationAt = 0,
+    this.lastDecryptFailureAt,
     this.status = 'active',
   });
   final String pubkey;
@@ -93,7 +172,41 @@ class Follow {
   final Uint8List feedKey;
   final int feedKeyEpoch;
   final int lastSyncedAt;
+  // Plan 13: `created_at` of the most recent rotated feed key we've
+  // accepted from this peer. Sent back as `ack_rotation_at` on the next
+  // /manifest call so the peer can mark the distribution as delivered.
+  final int lastReceivedRotationAt;
+  // Unix-second timestamp of the most recent decrypt failure on this
+  // peer's content (event or media). Set when a stale-key signal lands;
+  // cleared when a fresh rotation is applied. Drives the "Key" status
+  // tile in connection settings.
+  final int? lastDecryptFailureAt;
   final String status;
+
+  Follow copyWith({
+    Uint8List? feedKey,
+    int? feedKeyEpoch,
+    int? lastSyncedAt,
+    int? lastReceivedRotationAt,
+    int? lastDecryptFailureAt,
+    bool clearLastDecryptFailureAt = false,
+    String? status,
+  }) =>
+      Follow(
+        pubkey: pubkey,
+        displayName: displayName,
+        avatarHash: avatarHash,
+        connectionCard: connectionCard,
+        feedKey: feedKey ?? this.feedKey,
+        feedKeyEpoch: feedKeyEpoch ?? this.feedKeyEpoch,
+        lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+        lastReceivedRotationAt:
+            lastReceivedRotationAt ?? this.lastReceivedRotationAt,
+        lastDecryptFailureAt: clearLastDecryptFailureAt
+            ? null
+            : (lastDecryptFailureAt ?? this.lastDecryptFailureAt),
+        status: status ?? this.status,
+      );
 }
 
 class FollowRequest {

@@ -1,40 +1,135 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../services/lan_network_service.dart';
+import '../services/post_fanout_service.dart';
+import '../services/reconnect_pusher.dart';
+import '../services/storage/keychain_manager.dart';
+import '../services/tor/tor_http_client.dart';
 import '../sync/peer_connection_factory.dart';
+import '../sync/peer_reachability_provider.dart';
 import '../sync/sync_engine.dart';
+import '../sync/transport_router.dart';
 import 'service_providers.dart';
 
 part 'sync_provider.g.dart';
 
 /// Provides the singleton [PeerConnectionFactory] used by the sync engine
-/// and `RemoteMediaFetcher`.
+/// and `RemoteMediaFetcher`. Thin façade over [peerReachabilityMonitor]
+/// — actual probing and state-tracking lives there.
 @riverpod
-PeerConnectionFactory peerConnectionFactory(PeerConnectionFactoryRef ref) {
-  return PeerConnectionFactory(mdns: ref.watch(mdnsServiceProvider));
+PeerConnectionFactory peerConnectionFactory(Ref ref) {
+  return PeerConnectionFactory(
+    monitor: ref.watch(peerReachabilityMonitorProvider),
+  );
 }
 
 /// LanNetworkService singleton. The default `networkServiceProvider` is
 /// the abstract interface (mock by default); the concrete LAN client is
 /// kept separate so the sync engine can call `fetchEnvelope`, which is a
 /// LAN-specific method not yet on the cross-tier interface.
-@riverpod
-LanNetworkService lanNetworkService(LanNetworkServiceRef ref) {
+///
+/// `keepAlive: true` because the wrapped `http.Client` is a connection-
+/// pooling singleton — auto-disposing closes it, and a brief watcher gap
+/// during a rebuild cascade (e.g. when `onionAddressProvider` flips
+/// non-null and `torNetworkServiceProvider` rebuilds → `syncTransport`
+/// rebuilds) used to leave captured references holding a closed client.
+@Riverpod(keepAlive: true)
+LanNetworkService lanNetworkService(Ref ref) {
   final mdns = ref.watch(mdnsServiceProvider);
   final svc = LanNetworkService(mdns: mdns);
   ref.onDispose(svc.close);
   return svc;
 }
 
+/// Sibling of [lanNetworkServiceProvider] backed by [TorHttpClient]. Same
+/// `LanNetworkService` class, but every HTTP call goes through Arti's
+/// SOCKS5 proxy. Returns `null` until our onion address is published —
+/// that signal implies the SOCKS port is bound and `tor.init()` has
+/// completed, so it doubles as the "Tor is ready for outbound" gate.
+///
+/// `keepAlive: true` for the same reason as [lanNetworkServiceProvider]:
+/// the wrapped `TorHttpClient` is a long-lived resource that should not
+/// be torn down on a transient drop in watcher count.
+@Riverpod(keepAlive: true)
+LanNetworkService? torNetworkService(Ref ref) {
+  // Watch the onion address as a reactive ready-signal. Until it lands,
+  // sync stays on the LAN tier; once it lands, this provider rebuilds and
+  // the sync engine picks up Tor as a fallback.
+  final onion = ref.watch(onionAddressProvider);
+  if (onion == null) return null;
+  final tor = ref.watch(torServiceProvider);
+  final port = tor.socksPort;
+  if (port == 0) return null;
+  final mdns = ref.watch(mdnsServiceProvider);
+  final svc = LanNetworkService(
+    mdns: mdns,
+    httpClient: TorHttpClient(socksHost: '127.0.0.1', socksPort: port),
+  );
+  ref.onDispose(svc.close);
+  return svc;
+}
+
+/// Singleton [SyncTransport] that routes each `PeerConnection` to the
+/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor).
+/// Shared by [syncEngineProvider] and the on-demand media fetcher so
+/// they all dial through the same routing logic.
 @riverpod
-SyncEngine syncEngine(SyncEngineRef ref) {
+SyncTransport syncTransport(Ref ref) {
+  final lan = ref.watch(lanNetworkServiceProvider);
+  final tor = ref.watch(torNetworkServiceProvider);
+  return tor == null ? lan as SyncTransport : TransportRouter(lan: lan, tor: tor);
+}
+
+/// Best-effort fan-out from the local poster to every accepted follower
+/// whose connection is reachable. Used by `DefaultPostService` after a
+/// post or delete event is persisted.
+@riverpod
+PostFanoutService postFanoutService(Ref ref) {
+  return DefaultPostFanoutService(
+    storage: ref.watch(storageServiceProvider),
+    transport: ref.watch(syncTransportProvider),
+    reachability: ref.watch(peerReachabilityMonitorProvider),
+  );
+}
+
+/// Catches followers transitioning into a reachable state and pushes
+/// recent own events to them. `keepAlive: true` so the in-memory
+/// reachable-set + cooldown map survive transient watcher gaps.
+@Riverpod(keepAlive: true)
+ReconnectPusher reconnectPusher(Ref ref) {
+  return ReconnectPusher(
+    storage: ref.watch(storageServiceProvider),
+    transport: ref.watch(syncTransportProvider),
+    reachability: ref.watch(peerReachabilityMonitorProvider),
+    clock: ref.watch(clockProvider),
+  );
+}
+
+/// Routes each peer's HTTP calls to either [lanNetworkServiceProvider]
+/// or [torNetworkServiceProvider] based on `connection.transport`.
+@riverpod
+SyncEngine syncEngine(Ref ref) {
+  final transport = ref.watch(syncTransportProvider);
   return SyncEngine(
     storage: ref.watch(storageServiceProvider),
     contentKey: ref.watch(contentKeyServiceProvider),
-    transport: ref.watch(lanNetworkServiceProvider),
+    crypto: ref.watch(cryptoServiceProvider),
+    transport: transport,
     peerFactory: ref.watch(peerConnectionFactoryProvider),
+    reachabilityMonitor: ref.watch(peerReachabilityMonitorProvider),
     clock: ref.watch(clockProvider),
+    ownSecretKeyLookup: _loadSecretKey,
   );
+}
+
+Future<Uint8List?> _loadSecretKey() async {
+  final keychain = KeychainManager();
+  final encoded = await keychain.read(KeychainManager.identitySecretKeyName);
+  if (encoded == null) return null;
+  return Uint8List.fromList(base64Decode(encoded));
 }
 
 enum SyncRunPhase { idle, syncing }

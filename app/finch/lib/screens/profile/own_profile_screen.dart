@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../models/models.dart';
 import '../../providers/feed_provider.dart';
 import '../../providers/follows_provider.dart';
+import '../../providers/identity_provider.dart';
 import '../../providers/own_profile_provider.dart';
 import '../../theme/finch_theme.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/buttons.dart';
 import '../../widgets/encrypted_image.dart';
+import '../../widgets/finch_address_row.dart';
 import '../../widgets/qr_invite_sheet.dart';
 import '../../widgets/sheet.dart';
 
@@ -36,7 +38,11 @@ class OwnProfileScreen extends ConsumerWidget {
             SliverToBoxAdapter(child: _Header()),
             SliverToBoxAdapter(
               child: profileAsync.when(
-                data: (profile) => _IdentityBlock(profile: profile),
+                data: (profile) {
+                  final pubkey =
+                      ref.watch(identityControllerProvider).value?.pubkey;
+                  return _IdentityBlock(profile: profile, pubkey: pubkey);
+                },
                 loading: () => const SizedBox(height: 200),
                 error: (e, _) => _ErrorBlock(message: '$e'),
               ),
@@ -89,7 +95,7 @@ class _Header extends StatelessWidget {
           ),
           FinchIconButton(
             onPressed: () => context.push('/settings'),
-            child: const Icon(PhosphorIconsRegular.gear, size: 20),
+            child: const Icon(LucideIcons.settings, size: 20),
           ),
         ],
       ),
@@ -98,9 +104,10 @@ class _Header extends StatelessWidget {
 }
 
 class _IdentityBlock extends StatelessWidget {
-  const _IdentityBlock({required this.profile});
+  const _IdentityBlock({required this.profile, required this.pubkey});
 
   final OwnProfileSnapshot profile;
+  final String? pubkey;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +128,10 @@ class _IdentityBlock extends StatelessWidget {
                 .copyWith(fontSize: 24, letterSpacing: -0.24),
             textAlign: TextAlign.center,
           ),
+          if (pubkey != null) ...[
+            const SizedBox(height: 6),
+            FinchAddressRow(pubkey: pubkey!),
+          ],
           if (profile.bio != null) ...[
             const SizedBox(height: 6),
             ConstrainedBox(
@@ -138,7 +149,7 @@ class _IdentityBlock extends StatelessWidget {
             children: [
               SecondaryButton(
                 label: 'Share invite',
-                leading: const Icon(PhosphorIconsRegular.qrCode, size: 16),
+                leading: const Icon(LucideIcons.qrCode, size: 16),
                 onPressed: () => showFinchSheet(
                   context: context,
                   builder: (_) => const QrInviteSheet(),
@@ -148,7 +159,7 @@ class _IdentityBlock extends StatelessWidget {
               SecondaryButton(
                 label: 'Edit',
                 leading:
-                    const Icon(PhosphorIconsRegular.pencilSimple, size: 16),
+                    const Icon(LucideIcons.pencil, size: 16),
                 onPressed: () => context.push('/profile/edit'),
               ),
             ],
@@ -242,6 +253,7 @@ class _PostGrid extends StatelessWidget {
                   : EncryptedImage(
                       hash: hash,
                       pubkey: event.pubkey,
+                      msgSeq: event.msgSeq,
                     ),
             );
           },

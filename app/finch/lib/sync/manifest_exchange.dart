@@ -3,16 +3,19 @@ import '../services/types.dart';
 import 'sync_engine.dart' show SyncTransport;
 
 /// Result of a manifest comparison: which event IDs the peer has that we
-/// don't, and what range was inspected.
+/// don't, and what range was inspected. May also carry an inline feed-key
+/// rotation delivery from the peer (Plan 13).
 class ManifestDiff {
   const ManifestDiff({
     required this.missingIds,
     required this.peerEvents,
     required this.windowSince,
+    this.newFeedKey,
   });
   final List<String> missingIds;
   final List<ManifestEntry> peerEvents;
   final int? windowSince;
+  final RotatedFeedKeyDelivery? newFeedKey;
 }
 
 /// Asks a peer for its manifest, compares against our local event IDs for
@@ -32,10 +35,16 @@ class ManifestExchange {
     PeerConnection peer,
     Follow follow, {
     int? since,
+    String? requesterPubkey,
+    int? ackRotationAt,
   }) async {
     final windowSince = since ?? follow.lastSyncedAt;
-    final manifest =
-        await _transport.fetchManifest(peer, since: windowSince);
+    final manifest = await _transport.fetchManifest(
+      peer,
+      since: windowSince,
+      requesterPubkey: requesterPubkey,
+      ackRotationAt: ackRotationAt,
+    );
     if (manifest.pubkey != follow.pubkey) {
       // Peer is serving someone else's content under this connection. Drop.
       return ManifestDiff(
@@ -64,6 +73,7 @@ class ManifestExchange {
       missingIds: missing,
       peerEvents: manifest.events,
       windowSince: windowSince,
+      newFeedKey: manifest.newFeedKey,
     );
   }
 }

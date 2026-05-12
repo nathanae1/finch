@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../models/protocol_version.dart';
 import 'clock.dart';
 import 'content_key_service.dart';
+import 'crypto/publish_lock.dart';
 import 'storage_service.dart';
 import 'types.dart';
 
@@ -29,81 +30,104 @@ class DefaultReactionService implements ReactionService {
     required StorageService storage,
     required Clock clock,
     required Future<Identity?> Function() identityLookup,
+    PublishLock? publishLock,
   })  : _contentKey = contentKey,
         _storage = storage,
         _clock = clock,
-        _identityLookup = identityLookup;
+        _identityLookup = identityLookup,
+        _publishLock = publishLock ?? PublishLock();
 
   final ContentKeyService _contentKey;
   final StorageService _storage;
   final Clock _clock;
   final Future<Identity?> Function() _identityLookup;
+  final PublishLock _publishLock;
 
   @override
-  Future<String> like(String targetPostId) async {
-    final identity = await _identityLookup();
-    if (identity == null) {
-      throw StateError('like called before identity is loaded');
-    }
+  Future<String> like(String targetPostId) =>
+      _publishLock.synchronized(() async {
+        final identity = await _identityLookup();
+        if (identity == null) {
+          throw StateError('like called before identity is loaded');
+        }
 
-    final existing = await _findActiveLike(targetPostId, identity.pubkey);
-    if (existing != null) {
-      return existing.id;
-    }
+        final existing = await _findActiveLike(targetPostId, identity.pubkey);
+        if (existing != null) {
+          return existing.id;
+        }
 
-    final unsigned = Event(
-      version: kFinchProtocolVersion,
-      id: '',
-      pubkey: identity.pubkey,
-      createdAt: _clock.nowUnixSeconds(),
-      kind: EventKind.like,
-      ref: targetPostId,
-      content: Uint8List(0),
-      media: const [],
-      extensions: const {},
-      sig: Uint8List(0),
-    );
+        final msgSeq = identity.msgSeqCounter;
 
-    final result = _contentKey.signAndEncryptForAudience(
-      unsigned,
-      Audience.broadcast,
-    );
-    await _storage.saveEvent(result.signed);
-    await _maybeEnqueueForAuthor(targetPostId, identity, result.encrypted);
-    return result.signed.id;
-  }
+        final unsigned = Event(
+          version: kFinchProtocolVersion,
+          id: '',
+          pubkey: identity.pubkey,
+          createdAt: _clock.nowUnixSeconds(),
+          kind: EventKind.like,
+          ref: targetPostId,
+          content: Uint8List(0),
+          media: const [],
+          extensions: const {},
+          sig: Uint8List(0),
+        );
+
+        final result = _contentKey.signAndEncryptForAudience(
+          unsigned,
+          Audience.broadcast,
+          msgSeq: msgSeq,
+        );
+        await _storage.saveOwnEventWithEncrypted(
+          result.signed,
+          result.encrypted.toBytes(),
+        );
+        await _storage.saveIdentity(
+          identity.copyWith(msgSeqCounter: msgSeq + 1),
+        );
+        await _maybeEnqueueForAuthor(targetPostId, identity, result.encrypted);
+        return result.signed.id;
+      });
 
   @override
-  Future<String?> unlike(String targetPostId) async {
-    final identity = await _identityLookup();
-    if (identity == null) {
-      throw StateError('unlike called before identity is loaded');
-    }
+  Future<String?> unlike(String targetPostId) =>
+      _publishLock.synchronized(() async {
+        final identity = await _identityLookup();
+        if (identity == null) {
+          throw StateError('unlike called before identity is loaded');
+        }
 
-    final like = await _findActiveLike(targetPostId, identity.pubkey);
-    if (like == null) return null;
+        final like = await _findActiveLike(targetPostId, identity.pubkey);
+        if (like == null) return null;
 
-    final unsigned = Event(
-      version: kFinchProtocolVersion,
-      id: '',
-      pubkey: identity.pubkey,
-      createdAt: _clock.nowUnixSeconds(),
-      kind: EventKind.delete,
-      ref: like.id,
-      content: Uint8List(0),
-      media: const [],
-      extensions: const {},
-      sig: Uint8List(0),
-    );
+        final msgSeq = identity.msgSeqCounter;
 
-    final result = _contentKey.signAndEncryptForAudience(
-      unsigned,
-      Audience.broadcast,
-    );
-    await _storage.saveEvent(result.signed);
-    await _maybeEnqueueForAuthor(targetPostId, identity, result.encrypted);
-    return result.signed.id;
-  }
+        final unsigned = Event(
+          version: kFinchProtocolVersion,
+          id: '',
+          pubkey: identity.pubkey,
+          createdAt: _clock.nowUnixSeconds(),
+          kind: EventKind.delete,
+          ref: like.id,
+          content: Uint8List(0),
+          media: const [],
+          extensions: const {},
+          sig: Uint8List(0),
+        );
+
+        final result = _contentKey.signAndEncryptForAudience(
+          unsigned,
+          Audience.broadcast,
+          msgSeq: msgSeq,
+        );
+        await _storage.saveOwnEventWithEncrypted(
+          result.signed,
+          result.encrypted.toBytes(),
+        );
+        await _storage.saveIdentity(
+          identity.copyWith(msgSeqCounter: msgSeq + 1),
+        );
+        await _maybeEnqueueForAuthor(targetPostId, identity, result.encrypted);
+        return result.signed.id;
+      });
 
   @override
   Future<bool> isLikedByMe(String targetPostId) async {

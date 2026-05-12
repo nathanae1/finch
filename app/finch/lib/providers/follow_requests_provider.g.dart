@@ -6,50 +6,157 @@ part of 'follow_requests_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$inboundRequestsStreamHash() =>
-    r'f95ae13683ff3ba2f325d58d66ccb59d97890825';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Live pending inbound follow requests for the Friends tab banner.
+
+@ProviderFor(inboundRequestsStream)
+final inboundRequestsStreamProvider = InboundRequestsStreamProvider._();
 
 /// Live pending inbound follow requests for the Friends tab banner.
-///
-/// Copied from [inboundRequestsStream].
-@ProviderFor(inboundRequestsStream)
-final inboundRequestsStreamProvider =
-    AutoDisposeStreamProvider<List<FollowRequest>>.internal(
-      inboundRequestsStream,
-      name: r'inboundRequestsStreamProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$inboundRequestsStreamHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef InboundRequestsStreamRef =
-    AutoDisposeStreamProviderRef<List<FollowRequest>>;
-String _$outboundRequestsStreamHash() =>
-    r'6473997036880c4329e1710e4ee70ea84cf62258';
+final class InboundRequestsStreamProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<FollowRequest>>,
+          List<FollowRequest>,
+          Stream<List<FollowRequest>>
+        >
+    with
+        $FutureModifier<List<FollowRequest>>,
+        $StreamProvider<List<FollowRequest>> {
+  /// Live pending inbound follow requests for the Friends tab banner.
+  InboundRequestsStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'inboundRequestsStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$inboundRequestsStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<FollowRequest>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<FollowRequest>> create(Ref ref) {
+    return inboundRequestsStream(ref);
+  }
+}
+
+String _$inboundRequestsStreamHash() =>
+    r'52acf15cba04c40351050400574a8423203bb23f';
+
+/// Live actioned inbound rows (status != 'pending') — peers who scanned
+/// our QR and whom we've already accepted (or are still trying to deliver
+/// the accept to). The friends list shows these as "Follows you" rows
+/// when we don't follow them back yet.
+
+@ProviderFor(inboundFollowersStream)
+final inboundFollowersStreamProvider = InboundFollowersStreamProvider._();
+
+/// Live actioned inbound rows (status != 'pending') — peers who scanned
+/// our QR and whom we've already accepted (or are still trying to deliver
+/// the accept to). The friends list shows these as "Follows you" rows
+/// when we don't follow them back yet.
+
+final class InboundFollowersStreamProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<FollowRequest>>,
+          List<FollowRequest>,
+          Stream<List<FollowRequest>>
+        >
+    with
+        $FutureModifier<List<FollowRequest>>,
+        $StreamProvider<List<FollowRequest>> {
+  /// Live actioned inbound rows (status != 'pending') — peers who scanned
+  /// our QR and whom we've already accepted (or are still trying to deliver
+  /// the accept to). The friends list shows these as "Follows you" rows
+  /// when we don't follow them back yet.
+  InboundFollowersStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'inboundFollowersStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$inboundFollowersStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<FollowRequest>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<FollowRequest>> create(Ref ref) {
+    return inboundFollowersStream(ref);
+  }
+}
+
+String _$inboundFollowersStreamHash() =>
+    r'9556f849d3e50a6b6dc91ebbec25904ee4a6cdb9';
 
 /// Live outbound follow requests (any status) for the Friends tab "Pending"
 /// rows.
-///
-/// Copied from [outboundRequestsStream].
-@ProviderFor(outboundRequestsStream)
-final outboundRequestsStreamProvider =
-    AutoDisposeStreamProvider<List<FollowRequest>>.internal(
-      outboundRequestsStream,
-      name: r'outboundRequestsStreamProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$outboundRequestsStreamHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef OutboundRequestsStreamRef =
-    AutoDisposeStreamProviderRef<List<FollowRequest>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(outboundRequestsStream)
+final outboundRequestsStreamProvider = OutboundRequestsStreamProvider._();
+
+/// Live outbound follow requests (any status) for the Friends tab "Pending"
+/// rows.
+
+final class OutboundRequestsStreamProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<FollowRequest>>,
+          List<FollowRequest>,
+          Stream<List<FollowRequest>>
+        >
+    with
+        $FutureModifier<List<FollowRequest>>,
+        $StreamProvider<List<FollowRequest>> {
+  /// Live outbound follow requests (any status) for the Friends tab "Pending"
+  /// rows.
+  OutboundRequestsStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'outboundRequestsStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$outboundRequestsStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<FollowRequest>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<FollowRequest>> create(Ref ref) {
+    return outboundRequestsStream(ref);
+  }
+}
+
+String _$outboundRequestsStreamHash() =>
+    r'e0c9ff9495ff84744d06cf9ff43d6f1db1b26d21';

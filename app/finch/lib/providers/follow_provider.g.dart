@@ -6,70 +6,238 @@ part of 'follow_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$ownEndpointsHash() => r'5f4bc1752906e9332cfe119bbbfab829c6d30dca';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Endpoints we currently advertise to peers. Tor-only: friend-add and
+/// the connection cards that ride inside follow-request payloads must
+/// not carry LAN hints, both to avoid leaking the local address and
+/// because LAN-direct addresses are unreliable across NATs (e.g. Android
+/// emulator's 10.0.2.0/24). Returns an empty list until Arti has
+/// published our onion service — callers (QR sheet, follow request) gate
+/// their UX on that.
 
-/// Endpoints we currently advertise to peers. Plan 08 shipped only a
-/// `direct: 127.0.0.1:<port>` entry, which lets two simulators on one Mac
-/// complete the handshake but doesn't work between physical devices on
-/// the same WiFi. Plan 09 adds `lan-direct: <LAN_IP>:<port>` so a QR-scan
-/// handshake works across two real phones. Plan 11 will add the Tor
-/// onion address.
-///
-/// Copied from [ownEndpoints].
 @ProviderFor(ownEndpoints)
-final ownEndpointsProvider = AutoDisposeFutureProvider<List<Endpoint>>.internal(
-  ownEndpoints,
-  name: r'ownEndpointsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$ownEndpointsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final ownEndpointsProvider = OwnEndpointsProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef OwnEndpointsRef = AutoDisposeFutureProviderRef<List<Endpoint>>;
-String _$followServiceHash() => r'5d78eb7cc862574f6933cbed50a3e0c27bfb31d1';
+/// Endpoints we currently advertise to peers. Tor-only: friend-add and
+/// the connection cards that ride inside follow-request payloads must
+/// not carry LAN hints, both to avoid leaking the local address and
+/// because LAN-direct addresses are unreliable across NATs (e.g. Android
+/// emulator's 10.0.2.0/24). Returns an empty list until Arti has
+/// published our onion service — callers (QR sheet, follow request) gate
+/// their UX on that.
+
+final class OwnEndpointsProvider
+    extends $FunctionalProvider<List<Endpoint>, List<Endpoint>, List<Endpoint>>
+    with $Provider<List<Endpoint>> {
+  /// Endpoints we currently advertise to peers. Tor-only: friend-add and
+  /// the connection cards that ride inside follow-request payloads must
+  /// not carry LAN hints, both to avoid leaking the local address and
+  /// because LAN-direct addresses are unreliable across NATs (e.g. Android
+  /// emulator's 10.0.2.0/24). Returns an empty list until Arti has
+  /// published our onion service — callers (QR sheet, follow request) gate
+  /// their UX on that.
+  OwnEndpointsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ownEndpointsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$ownEndpointsHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<Endpoint>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  List<Endpoint> create(Ref ref) {
+    return ownEndpoints(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<Endpoint> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<Endpoint>>(value),
+    );
+  }
+}
+
+String _$ownEndpointsHash() => r'72e3051fcf128a41c57d0dc0bce45f9a1c308df1';
+
+/// Singleton [KeyRotationService] (Plan 13) — generates a new feed key on
+/// follower removal and queues per-follower wrapped distributions.
+
+@ProviderFor(keyRotationService)
+final keyRotationServiceProvider = KeyRotationServiceProvider._();
+
+/// Singleton [KeyRotationService] (Plan 13) — generates a new feed key on
+/// follower removal and queues per-follower wrapped distributions.
+
+final class KeyRotationServiceProvider
+    extends
+        $FunctionalProvider<
+          KeyRotationService,
+          KeyRotationService,
+          KeyRotationService
+        >
+    with $Provider<KeyRotationService> {
+  /// Singleton [KeyRotationService] (Plan 13) — generates a new feed key on
+  /// follower removal and queues per-follower wrapped distributions.
+  KeyRotationServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'keyRotationServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$keyRotationServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<KeyRotationService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  KeyRotationService create(Ref ref) {
+    return keyRotationService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(KeyRotationService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<KeyRotationService>(value),
+    );
+  }
+}
+
+String _$keyRotationServiceHash() =>
+    r'60ac6640728d029f96bf8d4c5a633d882ba9beb4';
 
 /// Singleton [FollowService] for the running app. Constructs the real
 /// HTTP transport, wires identity / secret-key lookups, and points the
-/// service at the live storage + crypto.
-///
-/// Copied from [followService].
+/// service at the live storage + crypto. Handshake requests to `.onion`
+/// endpoints route through Arti's SOCKS5 proxy via [TorHttpClient]; LAN
+/// endpoints continue to use the default `http.Client`.
+
 @ProviderFor(followService)
-final followServiceProvider = AutoDisposeProvider<FollowService>.internal(
-  followService,
-  name: r'followServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$followServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final followServiceProvider = FollowServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef FollowServiceRef = AutoDisposeProviderRef<FollowService>;
-String _$ownConnectionCardHash() => r'94af7bdf15f58111979f7215272636e6ff466a3d';
+/// Singleton [FollowService] for the running app. Constructs the real
+/// HTTP transport, wires identity / secret-key lookups, and points the
+/// service at the live storage + crypto. Handshake requests to `.onion`
+/// endpoints route through Arti's SOCKS5 proxy via [TorHttpClient]; LAN
+/// endpoints continue to use the default `http.Client`.
 
-/// Convenience: assemble the connection card we share via QR.
-///
-/// Copied from [ownConnectionCard].
-@ProviderFor(ownConnectionCard)
-final ownConnectionCardProvider =
-    AutoDisposeFutureProvider<ConnectionCard?>.internal(
-      ownConnectionCard,
-      name: r'ownConnectionCardProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$ownConnectionCardHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
+final class FollowServiceProvider
+    extends $FunctionalProvider<FollowService, FollowService, FollowService>
+    with $Provider<FollowService> {
+  /// Singleton [FollowService] for the running app. Constructs the real
+  /// HTTP transport, wires identity / secret-key lookups, and points the
+  /// service at the live storage + crypto. Handshake requests to `.onion`
+  /// endpoints route through Arti's SOCKS5 proxy via [TorHttpClient]; LAN
+  /// endpoints continue to use the default `http.Client`.
+  FollowServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'followServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$followServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<FollowService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  FollowService create(Ref ref) {
+    return followService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FollowService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FollowService>(value),
     );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef OwnConnectionCardRef = AutoDisposeFutureProviderRef<ConnectionCard?>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+String _$followServiceHash() => r'83fca473f689b5115c6fc4be06be5f749210bb69';
+
+/// Convenience: assemble the connection card we share via QR. Returns
+/// `null` until the onion endpoint is available so the QR sheet can show
+/// a loading state instead of publishing a card with no reachable
+/// transport.
+
+@ProviderFor(ownConnectionCard)
+final ownConnectionCardProvider = OwnConnectionCardProvider._();
+
+/// Convenience: assemble the connection card we share via QR. Returns
+/// `null` until the onion endpoint is available so the QR sheet can show
+/// a loading state instead of publishing a card with no reachable
+/// transport.
+
+final class OwnConnectionCardProvider
+    extends
+        $FunctionalProvider<ConnectionCard?, ConnectionCard?, ConnectionCard?>
+    with $Provider<ConnectionCard?> {
+  /// Convenience: assemble the connection card we share via QR. Returns
+  /// `null` until the onion endpoint is available so the QR sheet can show
+  /// a loading state instead of publishing a card with no reachable
+  /// transport.
+  OwnConnectionCardProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ownConnectionCardProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$ownConnectionCardHash();
+
+  @$internal
+  @override
+  $ProviderElement<ConnectionCard?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ConnectionCard? create(Ref ref) {
+    return ownConnectionCard(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ConnectionCard? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ConnectionCard?>(value),
+    );
+  }
+}
+
+String _$ownConnectionCardHash() => r'9af2ad5601bacb4f90a4fc9c1fb22e7b27e0d3e4';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../providers/compose_provider.dart';
 import '../../theme/finch_theme.dart';
@@ -71,7 +71,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 children: [
                   FinchIconButton(
                     onPressed: _close,
-                    child: const Icon(PhosphorIconsRegular.x, size: 20),
+                    child: const Icon(LucideIcons.x, size: 20),
                   ),
                   Expanded(
                     child: Text(
@@ -185,7 +185,7 @@ class _PhotoSlot extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              PhosphorIconsRegular.camera,
+              LucideIcons.camera,
               size: 32,
               color: finch.colors.stone,
             ),
@@ -201,14 +201,14 @@ class _PhotoSlot extends StatelessWidget {
                 SecondaryButton(
                   label: 'Gallery',
                   leading:
-                      const Icon(PhosphorIconsRegular.imageSquare, size: 16),
+                      const Icon(LucideIcons.image, size: 16),
                   onPressed:
                       state.phase == ComposePhase.picking ? null : onGallery,
                 ),
                 const SizedBox(width: 12),
                 SecondaryButton(
                   label: 'Camera',
-                  leading: const Icon(PhosphorIconsRegular.camera, size: 16),
+                  leading: const Icon(LucideIcons.camera, size: 16),
                   onPressed:
                       state.phase == ComposePhase.picking ? null : onCamera,
                 ),
@@ -239,7 +239,7 @@ class _ClearPhotoButton extends StatelessWidget {
           width: 32,
           height: 32,
           child: Icon(
-            PhosphorIconsRegular.x,
+            LucideIcons.x,
             size: 16,
             color: Colors.white,
           ),

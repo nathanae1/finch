@@ -22,19 +22,24 @@ class FollowProfileSnapshot {
 
 @riverpod
 Future<FollowProfileSnapshot> followProfile(
-  FollowProfileRef ref,
+  Ref ref,
   String pubkey,
 ) async {
-  final identity = await ref.watch(identityControllerProvider.future);
+  // Subscribe synchronously before any await — using `ref` after an await
+  // is illegal if the provider was invalidated during the await.
+  final identityFuture = ref.watch(identityControllerProvider.future);
+  final ownProfileFuture = ref.watch(ownProfileProvider.future);
+  final storage = ref.watch(storageServiceProvider);
+
+  final identity = await identityFuture;
   if (identity != null && identity.pubkey == pubkey) {
-    final own = await ref.watch(ownProfileProvider.future);
+    final own = await ownProfileFuture;
     return FollowProfileSnapshot(
       displayName: own.displayName,
       avatarHash: own.avatarHash,
     );
   }
 
-  final storage = ref.watch(storageServiceProvider);
   final follow = await storage.getFollow(pubkey);
   final name = follow?.displayName?.trim().isNotEmpty == true
       ? follow!.displayName!.trim()

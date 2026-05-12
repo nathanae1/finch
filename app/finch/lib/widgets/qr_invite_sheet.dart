@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/follow_provider.dart';
+import '../providers/identity_provider.dart';
 import '../theme/finch_theme.dart';
 import '../utils/connection_card_parser.dart';
 import 'buttons.dart';
@@ -22,92 +23,101 @@ class _QrInviteSheetState extends ConsumerState<QrInviteSheet> {
   @override
   Widget build(BuildContext context) {
     final finch = FinchTheme.of(context);
-    final cardAsync = ref.watch(ownConnectionCardProvider);
+    final identityAsync = ref.watch(identityControllerProvider);
+    final card = ref.watch(ownConnectionCardProvider);
 
-    return cardAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Padding(
+    if (identityAsync.value == null) {
+      return Padding(
         padding: const EdgeInsets.symmetric(vertical: 48),
         child: Center(
-          child: Text('Couldn\'t load your invite: $e',
-              style: finch.typography.small),
+          child: Text(
+            'Finish onboarding before sharing your invite.',
+            style: finch.typography.small,
+            textAlign: TextAlign.center,
+          ),
         ),
-      ),
-      data: (card) {
-        if (card == null) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 48),
-            child: Center(
-              child: Text(
-                'Finish onboarding before sharing your invite.',
-                style: finch.typography.small,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        }
-        final url = inviteUrlFor(card);
-        return Column(
+      );
+    }
+    if (card == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
             Text(
-              'Scan to add me as a friend',
-              style: finch.typography.h2,
+              'Connecting to Tor…',
+              style: finch.typography.small,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
-              "Share this with people you trust. There's no way for "
-              'strangers to find you.',
+              'Your invite is ready as soon as the onion service comes up.',
               style: finch.typography.caption,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            FinchQRCode(data: url),
-            const SizedBox(height: 16),
-            Text(
-              url,
-              style: finch.typography.monoSmall,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          ],
+        ),
+      );
+    }
+    final url = inviteUrlFor(card);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Scan to add me as a friend',
+          style: finch.typography.h2,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Share this with people you trust. There's no way for "
+          'strangers to find you.',
+          style: finch.typography.caption,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        FinchQRCode(data: url),
+        const SizedBox(height: 16),
+        Text(
+          url,
+          style: finch.typography.monoSmall,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                label: _justCopied ? 'Copied' : 'Copy link',
+                onPressed: () => _onCopy(url),
+                block: true,
+              ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: SecondaryButton(
-                    label: _justCopied ? 'Copied' : 'Copy link',
-                    onPressed: () => _onCopy(url),
-                    block: true,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: PrimaryButton(
-                    label: 'Done',
-                    onPressed: () => Navigator.of(context).pop(),
-                    block: true,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            GhostButton(
-              label: "Scan a friend's QR instead",
-              onPressed: () {
-                Navigator.of(context).pop();
-                context.push('/friends/scan');
-              },
+            const SizedBox(width: 12),
+            Expanded(
+              child: PrimaryButton(
+                label: 'Done',
+                onPressed: () => Navigator.of(context).pop(),
+                block: true,
+              ),
             ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        GhostButton(
+          label: "Scan a friend's QR instead",
+          onPressed: () {
+            Navigator.of(context).pop();
+            context.push('/friends/scan');
+          },
+        ),
+      ],
     );
   }
 

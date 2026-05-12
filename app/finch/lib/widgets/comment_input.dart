@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../providers/comments_provider.dart';
 import '../theme/finch_theme.dart';
@@ -91,7 +91,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                 FinchIconButton(
                   onPressed: _sending ? null : _submit,
                   child: Icon(
-                    PhosphorIconsRegular.paperPlaneTilt,
+                    LucideIcons.send,
                     size: 20,
                     color: _sending
                         ? finch.colors.stone

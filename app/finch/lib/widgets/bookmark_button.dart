@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../providers/bookmark_provider.dart';
 import '../theme/finch_theme.dart';
@@ -29,8 +29,8 @@ class BookmarkButton extends ConsumerWidget {
           ref.read(bookmarkControllerProvider(eventId).notifier).toggle(),
       child: Icon(
         isSaved
-            ? PhosphorIconsFill.bookmarkSimple
-            : PhosphorIconsRegular.bookmarkSimple,
+            ? LucideIcons.bookmarkCheck
+            : LucideIcons.bookmark,
         size: iconSize,
         color: isSaved ? finch.colors.sageDeep : finch.colors.graphite,
       ),

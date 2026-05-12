@@ -1,26 +1,29 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
-import 'package:sqlite3/open.dart';
 
 import 'daos/events_dao.dart';
 import 'daos/follow_requests_dao.dart';
 import 'daos/follows_dao.dart';
 import 'daos/identity_dao.dart';
+import 'daos/key_rotation_dao.dart';
 import 'daos/media_cache_dao.dart';
 import 'daos/outbound_queue_dao.dart';
 import 'daos/unknown_items_dao.dart';
 import 'tables/events_table.dart';
+import 'tables/feed_key_history_table.dart';
+import 'tables/follow_feed_key_history_table.dart';
 import 'tables/follows_table.dart';
 import 'tables/identity_table.dart';
 import 'tables/inbound_follow_requests_table.dart';
 import 'tables/media_cache_table.dart';
 import 'tables/outbound_follow_requests_table.dart';
 import 'tables/outbound_queue_table.dart';
+import 'tables/pending_key_distributions_table.dart';
 import 'tables/unknown_envelope_items_table.dart';
 
 part 'database.g.dart';
@@ -35,6 +38,9 @@ part 'database.g.dart';
     OutboundFollowRequestEntries,
     OutboundQueueEntries,
     UnknownEnvelopeItemEntries,
+    FeedKeyHistoryEntries,
+    FollowFeedKeyHistoryEntries,
+    PendingKeyDistributionEntries,
   ],
   daos: [
     IdentityDao,
@@ -44,6 +50,7 @@ part 'database.g.dart';
     FollowRequestsDao,
     OutboundQueueDao,
     UnknownItemsDao,
+    KeyRotationDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -60,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,41 +89,15 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX idx_events_saved '
             'ON event_entries (is_saved) WHERE is_saved = 1',
           );
+          await customStatement(
+            'CREATE INDEX idx_pending_distributions_undelivered '
+            'ON pending_key_distribution_entries (target_pubkey) '
+            'WHERE distributed = 0',
+          );
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
-            await customStatement(
-              'ALTER TABLE event_entries ADD COLUMN extensions BLOB',
-            );
-          }
-          if (from < 3) {
-            await customStatement(
-              'ALTER TABLE identity_entries '
-              'ADD COLUMN feed_key_epoch INTEGER NOT NULL DEFAULT 0',
-            );
-            await customStatement(
-              'ALTER TABLE follow_entries '
-              'ADD COLUMN feed_key_epoch INTEGER NOT NULL DEFAULT 0',
-            );
-          }
-          if (from < 4) {
-            await customStatement(
-              'ALTER TABLE event_entries '
-              'ADD COLUMN is_saved INTEGER NOT NULL DEFAULT 0',
-            );
-            await customStatement(
-              'CREATE INDEX idx_events_saved '
-              'ON event_entries (is_saved) WHERE is_saved = 1',
-            );
-          }
-          if (from < 5) {
-            await customStatement(
-              'ALTER TABLE inbound_follow_request_entries '
-              'ADD COLUMN request_timestamp INTEGER NOT NULL DEFAULT 0',
-            );
-          }
-          if (from < 6) {
-            await m.createTable(unknownEnvelopeItemEntries);
+            await m.addColumn(eventEntries, eventEntries.encryptedPayload);
           }
         },
       );
@@ -126,16 +107,36 @@ LazyDatabase _openEncryptedConnection(String dbKey) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'finch.db'));
-
-    open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+    final exists = await file.exists();
+    final size = exists ? await file.length() : 0;
+    final keyFp = _shortHex(dbKey);
+    _dbLog('open path=${file.path} exists=$exists size=$size keyFp=$keyFp');
 
     return NativeDatabase.createInBackground(
       file,
       setup: (rawDb) {
-        rawDb.execute("PRAGMA key = \"x'$dbKey'\";");
-        // Fail fast if key is wrong.
-        rawDb.execute('SELECT count(*) FROM sqlite_master');
+        try {
+          rawDb.execute("PRAGMA key = \"x'$dbKey'\";");
+          // Fail fast if key is wrong.
+          rawDb.execute('SELECT count(*) FROM sqlite_master');
+          _dbLog('open ok keyFp=$keyFp');
+        } catch (e) {
+          _dbLog('open FAILED keyFp=$keyFp err=$e');
+          rethrow;
+        }
       },
     );
   });
+}
+
+/// First 8 hex chars of a hex-encoded string, for safe logging.
+String _shortHex(String hex) {
+  if (hex.length <= 8) return hex;
+  return '${hex.substring(0, 8)}…';
+}
+
+void _dbLog(String msg) {
+  developer.log(msg, name: 'finch.db');
+  // ignore: avoid_print
+  print('[finch.db] $msg');
 }

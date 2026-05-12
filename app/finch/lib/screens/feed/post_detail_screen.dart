@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../models/models.dart';
 import '../../providers/feed_provider.dart';
 import '../../providers/follow_profile_provider.dart';
+import '../../providers/identity_provider.dart';
 import '../../providers/reactions_provider.dart';
 import '../../providers/service_providers.dart';
 import '../../theme/finch_theme.dart';
@@ -17,7 +19,10 @@ import '../../widgets/buttons.dart';
 import '../../widgets/comment_input.dart';
 import '../../widgets/comment_list.dart';
 import '../../widgets/encrypted_image.dart';
+import '../../widgets/finch_icon.dart';
 import '../../widgets/reaction_button.dart';
+import '../../widgets/sheet.dart';
+import 'post_actions_sheet.dart';
 
 /// Full-screen post view. Plan 06 wires the bookmark toggle and stubs the
 /// composer slot (Plan 10 enables it). Marking the post as last_viewed
@@ -103,6 +108,7 @@ class _PostDetailBody extends ConsumerWidget {
       child: Column(
         children: [
           _DetailHeader(
+            eventId: event.id,
             displayName: displayName,
             pubkey: event.pubkey,
             createdAt: event.createdAt,
@@ -124,6 +130,7 @@ class _PostDetailBody extends ConsumerWidget {
                       child: EncryptedImage(
                         hash: mediaHash,
                         pubkey: event.pubkey,
+                        msgSeq: event.msgSeq,
                         aspectRatio: 4 / 5,
                       ),
                     ),
@@ -156,22 +163,26 @@ class _PostDetailBody extends ConsumerWidget {
   }
 }
 
-class _DetailHeader extends StatelessWidget {
+class _DetailHeader extends ConsumerWidget {
   const _DetailHeader({
+    required this.eventId,
     required this.displayName,
     required this.pubkey,
     required this.createdAt,
     required this.now,
   });
 
+  final String eventId;
   final String displayName;
   final String pubkey;
   final int createdAt;
   final int now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final finch = FinchTheme.of(context);
+    final isOwnPost =
+        ref.watch(identityControllerProvider).value?.pubkey == pubkey;
     return Container(
       decoration: BoxDecoration(
         color: finch.colors.paper,
@@ -182,7 +193,7 @@ class _DetailHeader extends StatelessWidget {
         children: [
           FinchIconButton(
             onPressed: () => Navigator.of(context).maybePop(),
-            child: const Icon(PhosphorIconsRegular.arrowLeft, size: 20),
+            child: const Icon(LucideIcons.arrowLeft, size: 20),
           ),
           const SizedBox(width: 4),
           Avatar(name: displayName, size: AvatarSize.sm),
@@ -202,6 +213,29 @@ class _DetailHeader extends StatelessWidget {
             timeAgo(createdAt, nowUnixSeconds: now),
             style: finch.typography.micro,
           ),
+          if (isOwnPost) ...[
+            const SizedBox(width: 4),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => showFinchSheet(
+                context: context,
+                builder: (_) => PostActionsSheet(
+                  eventId: eventId,
+                  onDeleted: () {
+                    if (context.mounted) context.pop();
+                  },
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                child: FinchIcon(
+                  LucideIcons.ellipsis,
+                  size: 18,
+                  color: finch.colors.graphite,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -236,7 +270,7 @@ class _ActionRow extends ConsumerWidget {
         // is right below); tapping it focuses the composer would be a
         // future polish, not load-bearing now.
         Icon(
-          PhosphorIconsRegular.chatCircle,
+          LucideIcons.messageCircle,
           size: 24,
           color: finch.colors.graphite,
         ),

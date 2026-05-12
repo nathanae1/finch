@@ -13,6 +13,8 @@ Identity identityFromRow(IdentityEntry row) => Identity(
       pubkey: row.pubkey,
       feedKey: row.feedKey,
       feedKeyEpoch: row.feedKeyEpoch,
+      feedKeyValidFrom: row.feedKeyValidFrom,
+      msgSeqCounter: row.msgSeqCounter,
       recoveryPhrase: row.recoveryPhrase,
       createdAt: row.createdAt,
     );
@@ -22,8 +24,41 @@ IdentityEntriesCompanion identityToCompanion(Identity identity) =>
       pubkey: identity.pubkey,
       feedKey: identity.feedKey,
       feedKeyEpoch: Value(identity.feedKeyEpoch),
+      feedKeyValidFrom: Value(identity.feedKeyValidFrom),
+      msgSeqCounter: Value(identity.msgSeqCounter),
       recoveryPhrase: Value(identity.recoveryPhrase),
       createdAt: identity.createdAt,
+    );
+
+// --- Feed key history (Plan 13) ---
+
+RetiredFeedKey retiredFeedKeyFromRow(FeedKeyHistoryEntry row) => RetiredFeedKey(
+      feedKey: row.feedKey,
+      feedKeyEpoch: row.feedKeyEpoch,
+      validFrom: row.validFrom,
+      validUntil: row.validUntil,
+    );
+
+RetiredFeedKey retiredFeedKeyFromFollowRow(
+  FollowFeedKeyHistoryEntry row,
+) =>
+    RetiredFeedKey(
+      feedKey: row.feedKey,
+      feedKeyEpoch: row.feedKeyEpoch,
+      validFrom: row.validFrom,
+      validUntil: row.validUntil,
+    );
+
+// --- Pending key distributions (Plan 13) ---
+
+PendingKeyDistribution pendingKeyDistributionFromRow(
+  PendingKeyDistributionEntry row,
+) =>
+    PendingKeyDistribution(
+      targetPubkey: row.targetPubkey,
+      encryptedFeedKey: row.encryptedFeedKey,
+      nonce: row.nonce,
+      createdAt: row.createdAt,
     );
 
 // --- Follow ---
@@ -36,6 +71,8 @@ Follow followFromRow(FollowEntry row) => Follow(
       feedKey: row.feedKey,
       feedKeyEpoch: row.feedKeyEpoch,
       lastSyncedAt: row.lastSyncedAt,
+      lastReceivedRotationAt: row.lastReceivedRotationAt,
+      lastDecryptFailureAt: row.lastDecryptFailureAt,
       status: row.status,
     );
 
@@ -48,6 +85,8 @@ FollowEntriesCompanion followToCompanion(Follow follow) =>
       feedKey: follow.feedKey,
       feedKeyEpoch: Value(follow.feedKeyEpoch),
       lastSyncedAt: Value(follow.lastSyncedAt),
+      lastReceivedRotationAt: Value(follow.lastReceivedRotationAt),
+      lastDecryptFailureAt: Value(follow.lastDecryptFailureAt),
       status: Value(follow.status),
     );
 
@@ -64,12 +103,14 @@ Event eventFromRow(EventEntry row) => Event(
       media: _decodeMediaRefs(row.mediaRefs),
       extensions: _decodeExtensions(row.extensions),
       sig: row.sig,
+      msgSeq: row.msgSeq,
     );
 
 EventEntriesCompanion eventToCompanion(
   Event event, {
   required bool isOwn,
   required int fetchedAt,
+  Uint8List? encryptedPayload,
 }) =>
     EventEntriesCompanion.insert(
       id: event.id,
@@ -84,6 +125,8 @@ EventEntriesCompanion eventToCompanion(
       fetchedAt: fetchedAt,
       version: Value(event.version),
       extensions: Value(_encodeExtensions(event.extensions)),
+      msgSeq: Value(event.msgSeq),
+      encryptedPayload: Value(encryptedPayload),
     );
 
 String? _encodeMediaRefs(List<MediaRef> media) {
@@ -130,7 +173,7 @@ FollowRequest inboundRequestFromRow(InboundFollowRequestEntry row) =>
 FollowRequest outboundRequestFromRow(OutboundFollowRequestEntry row) =>
     FollowRequest(
       pubkey: row.pubkey,
-      payload: Uint8List.fromList(utf8.encode(row.connectionCard)),
+      payload: base64.decode(row.connectionCard),
       createdAt: row.createdAt,
       requestTimestamp: row.createdAt,
       status: row.status,

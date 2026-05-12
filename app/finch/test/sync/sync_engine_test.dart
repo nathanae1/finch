@@ -9,6 +9,7 @@ import 'package:finch/services/crypto/sodium_crypto_service.dart';
 import 'package:finch/services/crypto_service.dart';
 import 'package:finch/services/mocks/mock_clock.dart';
 import 'package:finch/services/mocks/mock_mdns_service.dart';
+import '../helpers/fake_peer_reachability_monitor.dart';
 import 'package:finch/services/storage/database.dart';
 import 'package:finch/services/storage/drift_storage_service.dart';
 import 'package:finch/services/types.dart';
@@ -30,6 +31,7 @@ void main() {
     late _Peer bob;
     late _RouteableTransport transport;
     late MockMdnsService bobMdns;
+    late FakePeerReachabilityMonitor bobMonitor;
     late SyncEngine bobEngine;
 
     setUp(() async {
@@ -56,12 +58,21 @@ void main() {
         lastSyncedAt: 0,
       ));
 
+      bobMonitor = FakePeerReachabilityMonitor()
+        ..setReachable(
+          alice.identity.pubkey,
+          PeerTransport.lan,
+          'http://10.0.0.1:49000',
+        );
       bobEngine = SyncEngine(
         storage: bob.storage,
         contentKey: bob.contentKey,
+        crypto: crypto,
         transport: transport,
-        peerFactory: PeerConnectionFactory(mdns: bobMdns),
+        peerFactory: PeerConnectionFactory(monitor: bobMonitor),
+        reachabilityMonitor: bobMonitor,
         clock: bob.clock,
+        ownSecretKeyLookup: () async => bob.secretKey,
       );
     });
 
@@ -110,6 +121,7 @@ void main() {
     test('peer not in mDNS cache → marked unreachable, sync continues',
         () async {
       bobMdns.removePeer(alice.identity.pubkey);
+      bobMonitor.clear();
       final report = await bobEngine.syncNow();
       expect(report.peers.single.status, equals(PeerSyncStatus.unreachable));
 
@@ -165,6 +177,217 @@ void main() {
       expect(report.peers.single.status, equals(PeerSyncStatus.unreachable));
       expect(report.peers.single.error, isNotNull);
     });
+
+    test(
+        'rotated feed key in manifest response is decrypted, follow.feedKey '
+        'and lastReceivedRotationAt are persisted, new posts decrypt',
+        () async {
+      // Alice publishes one post under her *current* feed key, which Bob
+      // already has. Then alice rotates: she encrypts a new feed key for
+      // bob, queues it, and publishes a post under the new key. Bob syncs
+      // and should receive both: the rotation payload (applied first) and
+      // the new post (decrypted with the new key).
+      alice.clock.advance(60);
+      await alice.publishPost('pre-rotation');
+
+      // First sync: bob picks up the pre-rotation post with the old key.
+      final pre = await bobEngine.syncNow();
+      expect(pre.peers.single.eventsFetched, equals(1));
+
+      // Now alice rotates. We need to plumb a delivery into the transport.
+      final rotationAt = alice.clock.nowUnixSeconds() + 30;
+      alice.clock.advance(30);
+      final newKey = crypto.randomBytes(32);
+
+      // Wrap the new key for bob using alice's (sender) and bob's (recipient)
+      // identities — same convention KeyRotationService uses.
+      final aliceEdPk = crockfordBase32Decode(alice.identity.pubkey);
+      final bobEdPk = crockfordBase32Decode(bob.identity.pubkey);
+      final aliceXSk = crypto.ed25519ToX25519SecretKey(alice.secretKey);
+      final bobXPk = crypto.ed25519ToX25519PublicKey(bobEdPk);
+      final shared = crypto.deriveSharedKey(
+        aliceXSk,
+        bobXPk,
+        aliceEdPk,
+        bobEdPk,
+        rotationAt,
+      );
+      final wrapped = alice.contentKey.encryptFeedKey(newKey, shared);
+      final nonce = Uint8List.fromList(wrapped.sublist(0, 24));
+      final ct = Uint8List.fromList(wrapped.sublist(24));
+
+      // Tell the transport to attach this delivery to alice's next manifest
+      // response targeted at bob.
+      transport.queueRotationFor(
+        peerPubkey: alice.identity.pubkey,
+        delivery: RotatedFeedKeyDelivery(
+          encryptedFeedKey: ct,
+          nonce: nonce,
+          createdAt: rotationAt,
+        ),
+      );
+      // Update alice's identity to the new key so her _RouteableTransport
+      // re-encrypts subsequent envelope items under it.
+      await alice.storage.saveIdentity(alice.identity.copyWith(
+        feedKey: newKey,
+        feedKeyValidFrom: rotationAt,
+      ));
+      alice.identity = (await alice.storage.getIdentity())!;
+
+      // Alice publishes a post under the new key.
+      alice.clock.advance(10);
+      await alice.publishPostWithKey('post-rotation', newKey, 0);
+
+      final post = await bobEngine.syncNow();
+      expect(post.peers.single.status, equals(PeerSyncStatus.synced));
+
+      // Bob's follow row now has the new feed key and ack timestamp.
+      final follow = await bob.storage.getFollow(alice.identity.pubkey);
+      expect(follow!.feedKey, equals(newKey));
+      expect(follow.lastReceivedRotationAt, equals(rotationAt));
+
+      // Both events end up stored — pre-rotation (still readable, plaintext
+      // on disk; the wire re-encryption uses the new key which bob now has)
+      // and post-rotation.
+      final stored =
+          await bob.storage.getEvents(pubkey: alice.identity.pubkey);
+      expect(stored.map((e) => String.fromCharCodes(e.content)).toSet(),
+          equals({'pre-rotation', 'post-rotation'}));
+    });
+
+    test('syncOnePeerByPubkey runs the full per-peer sync for one follow',
+        () async {
+      alice.clock.advance(60);
+      await alice.publishPost('targeted');
+
+      final report = await bobEngine.syncOnePeerByPubkey(alice.identity.pubkey);
+      expect(report, isNotNull);
+      expect(report!.status, equals(PeerSyncStatus.synced));
+      expect(report.eventsFetched, equals(1));
+
+      final stored =
+          await bob.storage.getEvents(pubkey: alice.identity.pubkey);
+      expect(stored, hasLength(1));
+    });
+
+    test('syncOnePeerByPubkey returns null when the follow does not exist',
+        () async {
+      final report = await bobEngine.syncOnePeerByPubkey('not-a-real-pubkey');
+      expect(report, isNull);
+    });
+
+    test(
+        'event decrypt failure stamps lastDecryptFailureAt; rotation clears '
+        'it', () async {
+      // Bob's stored feedKey is alice's current key. Tamper the next
+      // envelope so decrypt/verify fails — that should stamp
+      // last_decrypt_failure_at on the follow.
+      alice.clock.advance(60);
+      await alice.publishPost('legit');
+      transport.tamperNextEnvelopeFor = alice.identity.pubkey;
+
+      await bobEngine.syncNow();
+      final afterFailure =
+          await bob.storage.getFollow(alice.identity.pubkey);
+      expect(afterFailure!.lastDecryptFailureAt, isNotNull);
+
+      // Now alice rotates her feed key. Bob's next sync should pull the
+      // rotation, which clears the staleness stamp.
+      final rotationAt = alice.clock.nowUnixSeconds() + 30;
+      alice.clock.advance(30);
+      final newKey = crypto.randomBytes(32);
+      final aliceEdPk = crockfordBase32Decode(alice.identity.pubkey);
+      final bobEdPk = crockfordBase32Decode(bob.identity.pubkey);
+      final aliceXSk = crypto.ed25519ToX25519SecretKey(alice.secretKey);
+      final bobXPk = crypto.ed25519ToX25519PublicKey(bobEdPk);
+      final shared = crypto.deriveSharedKey(
+        aliceXSk,
+        bobXPk,
+        aliceEdPk,
+        bobEdPk,
+        rotationAt,
+      );
+      final wrapped = alice.contentKey.encryptFeedKey(newKey, shared);
+      transport.queueRotationFor(
+        peerPubkey: alice.identity.pubkey,
+        delivery: RotatedFeedKeyDelivery(
+          encryptedFeedKey: Uint8List.fromList(wrapped.sublist(24)),
+          nonce: Uint8List.fromList(wrapped.sublist(0, 24)),
+          createdAt: rotationAt,
+        ),
+      );
+      await alice.storage.saveIdentity(alice.identity.copyWith(
+        feedKey: newKey,
+        feedKeyValidFrom: rotationAt,
+      ));
+      alice.identity = (await alice.storage.getIdentity())!;
+
+      await bobEngine.syncOnePeerByPubkey(alice.identity.pubkey);
+      final afterRotation =
+          await bob.storage.getFollow(alice.identity.pubkey);
+      expect(afterRotation!.feedKey, equals(newKey));
+      expect(afterRotation.lastDecryptFailureAt, isNull);
+    });
+
+    test(
+        'follow_feed_key_history archives the prior chain root on rotation '
+        'so cached pre-rotation content stays decryptable', () async {
+      // Pre-rotation: alice publishes one post under her current feedKey.
+      alice.clock.advance(60);
+      await alice.publishPost('pre-rotation');
+      // Bob first-syncs and stores the post. Confirm both sides match.
+      await bobEngine.syncNow();
+      final bobBeforeRotation =
+          await bob.storage.getFollow(alice.identity.pubkey);
+      expect(bobBeforeRotation!.feedKey, equals(alice.identity.feedKey));
+
+      // Capture the pre-rotation key for assertion.
+      final priorKey = Uint8List.fromList(alice.identity.feedKey);
+
+      // Alice rotates. We deliver the new key inline on the next manifest.
+      final rotationAt = alice.clock.nowUnixSeconds() + 30;
+      alice.clock.advance(30);
+      final newKey = crypto.randomBytes(32);
+      final aliceEdPk = crockfordBase32Decode(alice.identity.pubkey);
+      final bobEdPk = crockfordBase32Decode(bob.identity.pubkey);
+      final aliceXSk = crypto.ed25519ToX25519SecretKey(alice.secretKey);
+      final bobXPk = crypto.ed25519ToX25519PublicKey(bobEdPk);
+      final shared = crypto.deriveSharedKey(
+        aliceXSk,
+        bobXPk,
+        aliceEdPk,
+        bobEdPk,
+        rotationAt,
+      );
+      final wrapped = alice.contentKey.encryptFeedKey(newKey, shared);
+      transport.queueRotationFor(
+        peerPubkey: alice.identity.pubkey,
+        delivery: RotatedFeedKeyDelivery(
+          encryptedFeedKey: Uint8List.fromList(wrapped.sublist(24)),
+          nonce: Uint8List.fromList(wrapped.sublist(0, 24)),
+          createdAt: rotationAt,
+        ),
+      );
+      await alice.storage.saveIdentity(alice.identity.copyWith(
+        feedKey: newKey,
+        feedKeyValidFrom: rotationAt,
+        msgSeqCounter: 0,
+      ));
+      alice.identity = (await alice.storage.getIdentity())!;
+
+      // Sync — bob applies the rotation. Old key should land in the
+      // follow_feed_key_history table; current Follow.feedKey is newKey.
+      await bobEngine.syncOnePeerByPubkey(alice.identity.pubkey);
+      final bobAfterRotation =
+          await bob.storage.getFollow(alice.identity.pubkey);
+      expect(bobAfterRotation!.feedKey, equals(newKey));
+
+      final history =
+          await bob.storage.getFollowFeedKeyHistory(alice.identity.pubkey);
+      expect(history, hasLength(1));
+      expect(history.single.feedKey, equals(priorKey));
+      expect(history.single.validUntil, equals(rotationAt));
+    });
   });
 }
 
@@ -181,7 +404,7 @@ class _Peer {
 
   final String label;
   final CryptoService crypto;
-  final Identity identity;
+  Identity identity;
   final Uint8List secretKey;
   final AppDatabase db;
   final DriftStorageService storage;
@@ -233,9 +456,49 @@ class _Peer {
       content: Uint8List.fromList(content.codeUnits),
       sig: Uint8List(64),
     );
-    final result =
-        contentKey.signAndEncryptForAudience(event, Audience.broadcast);
+    final identityRow = (await storage.getIdentity())!;
+    final msgSeq = identityRow.msgSeqCounter;
+    final result = contentKey.signAndEncryptForAudience(
+      event,
+      Audience.broadcast,
+      msgSeq: msgSeq,
+    );
     await storage.saveEvent(result.signed);
+    await storage.saveIdentity(
+      identityRow.copyWith(msgSeqCounter: msgSeq + 1),
+    );
+    identity = (await storage.getIdentity())!;
+  }
+
+  /// Like [publishPost], but signs/stores plaintext only — used in
+  /// rotation tests where the wire encryption happens elsewhere with a
+  /// specific key.
+  Future<void> publishPostWithKey(
+    String content,
+    Uint8List feedKey,
+    int epoch,
+  ) async {
+    final event = Event(
+      version: '2026-03-24',
+      id: '',
+      pubkey: identity.pubkey,
+      createdAt: clock.nowUnixSeconds(),
+      kind: EventKind.post,
+      content: Uint8List.fromList(content.codeUnits),
+      sig: Uint8List(64),
+    );
+    final identityRow = (await storage.getIdentity())!;
+    final msgSeq = identityRow.msgSeqCounter;
+    final result = contentKey.signAndEncryptForAudience(
+      event,
+      Audience.broadcast,
+      msgSeq: msgSeq,
+    );
+    await storage.saveEvent(result.signed);
+    await storage.saveIdentity(
+      identityRow.copyWith(msgSeqCounter: msgSeq + 1),
+    );
+    identity = (await storage.getIdentity())!;
   }
 
   Future<void> dispose() async {
@@ -253,12 +516,22 @@ class _RouteableTransport implements SyncTransport {
   String? tamperNextEnvelopeFor;
   String? injectExtraItemFor;
   EnvelopeItem? injectedItem;
+  final Map<String, RotatedFeedKeyDelivery> _queuedDeliveries = {};
+
+  void queueRotationFor({
+    required String peerPubkey,
+    required RotatedFeedKeyDelivery delivery,
+  }) {
+    _queuedDeliveries[peerPubkey] = delivery;
+  }
 
   @override
   Future<Manifest> fetchManifest(
     PeerConnection peer, {
     int? since,
     int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
   }) async {
     if (failNextManifestFor == peer.pubkey) {
       failNextManifestFor = null;
@@ -269,12 +542,14 @@ class _RouteableTransport implements SyncTransport {
       pubkey: peer.pubkey,
       since: since,
     );
+    final delivery = _queuedDeliveries.remove(peer.pubkey);
     return Manifest(
       pubkey: peer.pubkey,
       events: events
           .map((e) => ManifestEntry(id: e.id, createdAt: e.createdAt))
           .toList(),
       hasOlder: false,
+      newFeedKey: delivery,
     );
   }
 
@@ -284,16 +559,21 @@ class _RouteableTransport implements SyncTransport {
     int? since,
   }) async {
     final source = _peers[peer.pubkey]!;
+    // Re-read identity to pick up any rotations the test made via
+    // `saveIdentity`.
+    source.identity = (await source.storage.getIdentity())!;
     final events = await source.storage.getEvents(
       pubkey: peer.pubkey,
       since: since,
     );
     final items = <EnvelopeItem>[];
     for (final event in events) {
+      final msgSeq = event.msgSeq ?? 0;
       final encrypted = source.contentKey.encryptEvent(
         event,
         source.identity.feedKey,
         source.identity.feedKeyEpoch,
+        msgSeq,
       );
       items.add(EnvelopeItem(type: 'event', payload: encrypted.toBytes()));
     }
@@ -307,6 +587,7 @@ class _RouteableTransport implements SyncTransport {
           pubkey: peer.pubkey,
           createdAt: events.isEmpty ? 0 : events.first.createdAt + 1,
           epoch: 0,
+          msgSeq: 0,
           nonce: Uint8List(24),
           payload: Uint8List.fromList(List.filled(64, 0xFF)),
         ).toBytes(),

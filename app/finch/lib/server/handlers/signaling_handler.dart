@@ -66,7 +66,7 @@ Handler signalingHandler({
     // --- Auth passed, upgrade to WebSocket ---
     // Create the WebSocket handler in this closure so it captures the
     // authenticated pubkey.
-    final wsHandler = webSocketHandler((WebSocketChannel webSocket) {
+    final wsHandler = webSocketHandler((WebSocketChannel webSocket, _) {
       final channel = WebSocketSignalingChannel(
         remotePubkey: pubkeyHeader,
         transport: PeerTransport.lan,

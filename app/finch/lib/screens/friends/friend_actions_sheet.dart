@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../providers/follow_provider.dart';
+import '../../providers/service_providers.dart';
 import '../../services/types.dart';
 import '../../theme/finch_theme.dart';
 
@@ -32,7 +33,7 @@ class FriendActionsSheet extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _ActionRow(
-          icon: PhosphorIconsRegular.user,
+          icon: LucideIcons.user,
           label: 'View profile',
           onTap: () {
             Navigator.of(context).pop();
@@ -40,7 +41,7 @@ class FriendActionsSheet extends ConsumerWidget {
           },
         ),
         _ActionRow(
-          icon: PhosphorIconsRegular.userMinus,
+          icon: LucideIcons.userMinus,
           label: 'Unfollow',
           destructive: true,
           onTap: () => _confirmUnfollow(context, ref),
@@ -50,15 +51,21 @@ class FriendActionsSheet extends ConsumerWidget {
   }
 
   Future<void> _confirmUnfollow(BuildContext context, WidgetRef ref) async {
+    final isAlsoFollower = await ref
+        .read(storageServiceProvider)
+        .isAcceptedFollower(follow.pubkey);
+    if (!context.mounted) return;
+    final name = follow.displayName ?? 'this friend';
+    final body = isAlsoFollower
+        ? 'You will stop receiving posts from $name, and they will no '
+            'longer receive your future posts.'
+        : 'You will stop receiving posts from $name.';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Unfollow?'),
-          content: Text(
-            'You will stop receiving posts from '
-            '${follow.displayName ?? "this friend"}.',
-          ),
+          content: Text(body),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),

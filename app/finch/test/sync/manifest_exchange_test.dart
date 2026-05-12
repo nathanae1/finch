@@ -107,6 +107,8 @@ class _StaticTransport implements SyncTransport {
     PeerConnection peer, {
     int? since,
     int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
   }) async =>
       _manifest;
 

@@ -1,19 +1,20 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../services/crypto/crockford_base32.dart';
+import '../services/storage/keychain_manager.dart';
 import '../services/types.dart';
 import 'identity_provider.dart';
 import 'service_providers.dart';
 
 part 'onboarding_provider.g.dart';
 
-/// Where the Ed25519 secret key lives in the OS keychain. Referenced by
-/// `main.dart` to hydrate `PairwiseContentKeyService` on app launch.
-const kSecretKeyStorageName = 'finch_secret_key';
+/// Re-exported for callers (mainly tests) that still reference the
+/// pre-Plan-12 constant. New code should use
+/// `KeychainManager.identitySecretKeyName`.
+const kSecretKeyStorageName = KeychainManager.identitySecretKeyName;
 
 /// Transient session-level state built up during onboarding — the generated
 /// recovery phrase that the user hasn't yet confirmed they've written down.
@@ -26,7 +27,11 @@ class OnboardingSession {
       OnboardingSession(recoveryPhrase: recoveryPhrase ?? this.recoveryPhrase);
 }
 
-@riverpod
+// keepAlive: the onboarding flow spans multiple screens (Setup → Recovery).
+// Under Riverpod 3, autoDispose providers get torn down across async gaps
+// in their notifier methods, which would invalidate `ref` mid-`createIdentity()`
+// and lose the recovery phrase before the Recovery screen can read it.
+@Riverpod(keepAlive: true)
 class OnboardingController extends _$OnboardingController {
   @override
   OnboardingSession build() => const OnboardingSession();
@@ -92,10 +97,16 @@ class OnboardingController extends _$OnboardingController {
   }
 
   Future<void> _writeSecretKey(Uint8List secretKey) async {
-    const secure = FlutterSecureStorage();
-    await secure.write(
-      key: kSecretKeyStorageName,
-      value: base64Encode(secretKey),
+    final keychain = KeychainManager();
+    // Delete before write: on iOS the Keychain survives app uninstalls, and
+    // SecItemUpdate matches on full attribute set — a leftover entry written
+    // with different accessibility flags can cause the new write to silently
+    // collide instead of overwrite, leaving a stale sk paired with a fresh
+    // identity pubkey. An explicit delete + add side-steps the ambiguity.
+    await keychain.delete(KeychainManager.identitySecretKeyName);
+    await keychain.write(
+      KeychainManager.identitySecretKeyName,
+      base64Encode(secretKey),
     );
   }
 }

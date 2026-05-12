@@ -12,6 +12,8 @@ import 'package:finch/services/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
+import '../helpers/fake_peer_reachability_monitor.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -33,8 +35,8 @@ void main() {
         alice.baseUrl: alice,
         bob.baseUrl: bob,
       });
-      alice.attachTransport(transport);
-      bob.attachTransport(transport);
+      alice.attachTransport(transport, peer: bob);
+      bob.attachTransport(transport, peer: alice);
     });
 
     tearDown(() async {
@@ -170,12 +172,15 @@ class _Peer {
         endpoints: [Endpoint(type: 'direct', address: _hostFromUrl(baseUrl))],
       );
 
-  void attachTransport(_PairTransport transport) {
+  void attachTransport(_PairTransport transport, {required _Peer peer}) {
+    final monitor = FakePeerReachabilityMonitor()
+      ..setReachable(peer.identity.pubkey, PeerTransport.lan, peer.baseUrl);
     service = FollowService(
       crypto: crypto,
       storage: storage,
       clock: clock,
       transport: transport,
+      reachabilityMonitor: monitor,
       identityLookup: storage.getIdentity,
       ownSecretKeyLookup: () async => secretKey,
       ownEndpointsLookup: () async => connectionCard().endpoints,

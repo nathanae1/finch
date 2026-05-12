@@ -6,12 +6,12 @@ import '../utils/deep_link_handler.dart';
 part 'deep_link_provider.g.dart';
 
 @riverpod
-DeepLinkHandler deepLinkHandler(DeepLinkHandlerRef ref) => DeepLinkHandler();
+DeepLinkHandler deepLinkHandler(Ref ref) => DeepLinkHandler();
 
 /// Stream of inbound deep-link invites for the router-level listener to
 /// surface as a confirm sheet.
 @riverpod
-Stream<ParsedInvite> deepLinkInvites(DeepLinkInvitesRef ref) {
+Stream<ParsedInvite> deepLinkInvites(Ref ref) {
   final handler = ref.watch(deepLinkHandlerProvider);
   return handler.invites;
 }

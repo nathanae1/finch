@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
 import '../../providers/feed_provider.dart';
+import '../../providers/follows_provider.dart';
 import '../../providers/search_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../../theme/finch_theme.dart';
@@ -64,7 +65,12 @@ class _FeedList extends ConsumerWidget {
       child: feedAsync.when(
         data: (events) {
           if (events.isEmpty) {
-            return const _EmptyScroll(child: EmptyFeed());
+            final hasFollows =
+                (ref.watch(followsStreamProvider).value ?? const [])
+                    .isNotEmpty;
+            return _EmptyScroll(
+              child: hasFollows ? const _NoPostsYet() : const EmptyFeed(),
+            );
           }
           return _PostListView(events: events);
         },
@@ -139,6 +145,34 @@ class _PostListView extends StatelessWidget {
           onTap: () => context.push('/feed/post/${event.id}'),
         );
       },
+    );
+  }
+}
+
+class _NoPostsYet extends StatelessWidget {
+  const _NoPostsYet();
+
+  @override
+  Widget build(BuildContext context) {
+    final finch = FinchTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 96, 24, 64),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'No posts yet',
+            textAlign: TextAlign.center,
+            style: finch.typography.h2,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pull down to check for new posts from your friends.',
+            textAlign: TextAlign.center,
+            style: finch.typography.small,
+          ),
+        ],
+      ),
     );
   }
 }

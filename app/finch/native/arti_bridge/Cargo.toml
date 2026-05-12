@@ -22,8 +22,17 @@ tor-hsservice = { version = "0.34" }
 tor-hsrproxy = { version = "0.34" }
 tor-rtcompat = { version = "0.34", features = ["tokio", "rustls"] }
 tor-keymgr = { version = "0.34" }
+tor-socksproto = { version = "0.34" }
 fs-mistrust = "0.10"
 safelog = "0.5"
+
+# tor-dirmgr → rusqlite → libsqlite3-sys dynamically links against the
+# host libsqlite3 by default. The Android NDK sysroot does not ship
+# libsqlite3, so cross-compiles for *-linux-android fail to link.
+# Cargo feature unification: declaring this dep with `bundled` flips
+# the feature on the single libsqlite3-sys instance in the dep tree,
+# forcing it to compile sqlite from the vendored C source instead.
+libsqlite3-sys = { version = "0.35", features = ["bundled"] }
 
 [build-dependencies]
 cbindgen = "0.27"

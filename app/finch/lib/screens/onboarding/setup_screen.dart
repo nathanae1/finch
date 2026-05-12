@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../providers/onboarding_provider.dart';
 import '../../providers/profile_provider.dart';
@@ -70,7 +70,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             children: [
               FinchIconButton(
                 onPressed: () => context.go('/onboarding/welcome'),
-                child: const Icon(PhosphorIconsRegular.arrowLeft, size: 20),
+                child: const Icon(LucideIcons.arrowLeft, size: 20),
               ),
               const SizedBox(height: 18),
               Text('Pick a name and photo',
@@ -103,7 +103,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Icon(
-                          PhosphorIconsRegular.camera,
+                          LucideIcons.camera,
                           size: 16,
                           color: finch.colors.graphite,
                         ),

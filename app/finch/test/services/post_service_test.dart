@@ -6,6 +6,7 @@ import 'package:finch/models/models.dart';
 import 'package:finch/models/protocol_version.dart';
 import 'package:finch/services/clock.dart';
 import 'package:finch/services/crypto/crockford_base32.dart';
+import 'package:finch/services/crypto/feed_key_ratchet.dart';
 import 'package:finch/services/crypto/key_cache.dart';
 import 'package:finch/services/crypto/pairwise_content_key_service.dart';
 import 'package:finch/services/crypto/sodium_crypto_service.dart';
@@ -30,21 +31,21 @@ class _StubMediaService implements MediaService {
   final MediaProcessingResult _result;
   int calls = 0;
   Uint8List? lastPhoto;
-  Uint8List? lastFeedKey;
+  Uint8List? lastMsgKey;
 
   @override
   Future<MediaProcessingResult> processAndStoreOwnPhoto({
     required Uint8List photoBytes,
-    required Uint8List feedKey,
+    required Uint8List msgKey,
   }) async {
     calls++;
     lastPhoto = photoBytes;
-    lastFeedKey = feedKey;
+    lastMsgKey = msgKey;
     return _result;
   }
 
   @override
-  Future<Uint8List?> readPlaintext(String hexHash, Uint8List feedKey) async =>
+  Future<Uint8List?> readPlaintext(String hexHash, Uint8List msgKey) async =>
       null;
 
   @override
@@ -52,6 +53,9 @@ class _StubMediaService implements MediaService {
     String hexHash,
     Uint8List encryptedBytes,
   ) async {}
+
+  @override
+  Future<bool> hasBlobOnDisk(String hexHash) async => false;
 }
 
 void main() {
@@ -100,10 +104,11 @@ void main() {
     );
     final service = DefaultPostService(
       contentKey: contentKey,
+      crypto: crypto,
       storage: storage,
       media: media,
       clock: clock,
-      identityLookup: () async => identity,
+      identityLookup: () async => storage.getIdentity(),
     );
     return _Fixture(
       db: db,
@@ -130,7 +135,13 @@ void main() {
       expect(id, isNotEmpty);
       expect(f.media.calls, equals(1));
       expect(f.media.lastPhoto, equals(photo));
-      expect(f.media.lastFeedKey, equals(f.identity.feedKey));
+      // Media is encrypted with a per-message key derived from the
+      // identity's chain root + the msg_seq allocated by the publisher
+      // (0 on the first publish).
+      expect(
+        f.media.lastMsgKey,
+        equals(deriveMsgKey(f.identity.feedKey, 0, f.crypto)),
+      );
 
       final stored = await f.storage.getEvent(id);
       expect(stored, isNotNull);
@@ -186,6 +197,7 @@ void main() {
           ownPubkey: f.identity.pubkey,
           ownSecretKey: Uint8List(64),
         ),
+        crypto: crypto,
         storage: f.storage,
         media: f.media,
         clock: f.clock,

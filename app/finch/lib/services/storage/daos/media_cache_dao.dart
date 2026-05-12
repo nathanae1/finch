@@ -14,6 +14,13 @@ class MediaCacheDao extends DatabaseAccessor<AppDatabase>
       (select(mediaCacheEntries)..where((m) => m.hash.equals(hash)))
           .getSingleOrNull();
 
+  Future<List<String>> getAllHashes() async {
+    final rows = await (selectOnly(mediaCacheEntries)
+          ..addColumns([mediaCacheEntries.hash]))
+        .get();
+    return [for (final r in rows) r.read(mediaCacheEntries.hash)!];
+  }
+
   Future<void> upsertMedia(MediaCacheEntriesCompanion entry) =>
       into(mediaCacheEntries).insertOnConflictUpdate(entry);
 
@@ -62,5 +69,64 @@ class MediaCacheDao extends DatabaseAccessor<AppDatabase>
       evicted++;
     }
     return evicted;
+  }
+
+  /// Returns the entries that were evicted (so the caller can delete the
+  /// underlying files). Skips any hash in [pinned] — typically the union of
+  /// hashes referenced by `is_saved=1` and `is_own=1` events. If the
+  /// non-pinned remainder fits under [maxBytes] no eviction occurs.
+  Future<List<MediaCacheEntry>> evictOverLimitExcluding(
+    int maxBytes,
+    Set<String> pinned,
+  ) async {
+    final all = await (select(mediaCacheEntries)
+          ..orderBy([(m) => OrderingTerm.asc(m.lastAccessed)]))
+        .get();
+
+    var totalSize = 0;
+    for (final e in all) {
+      totalSize += e.size;
+    }
+    if (totalSize <= maxBytes) return const [];
+
+    final removed = <MediaCacheEntry>[];
+    for (final entry in all) {
+      if (totalSize <= maxBytes) break;
+      if (pinned.contains(entry.hash)) continue;
+      await (delete(mediaCacheEntries)
+            ..where((m) => m.hash.equals(entry.hash)))
+          .go();
+      totalSize -= entry.size;
+      removed.add(entry);
+    }
+    return removed;
+  }
+
+  /// Deletes every media_cache row whose hash is not in [pinned] and returns
+  /// the deleted entries. Used by Settings → Clear cache.
+  Future<List<MediaCacheEntry>> deleteAllExcluding(Set<String> pinned) async {
+    final all = await select(mediaCacheEntries).get();
+    final removed = <MediaCacheEntry>[];
+    for (final entry in all) {
+      if (pinned.contains(entry.hash)) continue;
+      await (delete(mediaCacheEntries)
+            ..where((m) => m.hash.equals(entry.hash)))
+          .go();
+      removed.add(entry);
+    }
+    return removed;
+  }
+
+  /// SUM(size) over rows whose hash is in [hashes]. 0 if [hashes] is empty.
+  Future<int> getTotalSizeForHashes(Set<String> hashes) async {
+    if (hashes.isEmpty) return 0;
+    final rows = await (select(mediaCacheEntries)
+          ..where((m) => m.hash.isIn(hashes)))
+        .get();
+    var total = 0;
+    for (final r in rows) {
+      total += r.size;
+    }
+    return total;
   }
 }

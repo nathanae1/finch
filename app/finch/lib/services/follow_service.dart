@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cbor/simple.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/connection_card.dart';
+import '../sync/peer_reachability_monitor.dart';
 import 'clock.dart';
 import 'crypto/crockford_base32.dart';
 import 'crypto/key_cache.dart';
+import 'crypto/key_rotation_service.dart';
 import 'crypto_service.dart';
 import 'storage_service.dart';
 import 'types.dart';
@@ -36,16 +39,40 @@ class IngestAcceptResult {
   final Follow follow;
 }
 
-/// Hand-off transport used for tests. The default implementation wraps
-/// [http.Client]; tests inject a deterministic version that routes
-/// requests directly into the other peer's storage.
+/// Hand-off transport for the follow handshake. Routes `.onion` URLs
+/// through [torClient] (Arti's SOCKS5 proxy) and everything else through
+/// [defaultClient] (direct HTTP). [torClient] is supplied lazily so the
+/// transport works during the bootstrap window before Tor is ready —
+/// callers will get a `FollowFailureKind.network` if they try to dial an
+/// onion endpoint while Tor is still bootstrapping.
+///
+/// All four follow-handshake calls (`/follow-request`, `/follow-accept`,
+/// outbound + retry pump) flow through here, so wiring Tor in one place
+/// covers the entire admin path.
 class HandshakeTransport {
-  HandshakeTransport(this._client);
-  final http.Client _client;
+  HandshakeTransport(this._defaultClient, {http.Client? Function()? torClient})
+      : _torClientLookup = torClient;
+
+  final http.Client _defaultClient;
+  final http.Client? Function()? _torClientLookup;
+
+  http.Client _pick(Uri uri) {
+    if (uri.host.endsWith('.onion')) {
+      final tor = _torClientLookup?.call();
+      if (tor == null) {
+        throw const HandshakeTransportException(
+          'onion endpoint requested but Tor is not ready yet',
+        );
+      }
+      return tor;
+    }
+    return _defaultClient;
+  }
 
   Future<int> postFollowRequest(String baseUrl, Uint8List body) async {
-    final res = await _client.post(
-      Uri.parse('$baseUrl/follow-request'),
+    final uri = Uri.parse('$baseUrl/follow-request');
+    final res = await _pick(uri).post(
+      uri,
       headers: const {'content-type': 'application/cbor'},
       body: body,
     );
@@ -53,13 +80,21 @@ class HandshakeTransport {
   }
 
   Future<int> postFollowAccept(String baseUrl, Uint8List body) async {
-    final res = await _client.post(
-      Uri.parse('$baseUrl/follow-accept'),
+    final uri = Uri.parse('$baseUrl/follow-accept');
+    final res = await _pick(uri).post(
+      uri,
       headers: const {'content-type': 'application/cbor'},
       body: body,
     );
     return res.statusCode;
   }
+}
+
+class HandshakeTransportException implements Exception {
+  const HandshakeTransportException(this.message);
+  final String message;
+  @override
+  String toString() => 'HandshakeTransportException: $message';
 }
 
 /// Coordinates the follow-request handshake (Plan 08).
@@ -87,27 +122,33 @@ class FollowService {
     required StorageService storage,
     required Clock clock,
     required HandshakeTransport transport,
+    required PeerReachabilityMonitor reachabilityMonitor,
     required Future<Identity?> Function() identityLookup,
     required Future<Uint8List?> Function() ownSecretKeyLookup,
     required Future<List<Endpoint>> Function() ownEndpointsLookup,
     FeedKeyCache? feedKeyCache,
+    KeyRotationService? keyRotationService,
   })  : _crypto = crypto,
         _storage = storage,
         _clock = clock,
         _transport = transport,
+        _reachability = reachabilityMonitor,
         _identityLookup = identityLookup,
         _ownSecretKeyLookup = ownSecretKeyLookup,
         _ownEndpointsLookup = ownEndpointsLookup,
-        _feedKeyCache = feedKeyCache;
+        _feedKeyCache = feedKeyCache,
+        _keyRotationService = keyRotationService;
 
   final CryptoService _crypto;
   final StorageService _storage;
   final Clock _clock;
   final HandshakeTransport _transport;
+  final PeerReachabilityMonitor _reachability;
   final Future<Identity?> Function() _identityLookup;
   final Future<Uint8List?> Function() _ownSecretKeyLookup;
   final Future<List<Endpoint>> Function() _ownEndpointsLookup;
   final FeedKeyCache? _feedKeyCache;
+  final KeyRotationService? _keyRotationService;
 
   // --- Outbound: send a follow request ---
 
@@ -115,7 +156,22 @@ class FollowService {
     final identity = await _requireIdentity();
     final secretKey = await _requireSecretKey();
     final ownEndpoints = await _ownEndpointsLookup();
-    final endpoint = _firstEndpoint(target.endpoints);
+    // Refuse to send a card with no onion. The responder persists this
+    // payload as our `inbound_follow_requests` row and dials it on
+    // follow-back, so an empty card permanently poisons the return path.
+    if (ownEndpoints.where((e) => e.type == 'onion').isEmpty) {
+      throw const FollowFailure(
+        FollowFailureKind.noEndpoints,
+        'our onion is not published yet — cannot send follow-request',
+      );
+    }
+    final connection = await _reachability.probeCard(target);
+    if (connection == null) {
+      throw const FollowFailure(
+        FollowFailureKind.noEndpoints,
+        'no reachable endpoint in target connection card',
+      );
+    }
 
     final timestamp = _clock.nowUnixSeconds();
     final myEdPk = crockfordBase32Decode(identity.pubkey);
@@ -152,7 +208,7 @@ class FollowService {
     final int status;
     try {
       status = await _transport.postFollowRequest(
-        _baseUrlFor(endpoint),
+        connection.baseUrl,
         body,
       );
     } catch (e) {
@@ -196,7 +252,7 @@ class FollowService {
     final requesterCard = ConnectionCard.fromMap(
       inner['connection_card'] as Map<dynamic, dynamic>,
     );
-    final endpoint = _firstEndpoint(requesterCard.endpoints);
+    final connection = await _reachability.probeCard(requesterCard);
 
     final acceptBody = _buildAcceptBody(
       identity: identity,
@@ -206,22 +262,32 @@ class FollowService {
     );
 
     var delivery = AcceptDelivery.delivered;
-    try {
-      final status = await _transport.postFollowAccept(
-        _baseUrlFor(endpoint),
-        acceptBody,
-      );
-      if (status != 202) {
+    if (connection == null) {
+      delivery = AcceptDelivery.queued;
+    } else {
+      try {
+        final status = await _transport.postFollowAccept(
+          connection.baseUrl,
+          acceptBody,
+        );
+        if (status != 202) {
+          delivery = AcceptDelivery.queued;
+        }
+      } catch (_) {
         delivery = AcceptDelivery.queued;
       }
-    } catch (_) {
-      delivery = AcceptDelivery.queued;
     }
 
     if (delivery == AcceptDelivery.queued) {
+      // Queue against the best onion endpoint we know — that's the only
+      // address that's stable enough to retry against later. If the
+      // requester's card has no onion, fall back to whatever the probe
+      // found, or the card's first endpoint as a last-resort hint.
+      final fallbackUrl = connection?.baseUrl ??
+          _firstQueueableUrl(requesterCard);
       await _storage.enqueue(
         requesterPubkey,
-        _wrapQueueEntry('${_baseUrlFor(endpoint)}/follow-accept', acceptBody),
+        _wrapQueueEntry('$fallbackUrl/follow-accept', acceptBody),
       );
       await _storage.updateInboundRequestStatus(
         requesterPubkey,
@@ -246,6 +312,33 @@ class FollowService {
 
   Future<void> rejectFollowRequest(String requesterPubkey) =>
       _storage.deleteInboundRequest(requesterPubkey);
+
+  // --- Symmetric follow-back ---
+
+  /// Send a follow request back to a peer who already follows us. The
+  /// requester's connection card is recovered by decrypting the stored
+  /// inbound payload (same path as `acceptFollowRequest`), so the user
+  /// doesn't need to re-scan their QR. Live endpoint resolution is
+  /// handled by the reachability monitor inside `sendFollowRequest`'s
+  /// `probeCard` call — no caller-side mDNS lookup needed.
+  Future<void> followBack(String requesterPubkey) async {
+    final inbound = await _storage.getInboundRequest(requesterPubkey);
+    if (inbound == null) {
+      throw FollowFailure(
+        FollowFailureKind.unknownRequester,
+        'no inbound request from $requesterPubkey',
+      );
+    }
+    final identity = await _requireIdentity();
+    final secretKey = await _requireSecretKey();
+    final outer = _decodeMap(inbound.payload);
+    final inner =
+        _decryptInner(outer, identity, secretKey, inbound.requestTimestamp);
+    final card = ConnectionCard.fromMap(
+      inner['connection_card'] as Map<dynamic, dynamic>,
+    );
+    await sendFollowRequest(card);
+  }
 
   // --- Inbound /follow-accept handler entry point ---
 
@@ -298,10 +391,15 @@ class FollowService {
     final card = ConnectionCard.fromBytes(outbound.payload);
     final follow = Follow(
       pubkey: ownerPubkey,
-      connectionCard: card.toMap().toString(),
+      connectionCard: jsonEncode(card.toMap()),
       feedKey: feedKey,
       feedKeyEpoch: epoch,
-      lastSyncedAt: _clock.nowUnixSeconds(),
+      // Start at 0 so the first sync after pairing backfills the peer's
+      // full history. Setting this to "now" would make sync only fetch
+      // events posted *after* the QR scan, hiding everything older — bad
+      // UX for both first pairing (peer's existing posts are invisible)
+      // and re-pairing (you'd lose access to posts that synced before).
+      lastSyncedAt: 0,
     );
     await _storage.saveFollow(follow);
     await _storage.deleteOutboundRequest(ownerPubkey);
@@ -310,11 +408,34 @@ class FollowService {
     return IngestAcceptResult(follow: follow);
   }
 
-  // --- Unfollow ---
+  // --- Unfollow / removeFollower ---
 
+  /// Stop following [pubkey] (we will no longer receive their posts). If
+  /// [pubkey] is also an accepted inbound follower of ours, this is the
+  /// symmetric "mutual disconnect" — we also call [removeFollower] so they
+  /// can no longer read our future posts. Plan 13.
   Future<void> unfollow(String pubkey) async {
     await _storage.removeFollow(pubkey);
     _feedKeyCache?.remove(pubkey);
+    if (await _storage.isAcceptedFollower(pubkey)) {
+      await removeFollower(pubkey);
+    }
+  }
+
+  /// Revoke [pubkey]'s ability to read our future posts (Plan 13). Removes
+  /// the accepted inbound follow record and triggers feed-key rotation —
+  /// remaining followers receive the new key on their next sync.
+  ///
+  /// Idempotent against missing rows: if [pubkey] isn't in our accepted
+  /// followers (e.g. they were already removed), this is a no-op.
+  Future<void> removeFollower(String pubkey) async {
+    final wasAccepted = await _storage.isAcceptedFollower(pubkey);
+    if (!wasAccepted) return;
+    await _storage.removeAcceptedFollower(pubkey);
+    final rotation = _keyRotationService;
+    if (rotation != null) {
+      await rotation.rotate(removedPubkey: pubkey);
+    }
   }
 
   // --- Retry pump entry point ---
@@ -391,29 +512,25 @@ class FollowService {
     return sk;
   }
 
-  Endpoint _firstEndpoint(List<Endpoint> endpoints) {
-    if (endpoints.isEmpty) {
-      throw const FollowFailure(
-        FollowFailureKind.noEndpoints,
-        'no reachable endpoints',
-      );
-    }
-    // Preference order: onion, relay, direct/lan-direct, then anything else.
-    Endpoint? pick;
-    for (final type in ['onion', 'relay', 'direct', 'lan-direct']) {
-      pick = endpoints.firstWhere(
+  /// Pick a baseUrl to bind a queued accept against when no transport
+  /// validated. Onion is preferred — it's stable across restarts, so
+  /// stored URLs survive between attempts. Anything else is a guess.
+  String _firstQueueableUrl(ConnectionCard card) {
+    for (final type in ['onion', 'relay', 'lan-direct', 'direct']) {
+      final pick = card.endpoints.firstWhere(
         (e) => e.type == type,
         orElse: () => const Endpoint(type: '', address: ''),
       );
-      if (pick.type.isNotEmpty) return pick;
+      if (pick.type.isEmpty) continue;
+      final addr = pick.address;
+      if (addr.startsWith('http://') || addr.startsWith('https://')) {
+        return addr;
+      }
+      return type == 'onion' && !addr.contains(':')
+          ? 'http://$addr:80'
+          : 'http://$addr';
     }
-    return endpoints.first;
-  }
-
-  String _baseUrlFor(Endpoint endpoint) {
-    final addr = endpoint.address;
-    if (addr.startsWith('http://') || addr.startsWith('https://')) return addr;
-    return 'http://$addr';
+    return 'http://invalid';
   }
 
   Map<dynamic, dynamic> _decodeMap(Uint8List bytes) {

@@ -12,25 +12,24 @@ import 'ffi_bindings.dart';
 /// Real `TorService` backed by the `arti_bridge` Rust crate. Bootstrap and
 /// onion-service creation block long enough that we run them on a worker
 /// isolate via `Isolate.run`, keeping the Dart UI thread responsive.
-///
-/// Plan 11a scope: bootstrap, publish onion, expose status, shutdown.
-/// `connectToOnion` is not wired here — Plan 11b will route an `http.Client`
-/// through Arti's SOCKS5 proxy. Until then it throws.
 class ArtiTorService implements TorService {
   ArtiTorService({ArtiBindings? bindings})
       : _bindings = bindings ?? ArtiBindings.load();
 
   final ArtiBindings _bindings;
   Pointer<Void>? _handle;
+  String? _onionAddress;
 
   @override
   Future<void> init(String dataDir) async {
     if (_handle != null) return;
-    final ptrAddress = await Isolate.run<int>(() => _initInIsolate(dataDir));
-    if (ptrAddress == 0) {
-      throw const TorServiceException('arti_init returned null');
+    final (handleAddr, errorMessage) =
+        await Isolate.run<(int, String?)>(() => _initInIsolate(dataDir));
+    if (handleAddr == 0) {
+      final detail = errorMessage ?? 'no detail (arti_last_error empty)';
+      throw TorServiceException('arti_init returned null: $detail');
     }
-    _handle = Pointer<Void>.fromAddress(ptrAddress);
+    _handle = Pointer<Void>.fromAddress(handleAddr);
     developer.log('Arti initialized', name: 'arti_tor_service');
   }
 
@@ -41,24 +40,61 @@ class ArtiTorService implements TorService {
       throw const TorServiceException('init() must be called first');
     }
     final handleAddr = handle.address;
-    final address = await Isolate.run<String?>(
+    final (address, errorMessage) =
+        await Isolate.run<(String?, String?)>(
       () => _createOnionInIsolate(handleAddr, localPort),
     );
     if (address == null) {
-      throw const TorServiceException(
-          'arti_create_onion_service returned null');
+      final detail = errorMessage ?? 'no detail (arti_last_error empty)';
+      throw TorServiceException(
+        'arti_create_onion_service returned null: $detail',
+      );
     }
+    _onionAddress = address;
     developer.log('onion=$address', name: 'arti_tor_service');
     return address;
   }
 
   @override
   Future<PeerConnection> connectToOnion(String address, int port) async {
-    // Plan 11b: route through Arti's SOCKS5 proxy. For 11a we don't dial
-    // outbound onions yet; sync stays LAN-only.
-    throw const TorServiceException(
-      'ArtiTorService.connectToOnion arrives in Plan 11b',
+    final handle = _handle;
+    if (handle == null) {
+      throw const TorServiceException('init() must be called first');
+    }
+    if (_bindings.socksPort(handle) == 0) {
+      throw const TorServiceException(
+        'Tor SOCKS5 proxy not yet bound — wait for bootstrap to complete',
+      );
+    }
+    return PeerConnection(
+      pubkey: '',
+      baseUrl: 'http://$address:$port',
+      transport: PeerTransport.tor,
     );
+  }
+
+  @override
+  String? get onionAddress => _onionAddress;
+
+  @override
+  int get socksPort {
+    final handle = _handle;
+    if (handle == null) return 0;
+    return _bindings.socksPort(handle);
+  }
+
+  @override
+  bool get isReady {
+    final handle = _handle;
+    if (handle == null) return false;
+    final out = malloc<ArtiStatusStruct>();
+    try {
+      final code = _bindings.status(handle, out);
+      if (code != ArtiStatusCode.ok) return false;
+      return out.ref.isReady && out.ref.socksPort != 0;
+    } finally {
+      malloc.free(out);
+    }
   }
 
   @override
@@ -86,9 +122,7 @@ class ArtiTorService implements TorService {
         bootstrapPercent: s.bootstrapPercent,
         circuitCount: s.circuitCount,
         isReady: s.isReady,
-        // We don't expose the .onion address through getStatus in 11a —
-        // main.dart caches whatever createOnionService returned. Plan 11b
-        // can read it back from Rust if needed.
+        onionAddress: _onionAddress,
       );
     } finally {
       malloc.free(out);
@@ -100,6 +134,7 @@ class ArtiTorService implements TorService {
     final handle = _handle;
     if (handle == null) return;
     _handle = null;
+    _onionAddress = null;
     final handleAddr = handle.address;
     await Isolate.run<void>(() => _shutdownInIsolate(handleAddr));
     developer.log('Arti shut down', name: 'arti_tor_service');
@@ -110,27 +145,47 @@ class ArtiTorService implements TorService {
 // isolate so we never have to ship a non-primitive across the boundary —
 // only ints and Strings cross.
 
-int _initInIsolate(String dataDir) {
+(int, String?) _initInIsolate(String dataDir) {
   final bindings = ArtiBindings.load();
   final cstr = dataDir.toNativeUtf8();
   try {
-    return bindings.init(cstr).address;
+    final handle = bindings.init(cstr);
+    if (handle.address != 0) {
+      return (handle.address, null);
+    }
+    final msgPtr = bindings.lastError();
+    if (msgPtr == nullptr) {
+      return (0, null);
+    }
+    try {
+      return (0, msgPtr.toDartString());
+    } finally {
+      bindings.stringFree(msgPtr);
+    }
   } finally {
     malloc.free(cstr);
   }
 }
 
-String? _createOnionInIsolate(int handleAddr, int localPort) {
+(String?, String?) _createOnionInIsolate(int handleAddr, int localPort) {
   final bindings = ArtiBindings.load();
   final ptr = bindings.createOnionService(
     Pointer<Void>.fromAddress(handleAddr),
     localPort,
   );
-  if (ptr == nullptr) return null;
+  if (ptr != nullptr) {
+    try {
+      return (ptr.toDartString(), null);
+    } finally {
+      bindings.stringFree(ptr);
+    }
+  }
+  final msgPtr = bindings.lastError();
+  if (msgPtr == nullptr) return (null, null);
   try {
-    return ptr.toDartString();
+    return (null, msgPtr.toDartString());
   } finally {
-    bindings.stringFree(ptr);
+    bindings.stringFree(msgPtr);
   }
 }
 

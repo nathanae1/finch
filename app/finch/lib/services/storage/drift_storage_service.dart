@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../models/models.dart';
 import '../clock.dart';
@@ -58,6 +61,10 @@ class DriftStorageService implements StorageService {
   Future<void> updateLastSynced(String pubkey, int timestamp) =>
       _db.followsDao.updateLastSynced(pubkey, timestamp);
 
+  @override
+  Future<void> setLastDecryptFailureAt(String pubkey, int? timestamp) =>
+      _db.followsDao.setLastDecryptFailureAt(pubkey, timestamp);
+
   // --- Events ---
 
   @override
@@ -90,6 +97,25 @@ class DriftStorageService implements StorageService {
       eventToCompanion(event, isOwn: isOwn, fetchedAt: _clock.nowUnixSeconds()),
     );
   }
+
+  @override
+  Future<void> saveOwnEventWithEncrypted(
+    Event event,
+    Uint8List encryptedPayload,
+  ) async {
+    await _db.eventsDao.upsertEvent(
+      eventToCompanion(
+        event,
+        isOwn: true,
+        fetchedAt: _clock.nowUnixSeconds(),
+        encryptedPayload: encryptedPayload,
+      ),
+    );
+  }
+
+  @override
+  Future<Uint8List?> getEncryptedPayload(String id) =>
+      _db.eventsDao.getEncryptedPayload(id);
 
   @override
   Future<void> deleteEvent(String id) => _db.eventsDao.deleteEvent(id);
@@ -163,6 +189,121 @@ class DriftStorageService implements StorageService {
   Future<void> evictMedia(int targetSize) =>
       _db.mediaCacheDao.evictToSize(targetSize);
 
+  // --- Followers (Plan 13) ---
+
+  @override
+  Future<List<String>> getAcceptedFollowerPubkeys() async {
+    final rows =
+        await _db.followRequestsDao.getInboundByStatus('accepted');
+    return rows.map((r) => r.pubkey).toList();
+  }
+
+  @override
+  Future<bool> isAcceptedFollower(String pubkey) async {
+    final row = await _db.followRequestsDao.getInbound(pubkey);
+    return row != null && row.status == 'accepted';
+  }
+
+  @override
+  Future<void> removeAcceptedFollower(String pubkey) =>
+      _db.followRequestsDao.deleteInbound(pubkey);
+
+  // --- Feed key history (Plan 13) ---
+
+  @override
+  Future<void> appendFeedKeyHistory({
+    required Uint8List feedKey,
+    required int feedKeyEpoch,
+    required int validFrom,
+    required int validUntil,
+  }) =>
+      _db.keyRotationDao.appendFeedKeyHistory(
+        FeedKeyHistoryEntriesCompanion.insert(
+          feedKey: feedKey,
+          feedKeyEpoch: Value(feedKeyEpoch),
+          validFrom: validFrom,
+          validUntil: validUntil,
+        ),
+      );
+
+  @override
+  Future<RetiredFeedKey?> retiredFeedKeyAt(int timestamp) async {
+    final row = await _db.keyRotationDao.feedKeyAt(timestamp);
+    return row == null ? null : retiredFeedKeyFromRow(row);
+  }
+
+  @override
+  Future<List<RetiredFeedKey>> getFeedKeyHistory() async {
+    final rows = await _db.keyRotationDao.getFeedKeyHistory();
+    return rows.map(retiredFeedKeyFromRow).toList();
+  }
+
+  // --- Per-follow feed-key history (MegOLM archive) ---
+
+  @override
+  Future<void> appendFollowFeedKeyHistory({
+    required String followPubkey,
+    required Uint8List feedKey,
+    required int feedKeyEpoch,
+    required int validFrom,
+    required int validUntil,
+  }) =>
+      _db.keyRotationDao.appendFollowFeedKeyHistory(
+        FollowFeedKeyHistoryEntriesCompanion.insert(
+          followPubkey: followPubkey,
+          feedKey: feedKey,
+          feedKeyEpoch: Value(feedKeyEpoch),
+          validFrom: validFrom,
+          validUntil: validUntil,
+        ),
+      );
+
+  @override
+  Future<List<RetiredFeedKey>> getFollowFeedKeyHistory(
+    String followPubkey,
+  ) async {
+    final rows =
+        await _db.keyRotationDao.getFollowFeedKeyHistory(followPubkey);
+    return rows.map(retiredFeedKeyFromFollowRow).toList();
+  }
+
+  // --- Pending key distributions (Plan 13) ---
+
+  @override
+  Future<void> addPendingKeyDistribution({
+    required String targetPubkey,
+    required Uint8List encryptedFeedKey,
+    required Uint8List nonce,
+    required int createdAt,
+  }) =>
+      _db.keyRotationDao.addPendingDistribution(
+        PendingKeyDistributionEntriesCompanion.insert(
+          targetPubkey: targetPubkey,
+          encryptedFeedKey: encryptedFeedKey,
+          nonce: nonce,
+          createdAt: createdAt,
+        ),
+      );
+
+  @override
+  Future<PendingKeyDistribution?> latestPendingDistributionFor(
+    String targetPubkey,
+  ) async {
+    final row = await _db.keyRotationDao.latestPendingFor(targetPubkey);
+    return row == null ? null : pendingKeyDistributionFromRow(row);
+  }
+
+  @override
+  Future<void> markDistributionsDelivered(
+    String targetPubkey,
+    int upTo,
+  ) =>
+      _db.keyRotationDao.markDistributionsDelivered(targetPubkey, upTo);
+
+  @override
+  Future<void> clearPendingDistributionsFor(String targetPubkey) =>
+      _db.keyRotationDao.clearPendingDistributionsFor(targetPubkey);
+
   // --- Follow requests ---
 
   @override
@@ -175,6 +316,12 @@ class DriftStorageService implements StorageService {
   Stream<List<FollowRequest>> watchInboundRequests() => _db
       .followRequestsDao
       .watchInboundPending()
+      .map((rows) => rows.map(inboundRequestFromRow).toList());
+
+  @override
+  Stream<List<FollowRequest>> watchInboundFollowers() => _db
+      .followRequestsDao
+      .watchInboundActioned()
       .map((rows) => rows.map(inboundRequestFromRow).toList());
 
   @override
@@ -232,7 +379,10 @@ class DriftStorageService implements StorageService {
       _db.followRequestsDao.upsertOutbound(
         OutboundFollowRequestEntriesCompanion.insert(
           pubkey: request.pubkey,
-          connectionCard: utf8.decode(request.payload),
+          // Payload is raw CBOR; base64 keeps it ASCII-safe in the text
+          // column. utf8.decode would crash on the first non-ASCII byte
+          // (CBOR map headers like 0xa3 are UTF-8 continuation bytes).
+          connectionCard: base64.encode(request.payload),
           createdAt: request.createdAt,
           status: Value(request.status),
         ),
@@ -320,4 +470,55 @@ class DriftStorageService implements StorageService {
   @override
   Future<int> evictMediaOverLimit(int maxBytes) =>
       _db.mediaCacheDao.evictOverLimit(maxBytes);
+
+  @override
+  Future<Set<String>> getPinnedMediaHashes() async {
+    final jsonStrings = await _db.eventsDao.getPinnedMediaRefsJson();
+    final pinned = <String>{};
+    for (final raw in jsonStrings) {
+      final list = jsonDecode(raw) as List<dynamic>;
+      for (final item in list) {
+        final map = item as Map<dynamic, dynamic>;
+        final hash = map['hash'];
+        if (hash is String && hash.isNotEmpty) {
+          pinned.add(hash);
+        }
+      }
+    }
+    return pinned;
+  }
+
+  @override
+  Future<List<String>> getAllCachedMediaHashes() =>
+      _db.mediaCacheDao.getAllHashes();
+
+  @override
+  Future<int> getDatabaseFileSize() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'finch.db'));
+      if (!file.existsSync()) return 0;
+      return file.lengthSync();
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  @override
+  Future<List<CachedMedia>> evictMediaExcluding(
+    int maxBytes,
+    Set<String> pinned,
+  ) async {
+    final removed =
+        await _db.mediaCacheDao.evictOverLimitExcluding(maxBytes, pinned);
+    return removed.map(cachedMediaFromRow).toList();
+  }
+
+  @override
+  Future<List<CachedMedia>> clearCachedMediaExcluding(
+    Set<String> pinned,
+  ) async {
+    final removed = await _db.mediaCacheDao.deleteAllExcluding(pinned);
+    return removed.map(cachedMediaFromRow).toList();
+  }
 }

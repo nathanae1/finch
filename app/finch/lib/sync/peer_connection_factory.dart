@@ -1,26 +1,20 @@
-import '../services/mdns_service.dart';
 import '../services/types.dart';
+import 'peer_reachability_monitor.dart';
 
-/// Resolves a [PeerConnection] for a follow's pubkey by consulting the
-/// live mDNS peer cache.
-///
-/// Plans 11/15 will add Tor + relay tiers. The factory will then try LAN
-/// first (lowest latency), then onion, then relay — see
-/// `protocol-spec.md` "Sync Protocol".
+/// Thin façade over [PeerReachabilityMonitor]. Resolves a follow's pubkey
+/// to the best currently-validated `PeerConnection` (Plan 11c). The
+/// monitor is what does the actual probing and state-tracking; this
+/// class exists so consumers don't need to know about state machines —
+/// they just call `resolve(pubkey)` and get a connection or `null`.
 class PeerConnectionFactory {
-  PeerConnectionFactory({required MdnsService mdns}) : _mdns = mdns;
+  PeerConnectionFactory({required PeerReachabilityMonitor monitor})
+      : _monitor = monitor;
 
-  final MdnsService _mdns;
+  final PeerReachabilityMonitor _monitor;
 
-  /// Returns a `PeerConnection` for [pubkey] if a LAN peer is currently
-  /// visible, or `null` if none is reachable.
-  PeerConnection? buildLanConnection(String pubkey) {
-    final peer = _mdns.currentPeers()[pubkey];
-    if (peer == null) return null;
-    return PeerConnection(
-      pubkey: pubkey,
-      baseUrl: 'http://${peer.host}:${peer.port}',
-      transport: PeerTransport.lan,
-    );
-  }
+  /// Returns the best currently-validated transport for [pubkey], or
+  /// `null` if nothing is reachable. Briefly waits for in-flight probes
+  /// (capped at the monitor's `firstCallWindow`).
+  Future<PeerConnection?> resolve(String pubkey) =>
+      _monitor.bestConnectionFor(pubkey);
 }

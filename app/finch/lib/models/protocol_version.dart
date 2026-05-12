@@ -4,4 +4,4 @@
 ///
 /// Date-based, bumped when the CBOR event schema changes in a non-backward-
 /// compatible way.
-const kFinchProtocolVersion = '2026-03-24';
+const kFinchProtocolVersion = '2026-04-28';

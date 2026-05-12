@@ -7,7 +7,7 @@ part 'bookmark_provider.g.dart';
 /// Whether the local viewer has bookmarked (saved) the post with [id].
 /// Local-only — never produces a synced event. See Plan 10's Save discussion.
 @riverpod
-Future<bool> eventSaved(EventSavedRef ref, String id) async {
+Future<bool> eventSaved(Ref ref, String id) async {
   final save = ref.watch(saveServiceProvider);
   return save.isSaved(id);
 }

@@ -6,26 +6,54 @@ part of 'events_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$ownEventsHash() => r'e218ca1fb637801506398d15e40dbb6e02f8e62c';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// All events authored by the current identity, newest-first via storage's
+/// default ordering. Plan 06 will layer a richer feed query on top; this
+/// minimal provider exists so the post-publish path can invalidate it.
+
+@ProviderFor(ownEvents)
+final ownEventsProvider = OwnEventsProvider._();
 
 /// All events authored by the current identity, newest-first via storage's
 /// default ordering. Plan 06 will layer a richer feed query on top; this
 /// minimal provider exists so the post-publish path can invalidate it.
-///
-/// Copied from [ownEvents].
-@ProviderFor(ownEvents)
-final ownEventsProvider = AutoDisposeFutureProvider<List<Event>>.internal(
-  ownEvents,
-  name: r'ownEventsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$ownEventsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef OwnEventsRef = AutoDisposeFutureProviderRef<List<Event>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class OwnEventsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          List<Event>,
+          FutureOr<List<Event>>
+        >
+    with $FutureModifier<List<Event>>, $FutureProvider<List<Event>> {
+  /// All events authored by the current identity, newest-first via storage's
+  /// default ordering. Plan 06 will layer a richer feed query on top; this
+  /// minimal provider exists so the post-publish path can invalidate it.
+  OwnEventsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ownEventsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$ownEventsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<Event>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Event>> create(Ref ref) {
+    return ownEvents(ref);
+  }
+}
+
+String _$ownEventsHash() => r'52ae62a4503465cd095333ade4a4090a019e4abb';

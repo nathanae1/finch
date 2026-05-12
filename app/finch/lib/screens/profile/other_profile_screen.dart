@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../models/models.dart';
 import '../../providers/feed_provider.dart';
@@ -16,6 +16,7 @@ import '../../utils/time_ago.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/buttons.dart';
 import '../../widgets/encrypted_image.dart';
+import '../../widgets/finch_address_row.dart';
 
 /// Other-profile screen: header + last-synced + reachability pill, post grid,
 /// unfollow CTA wired to [FollowService].
@@ -97,7 +98,7 @@ class _Header extends StatelessWidget {
         children: [
           FinchIconButton(
             onPressed: () => Navigator.of(context).maybePop(),
-            child: const Icon(PhosphorIconsRegular.arrowLeft, size: 20),
+            child: const Icon(LucideIcons.arrowLeft, size: 20),
           ),
         ],
       ),
@@ -140,6 +141,8 @@ class _IdentityBlock extends ConsumerWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
+          FinchAddressRow(pubkey: pubkey),
+          const SizedBox(height: 6),
           Text(
             statusText,
             style: finch.typography.small.copyWith(color: statusColor),
@@ -162,11 +165,19 @@ class _IdentityBlock extends ConsumerWidget {
   }
 
   Future<void> _confirmUnfollow(BuildContext context, WidgetRef ref) async {
+    final isAlsoFollower = await ref
+        .read(storageServiceProvider)
+        .isAcceptedFollower(pubkey);
+    if (!context.mounted) return;
+    final body = isAlsoFollower
+        ? 'You will stop receiving posts from $displayName, and they '
+            'will no longer receive your future posts.'
+        : 'You will stop receiving posts from $displayName.';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Unfollow?'),
-        content: Text('You will stop receiving posts from $displayName.'),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -215,6 +226,7 @@ class _PostGrid extends StatelessWidget {
                   : EncryptedImage(
                       hash: hash,
                       pubkey: event.pubkey,
+                      msgSeq: event.msgSeq,
                     ),
             );
           },

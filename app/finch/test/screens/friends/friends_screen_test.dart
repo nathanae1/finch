@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 Widget _harness(ProviderContainer container) {
   final router = GoRouter(
@@ -42,14 +42,25 @@ Widget _harness(ProviderContainer container) {
 
 Future<ProviderContainer> _container({
   required MockStorageService storage,
+  bool seedOnion = false,
 }) async {
   await SodiumCryptoService.init();
-  return ProviderContainer(overrides: [
+  final container = ProviderContainer(overrides: [
     storageServiceProvider.overrideWithValue(storage),
     httpServerControllerProvider.overrideWith(
       () => _StubServerController(),
     ),
   ]);
+  if (seedOnion) {
+    // Tests that open the QR sheet need the onion address populated;
+    // otherwise `QrInviteSheet` renders its "Connecting to Tor…" loader
+    // and the `CircularProgressIndicator`'s infinite animation prevents
+    // `pumpAndSettle` from ever settling.
+    container
+        .read(onionAddressProvider.notifier)
+        .set('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion');
+  }
+  return container;
 }
 
 void main() {
@@ -109,14 +120,14 @@ void main() {
       feedKey: Uint8List(32),
       createdAt: 0,
     ));
-    final container = await _container(storage: storage);
+    final container = await _container(storage: storage, seedOnion: true);
     addTearDown(container.dispose);
     addTearDown(storage.dispose);
 
     await tester.pumpWidget(_harness(container));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(PhosphorIconsRegular.plus));
+    await tester.tap(find.byIcon(LucideIcons.plus));
     await tester.pumpAndSettle();
 
     expect(find.byType(QrInviteSheet), findsOneWidget);
@@ -131,7 +142,7 @@ void main() {
       feedKey: Uint8List(32),
       createdAt: 0,
     ));
-    final container = await _container(storage: storage);
+    final container = await _container(storage: storage, seedOnion: true);
     addTearDown(container.dispose);
     addTearDown(storage.dispose);
 

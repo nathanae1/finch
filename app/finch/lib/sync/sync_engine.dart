@@ -4,12 +4,16 @@ import 'dart:typed_data';
 import '../models/models.dart';
 import '../services/clock.dart';
 import '../services/content_key_service.dart';
+import '../services/crypto/crockford_base32.dart';
+import '../services/crypto/key_cache.dart';
+import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/types.dart';
 import 'concurrency.dart';
 import 'manifest_exchange.dart';
 import 'outbound_drain.dart';
 import 'peer_connection_factory.dart';
+import 'peer_reachability_monitor.dart';
 
 /// The narrow surface the sync engine needs from a transport. Implemented
 /// by `LanNetworkService` for v1; Plans 11/15 will add Tor/relay-backed
@@ -19,6 +23,8 @@ abstract class SyncTransport {
     PeerConnection peer, {
     int? since,
     int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
   });
 
   Future<Envelope> fetchEnvelope(PeerConnection peer, {int? since});
@@ -46,28 +52,45 @@ class SyncEngine {
   SyncEngine({
     required StorageService storage,
     required ContentKeyService contentKey,
+    required CryptoService crypto,
     required SyncTransport transport,
     required PeerConnectionFactory peerFactory,
+    required PeerReachabilityMonitor reachabilityMonitor,
     required Clock clock,
+    required Future<Uint8List?> Function() ownSecretKeyLookup,
+    FeedKeyCache? feedKeyCache,
     int maxParallelPeers = 5,
   })  : _storage = storage,
         _contentKey = contentKey,
+        _crypto = crypto,
         _transport = transport,
         _peerFactory = peerFactory,
+        _reachability = reachabilityMonitor,
         _clock = clock,
+        _ownSecretKeyLookup = ownSecretKeyLookup,
+        _feedKeyCache = feedKeyCache,
         _pool = Pool(maxParallelPeers);
 
   final StorageService _storage;
   final ContentKeyService _contentKey;
+  final CryptoService _crypto;
   final SyncTransport _transport;
   final PeerConnectionFactory _peerFactory;
+  final PeerReachabilityMonitor _reachability;
   final Clock _clock;
+  final Future<Uint8List?> Function() _ownSecretKeyLookup;
+  final FeedKeyCache? _feedKeyCache;
   final Pool _pool;
 
   /// Runs one sync pass. Returns a per-peer report so the UI can surface
   /// "syncing… 3/5 done" or "Bob unreachable."
   Future<SyncReport> syncNow() async {
     final follows = await _storage.getFollows();
+    developer.log(
+      'syncNow start: follows=${follows.length} '
+      '[${follows.map((f) => f.pubkey).join(",")}]',
+      name: 'sync_engine',
+    );
     if (follows.isEmpty) {
       return SyncReport(
         startedAt: _clock.nowUnixSeconds(),
@@ -87,30 +110,87 @@ class SyncEngine {
     );
   }
 
-  Future<PeerSyncReport> _syncOnePeer(Follow follow) async {
-    final connection = _peerFactory.buildLanConnection(follow.pubkey);
-    if (connection == null) {
-      return PeerSyncReport(
-        pubkey: follow.pubkey,
-        status: PeerSyncStatus.unreachable,
-      );
-    }
+  /// One-shot sync for a single peer, looked up by pubkey. Returns null
+  /// if the follow is gone (unfollowed mid-call). Used by on-demand
+  /// recovery paths — `EncryptedImage` after a decrypt failure, the
+  /// connection-settings refresh button — that want to pull any pending
+  /// rotation inline without doing a full app-wide `syncNow()`.
+  Future<PeerSyncReport?> syncOnePeerByPubkey(String pubkey) async {
+    final follow = await _storage.getFollow(pubkey);
+    if (follow == null) return null;
+    return _pool.run(() => _syncOnePeer(follow));
+  }
 
-    final exchange =
-        ManifestExchange(transport: _transport, storage: _storage);
-    final ManifestDiff diff;
-    try {
-      diff = await exchange.fetchAndDiff(connection, follow);
-    } catch (e) {
+  Future<PeerSyncReport> _syncOnePeer(Follow follow) async {
+    developer.log(
+      'syncOnePeer start pubkey=${follow.pubkey} lastSyncedAt=${follow.lastSyncedAt}',
+      name: 'sync_engine',
+    );
+    final connection = await _peerFactory.resolve(follow.pubkey);
+    if (connection == null) {
       developer.log(
-        'manifest fetch failed for ${follow.pubkey}: $e',
+        'no transport available for ${follow.pubkey} — peer unreachable',
         name: 'sync_engine',
       );
       return PeerSyncReport(
         pubkey: follow.pubkey,
         status: PeerSyncStatus.unreachable,
+      );
+    }
+    developer.log(
+      '${connection.transport.name} peer resolved ${follow.pubkey} -> ${connection.baseUrl}',
+      name: 'sync_engine',
+    );
+
+    final identity = await _storage.getIdentity();
+    final exchange =
+        ManifestExchange(transport: _transport, storage: _storage);
+    final ManifestDiff diff;
+    try {
+      diff = await exchange.fetchAndDiff(
+        connection,
+        follow,
+        requesterPubkey: identity?.pubkey,
+        ackRotationAt: follow.lastReceivedRotationAt,
+      );
+    } catch (e) {
+      developer.log(
+        'manifest fetch failed for ${follow.pubkey}: $e',
+        name: 'sync_engine',
+      );
+      _reachability.markUnreachable(follow.pubkey, connection.transport, e);
+      return PeerSyncReport(
+        pubkey: follow.pubkey,
+        status: PeerSyncStatus.unreachable,
         error: e.toString(),
       );
+    }
+    developer.log(
+      'manifest diff for ${follow.pubkey}: peerEvents=${diff.peerEvents.length} '
+      'missing=${diff.missingIds.length} windowSince=${diff.windowSince} '
+      'newFeedKey=${diff.newFeedKey != null}',
+      name: 'sync_engine',
+    );
+
+    // Plan 13: if the peer rotated, apply the new feed key BEFORE we try
+    // to decrypt their (possibly newly-encrypted) events below.
+    Follow currentFollow = follow;
+    final delivery = diff.newFeedKey;
+    if (delivery != null && identity != null) {
+      try {
+        currentFollow = await _applyRotatedFeedKey(
+          identity: identity,
+          follow: follow,
+          delivery: delivery,
+        );
+      } catch (e) {
+        developer.log(
+          'rotated feed key apply failed for ${follow.pubkey}: $e',
+          name: 'sync_engine',
+        );
+        // Don't abort the sync — we may still be able to read older events
+        // with our existing key, and the rotation will be retried next pass.
+      }
     }
 
     if (diff.missingIds.isEmpty) {
@@ -123,7 +203,7 @@ class SyncEngine {
       final drain = await drainOutboundQueueForPeer(
         storage: _storage,
         transport: _transport,
-        follow: follow,
+        follow: currentFollow,
         peer: connection,
       );
       return PeerSyncReport(
@@ -145,6 +225,7 @@ class SyncEngine {
         'envelope fetch failed for ${follow.pubkey}: $e',
         name: 'sync_engine',
       );
+      _reachability.markUnreachable(follow.pubkey, connection.transport, e);
       return PeerSyncReport(
         pubkey: follow.pubkey,
         status: PeerSyncStatus.unreachable,
@@ -152,6 +233,10 @@ class SyncEngine {
       );
     }
 
+    developer.log(
+      'envelope from ${follow.pubkey}: items=${envelope.items.length}',
+      name: 'sync_engine',
+    );
     var inserted = 0;
     var skipped = 0;
     var unknownPreserved = 0;
@@ -159,7 +244,7 @@ class SyncEngine {
 
     for (final item in envelope.items) {
       if (item.type == 'event') {
-        final ok = await _processEventItem(item, follow);
+        final ok = await _processEventItem(item, currentFollow);
         if (ok) {
           inserted++;
         } else {
@@ -181,11 +266,16 @@ class SyncEngine {
     }
 
     await _storage.updateLastSynced(follow.pubkey, _clock.nowUnixSeconds());
+    developer.log(
+      'sync complete for ${follow.pubkey}: inserted=$inserted skipped=$skipped '
+      'unknownPreserved=$unknownPreserved',
+      name: 'sync_engine',
+    );
 
     final drain = await drainOutboundQueueForPeer(
       storage: _storage,
       transport: _transport,
-      follow: follow,
+      follow: currentFollow,
       peer: connection,
     );
 
@@ -198,6 +288,79 @@ class SyncEngine {
       eventsPushed: drain.pushed,
       eventsPushDropped: drain.dropped,
     );
+  }
+
+  /// Decrypts an inline rotation payload and persists the new feed key
+  /// for [follow] (Plan 13). Returns the updated [Follow] (with the new
+  /// `feedKey` and `lastReceivedRotationAt`). Throws on DH/decrypt failure
+  /// — caller logs and falls through.
+  Future<Follow> _applyRotatedFeedKey({
+    required Identity identity,
+    required Follow follow,
+    required RotatedFeedKeyDelivery delivery,
+  }) async {
+    final secretKey = await _ownSecretKeyLookup();
+    if (secretKey == null) {
+      throw StateError('no secret key available to apply rotated feed key');
+    }
+    final myEdPk = crockfordBase32Decode(identity.pubkey);
+    final theirEdPk = crockfordBase32Decode(follow.pubkey);
+    final myXSk = _crypto.ed25519ToX25519SecretKey(secretKey);
+    final theirXPk = _crypto.ed25519ToX25519PublicKey(theirEdPk);
+    // Mirror the rotator's call: requester=rotator (follow.pubkey),
+    // responder=us. The shared key derivation incorporates the timestamp
+    // (createdAt of the rotation) so both sides agree.
+    final sharedKey = _crypto.deriveSharedKey(
+      myXSk,
+      theirXPk,
+      theirEdPk,
+      myEdPk,
+      delivery.createdAt,
+    );
+    final newKey = _crypto.decrypt(
+      delivery.encryptedFeedKey,
+      delivery.nonce,
+      sharedKey,
+    );
+    // Archive the soon-to-be-old chain root so cached content authored
+    // before this rotation stays decryptable. validFrom = the previously
+    // archived rotation point (or 0 if first rotation). validUntil =
+    // when this rotation took effect, i.e. delivery.createdAt.
+    if (follow.feedKey.isNotEmpty) {
+      final priorValidFrom = follow.lastReceivedRotationAt;
+      await _storage.appendFollowFeedKeyHistory(
+        followPubkey: follow.pubkey,
+        feedKey: follow.feedKey,
+        feedKeyEpoch: follow.feedKeyEpoch,
+        validFrom: priorValidFrom,
+        validUntil: delivery.createdAt,
+      );
+      developer.log(
+        'archived follow feed key for ${follow.pubkey} '
+        'epoch=${follow.feedKeyEpoch} '
+        '[$priorValidFrom, ${delivery.createdAt})',
+        name: 'sync_engine',
+      );
+    }
+    final updated = follow.copyWith(
+      feedKey: newKey,
+      feedKeyEpoch: 0,
+      lastReceivedRotationAt: delivery.createdAt,
+      clearLastDecryptFailureAt: true,
+    );
+    await _storage.saveFollow(updated);
+    _feedKeyCache?.put(follow.pubkey, newKey, 0);
+    final newKeyFp = newKey
+        .take(4)
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+    developer.log(
+      'applied rotated feed key for ${follow.pubkey} '
+      'oldEpoch=${follow.feedKeyEpoch} newEpoch=0 '
+      'newKeyFp=$newKeyFp… rotationAt=${delivery.createdAt}',
+      name: 'sync_engine',
+    );
+    return updated;
   }
 
   /// Processes one envelope item of `type:"event"`. Returns true if the
@@ -223,16 +386,58 @@ class SyncEngine {
       return false;
     }
 
-    final Event plain;
-    try {
-      plain = _contentKey.decryptEvent(encrypted, follow.feedKey);
-    } catch (e) {
+    // Candidate chain roots in priority order: current Follow.feedKey
+    // first (will hit ~always for non-stale follows), then any archived
+    // chain roots whose validity window covers the event's createdAt.
+    // Each candidate is fed through `decryptEvent`, which derives the
+    // per-message AEAD key from `(chainRoot, encrypted.msgSeq)`.
+    final candidates = <Uint8List>[follow.feedKey];
+    final history = await _storage.getFollowFeedKeyHistory(follow.pubkey);
+    for (final h in history) {
+      if (h.validFrom <= encrypted.createdAt &&
+          encrypted.createdAt < h.validUntil) {
+        candidates.add(h.feedKey);
+      }
+    }
+    developer.log(
+      'decrypt attempt peer=${follow.pubkey} '
+      'eventCreatedAt=${encrypted.createdAt} '
+      'eventEpoch=${encrypted.epoch} eventMsgSeq=${encrypted.msgSeq} '
+      'currentEpoch=${follow.feedKeyEpoch} '
+      'historyTotal=${history.length} candidates=${candidates.length}',
+      name: 'sync_engine',
+    );
+    Event? plain;
+    Object? lastError;
+    for (final chainRoot in candidates) {
+      try {
+        plain = _contentKey.decryptEvent(encrypted, chainRoot);
+        break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (plain == null) {
       developer.log(
-        'decrypt/verify failed for ${follow.pubkey}: $e',
+        'decrypt/verify failed for ${follow.pubkey} '
+        '(epoch=${encrypted.epoch} msgSeq=${encrypted.msgSeq} '
+        'tried=${candidates.length}): $lastError',
         name: 'sync_engine',
+      );
+      // Stamp the staleness signal so the connection-settings tile can
+      // surface "Key — stale" and the next sync run knows to look hard
+      // for a pending rotation. Cleared in `_applyRotatedFeedKey` once a
+      // fresh key lands.
+      await _storage.setLastDecryptFailureAt(
+        follow.pubkey,
+        _clock.nowUnixSeconds(),
       );
       return false;
     }
+    // Carry the wire-format msgSeq through to the persisted Event row so
+    // media decryption can re-derive the same per-message key without
+    // having to re-fetch the EncryptedEvent.
+    plain = plain.copyWith(msgSeq: encrypted.msgSeq);
 
     if (plain.pubkey != follow.pubkey) {
       // Re-distributed event (e.g. a comment from a third party that

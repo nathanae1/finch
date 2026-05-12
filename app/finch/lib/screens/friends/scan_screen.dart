@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../providers/qr_scanner_provider.dart';
 import '../../services/qr_scanner_service.dart';
@@ -23,6 +23,11 @@ class ScanScreen extends ConsumerStatefulWidget {
 
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   StreamSubscription<String>? _sub;
+  // Cached so dispose() can stop the scanner without touching `ref` —
+  // Riverpod marks the element disposed before our dispose() runs, so
+  // ref.read here would throw "Cannot use ref after the widget was
+  // disposed."
+  QrScannerService? _scanner;
   bool _busy = false;
   String? _permissionMessage;
 
@@ -35,13 +40,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void dispose() {
     _sub?.cancel();
-    final scanner = ref.read(qrScannerServiceProvider);
-    unawaited(scanner.stop());
+    final scanner = _scanner;
+    if (scanner != null) {
+      unawaited(scanner.stop());
+    }
     super.dispose();
   }
 
   Future<void> _start() async {
     final scanner = ref.read(qrScannerServiceProvider);
+    _scanner = scanner;
     try {
       await scanner.start();
       _sub = scanner.scans.listen(_handleScan);
@@ -163,7 +171,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 color: Colors.black54,
                 shape: const CircleBorder(),
                 child: IconButton(
-                  icon: const Icon(PhosphorIconsRegular.x, color: Colors.white),
+                  icon: const Icon(LucideIcons.x, color: Colors.white),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),

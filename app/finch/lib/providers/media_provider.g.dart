@@ -6,44 +6,143 @@ part of 'media_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$mediaServiceHash() => r'98153b0e73cd589dec122dd7effc0090bec048a8';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [mediaService].
 @ProviderFor(mediaService)
-final mediaServiceProvider = AutoDisposeProvider<MediaService>.internal(
-  mediaService,
-  name: r'mediaServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$mediaServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final mediaServiceProvider = MediaServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef MediaServiceRef = AutoDisposeProviderRef<MediaService>;
-String _$remoteMediaFetcherHash() =>
-    r'aeb5e37766a3a3f735bab9719afe9c2ca5b9164b';
+final class MediaServiceProvider
+    extends $FunctionalProvider<MediaService, MediaService, MediaService>
+    with $Provider<MediaService> {
+  MediaServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'mediaServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$mediaServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<MediaService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  MediaService create(Ref ref) {
+    return mediaService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(MediaService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<MediaService>(value),
+    );
+  }
+}
+
+String _$mediaServiceHash() => r'216da747c7ae5b502b6461c5b36690d85cad9d0d';
 
 /// Lazily fetches media from peers when the local cache misses. Used by
 /// `EncryptedImage` as a fallback path.
-///
-/// Copied from [remoteMediaFetcher].
-@ProviderFor(remoteMediaFetcher)
-final remoteMediaFetcherProvider =
-    AutoDisposeProvider<RemoteMediaFetcher>.internal(
-      remoteMediaFetcher,
-      name: r'remoteMediaFetcherProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$remoteMediaFetcherHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef RemoteMediaFetcherRef = AutoDisposeProviderRef<RemoteMediaFetcher>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(remoteMediaFetcher)
+final remoteMediaFetcherProvider = RemoteMediaFetcherProvider._();
+
+/// Lazily fetches media from peers when the local cache misses. Used by
+/// `EncryptedImage` as a fallback path.
+
+final class RemoteMediaFetcherProvider
+    extends
+        $FunctionalProvider<
+          RemoteMediaFetcher,
+          RemoteMediaFetcher,
+          RemoteMediaFetcher
+        >
+    with $Provider<RemoteMediaFetcher> {
+  /// Lazily fetches media from peers when the local cache misses. Used by
+  /// `EncryptedImage` as a fallback path.
+  RemoteMediaFetcherProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'remoteMediaFetcherProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$remoteMediaFetcherHash();
+
+  @$internal
+  @override
+  $ProviderElement<RemoteMediaFetcher> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  RemoteMediaFetcher create(Ref ref) {
+    return remoteMediaFetcher(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RemoteMediaFetcher value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RemoteMediaFetcher>(value),
+    );
+  }
+}
+
+String _$remoteMediaFetcherHash() =>
+    r'f88261683fcedd05ed3aff28c1853e115df7d556';
+
+@ProviderFor(exportService)
+final exportServiceProvider = ExportServiceProvider._();
+
+final class ExportServiceProvider
+    extends $FunctionalProvider<ExportService, ExportService, ExportService>
+    with $Provider<ExportService> {
+  ExportServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'exportServiceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$exportServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ExportService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ExportService create(Ref ref) {
+    return exportService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ExportService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ExportService>(value),
+    );
+  }
+}
+
+String _$exportServiceHash() => r'3682e1f13873c20ce39397de39cd132b01234217';

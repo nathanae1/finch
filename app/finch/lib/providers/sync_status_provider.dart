@@ -31,10 +31,10 @@ class SyncStatus {
 }
 
 @riverpod
-SyncStatus syncStatus(SyncStatusRef ref) {
+SyncStatus syncStatus(Ref ref) {
   final engineState = ref.watch(syncControllerProvider);
-  final peers = ref.watch(discoveryControllerProvider).valueOrNull ?? const {};
-  final follows = ref.watch(followsProvider).valueOrNull ?? const [];
+  final peers = ref.watch(discoveryControllerProvider).value ?? const {};
+  final follows = ref.watch(followsStreamProvider).value ?? const [];
 
   final reachable = follows.where((f) => peers.containsKey(f.pubkey)).length;
 

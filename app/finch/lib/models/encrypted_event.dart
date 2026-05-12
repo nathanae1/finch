@@ -8,6 +8,7 @@ class EncryptedEvent {
     required this.pubkey,
     required this.createdAt,
     required this.epoch,
+    required this.msgSeq,
     required this.nonce,
     required this.payload,
   });
@@ -15,6 +16,10 @@ class EncryptedEvent {
   final String pubkey;
   final int createdAt;
   final int epoch; // feed key epoch number
+  // MegOLM-shaped per-message sequence. Combined with the epoch's chain
+  // root via `deriveMsgKey`, this picks the AEAD key for `payload` and
+  // for any media blobs referenced by the inner event.
+  final int msgSeq;
   final Uint8List nonce; // 24 bytes
   final Uint8List payload;
 
@@ -22,6 +27,7 @@ class EncryptedEvent {
         'pubkey': pubkey,
         'created_at': createdAt,
         'epoch': epoch,
+        'msg_seq': msgSeq,
         'nonce': nonce,
         'payload': payload,
       };
@@ -32,6 +38,7 @@ class EncryptedEvent {
         pubkey: map['pubkey'] as String,
         createdAt: map['created_at'] as int,
         epoch: map['epoch'] as int,
+        msgSeq: map['msg_seq'] as int,
         nonce: _toUint8List(map['nonce']),
         payload: _toUint8List(map['payload']),
       );
@@ -46,16 +53,17 @@ class EncryptedEvent {
           pubkey == other.pubkey &&
           createdAt == other.createdAt &&
           epoch == other.epoch &&
+          msgSeq == other.msgSeq &&
           const ListEquality<int>().equals(nonce, other.nonce) &&
           const ListEquality<int>().equals(payload, other.payload);
 
   @override
-  int get hashCode => Object.hash(pubkey, createdAt, epoch);
+  int get hashCode => Object.hash(pubkey, createdAt, epoch, msgSeq);
 
   @override
   String toString() =>
       'EncryptedEvent(pubkey: $pubkey, createdAt: $createdAt, '
-      'epoch: $epoch, payloadSize: ${payload.length})';
+      'epoch: $epoch, msgSeq: $msgSeq, payloadSize: ${payload.length})';
 }
 
 Uint8List _toUint8List(dynamic value) {

@@ -12,6 +12,17 @@ class FollowEntries extends Table {
       integer().withDefault(const Constant(0))();
   TextColumn get status =>
       text().withDefault(const Constant('active'))();
+  // The `created_at` stamp on the most recent rotated feed key we've
+  // received from this peer (Plan 13). Sent back to the peer as
+  // `ack_rotation_at` on the next /manifest call so they can mark the
+  // distribution row delivered. 0 means "no rotation received yet."
+  IntColumn get lastReceivedRotationAt =>
+      integer().withDefault(const Constant(0))();
+  // Unix-second timestamp of the most recent decrypt failure attributable
+  // to this peer's stored feed key (event or media). Set when we observe
+  // a stale-key signal, cleared when a fresh rotation lands. Drives the
+  // "Key fresh / stale" tile in connection settings.
+  IntColumn get lastDecryptFailureAt => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {pubkey};

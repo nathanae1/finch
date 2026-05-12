@@ -27,7 +27,7 @@ class ReactionSummary {
 }
 
 @riverpod
-Future<ReactionSummary> reactions(ReactionsRef ref, String postId) async {
+Future<ReactionSummary> reactions(Ref ref, String postId) async {
   final storage = ref.watch(storageServiceProvider);
   final identity = await ref.watch(identityControllerProvider.future);
 

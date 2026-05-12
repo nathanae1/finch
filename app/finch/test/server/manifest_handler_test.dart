@@ -95,4 +95,97 @@ void main() {
         await handler(Request('GET', Uri.parse('http://localhost/manifest')));
     expect(res.statusCode, 503);
   });
+
+  // --- Plan 13: rotation distribution piggybacked on /manifest ---
+
+  test('omits new_feed_key when no requester_pubkey is given', () async {
+    await storage.addPendingKeyDistribution(
+      targetPubkey: 'follower-1',
+      encryptedFeedKey: Uint8List.fromList([1, 2, 3]),
+      nonce: Uint8List.fromList(List.filled(24, 0xAA)),
+      createdAt: 500,
+    );
+    final res = await get('/manifest');
+    expect(res.statusCode, 200);
+    final body = decodeBody(
+      Uint8List.fromList(await res.read().expand((c) => c).toList()),
+    );
+    expect(body.containsKey('new_feed_key'), isFalse);
+  });
+
+  test('includes new_feed_key when requester has an undelivered row',
+      () async {
+    await storage.addPendingKeyDistribution(
+      targetPubkey: 'follower-1',
+      encryptedFeedKey: Uint8List.fromList([1, 2, 3]),
+      nonce: Uint8List.fromList(List.filled(24, 0xAA)),
+      createdAt: 500,
+    );
+    final res = await get('/manifest?requester_pubkey=follower-1');
+    expect(res.statusCode, 200);
+    final body = decodeBody(
+      Uint8List.fromList(await res.read().expand((c) => c).toList()),
+    );
+    final newFeedKey = body['new_feed_key'] as Map<dynamic, dynamic>;
+    expect(newFeedKey['created_at'], equals(500));
+    expect(newFeedKey['encrypted_feed_key'], equals([1, 2, 3]));
+    expect(
+      (newFeedKey['nonce'] as List<dynamic>).first,
+      equals(0xAA),
+    );
+  });
+
+  test(
+      'returns the latest pending row when multiple rotations are stacked',
+      () async {
+    await storage.addPendingKeyDistribution(
+      targetPubkey: 'follower-1',
+      encryptedFeedKey: Uint8List.fromList([1]),
+      nonce: Uint8List.fromList(List.filled(24, 0x01)),
+      createdAt: 500,
+    );
+    await storage.addPendingKeyDistribution(
+      targetPubkey: 'follower-1',
+      encryptedFeedKey: Uint8List.fromList([2]),
+      nonce: Uint8List.fromList(List.filled(24, 0x02)),
+      createdAt: 700,
+    );
+    final res = await get('/manifest?requester_pubkey=follower-1');
+    final body = decodeBody(
+      Uint8List.fromList(await res.read().expand((c) => c).toList()),
+    );
+    final newFeedKey = body['new_feed_key'] as Map<dynamic, dynamic>;
+    expect(newFeedKey['created_at'], equals(700));
+  });
+
+  test('ack_rotation_at marks rows delivered; subsequent calls omit new_feed_key',
+      () async {
+    await storage.addPendingKeyDistribution(
+      targetPubkey: 'follower-1',
+      encryptedFeedKey: Uint8List.fromList([1]),
+      nonce: Uint8List.fromList(List.filled(24, 0x01)),
+      createdAt: 500,
+    );
+    // First call still includes the row (no ack yet).
+    final first = await get('/manifest?requester_pubkey=follower-1');
+    final firstBody = decodeBody(
+      Uint8List.fromList(await first.read().expand((c) => c).toList()),
+    );
+    expect(firstBody.containsKey('new_feed_key'), isTrue);
+
+    // Now ack the rotation and call again — row is suppressed.
+    final second = await get(
+      '/manifest?requester_pubkey=follower-1&ack_rotation_at=500',
+    );
+    final secondBody = decodeBody(
+      Uint8List.fromList(await second.read().expand((c) => c).toList()),
+    );
+    expect(secondBody.containsKey('new_feed_key'), isFalse);
+  });
+
+  test('invalid ack_rotation_at → 400', () async {
+    final res =
+        await get('/manifest?requester_pubkey=follower-1&ack_rotation_at=abc');
+    expect(res.statusCode, 400);
+  });
 }

@@ -6,8 +6,7 @@ import '../../services/content_key_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/types.dart';
 
-/// `GET /events?since={ts}` — CBOR `Envelope` of `EnvelopeItem(type:'event')`,
-/// each wrapping a freshly re-encrypted `EncryptedEvent`.
+/// `GET /events?since={ts}` — CBOR `Envelope` of `EnvelopeItem(type:'event')`.
 ///
 /// Returns:
 ///   1. The owner's own events (kind=1 posts, kind=4 outgoing comments,
@@ -16,12 +15,14 @@ import '../../services/types.dart';
 ///      (received comments / likes / tombstones on own posts, pushed via
 ///      `POST /events` from followers — see Plan 10 re-distribution).
 ///
-/// All items are re-encrypted with the owner's current
-/// `identity.feedKey` / `feedKeyEpoch`. The receiver derives the event id
-/// from the inner signed `Event`, so the wire-level pubkey on the
-/// re-encrypted envelope item may be a third party's pubkey (when we're
-/// re-distributing their comment); the inner Ed25519 signature is what
-/// the syncing peer verifies.
+/// Own events authored after the schema-v2 migration ship as the original
+/// wire-format `EncryptedEvent` bytes captured at author time — the only
+/// way to keep the per-message AEAD key aligned with the media blobs that
+/// were encrypted under that same author-time `msgSeq`. Re-distributed
+/// third-party events (and own events from before the migration) are
+/// re-encrypted on the fly under the owner's current chain root with a
+/// fresh `msgSeq`. The receiver derives the event id from the inner
+/// signed `Event` and verifies the inner Ed25519 signature.
 Handler eventsHandler({
   required StorageService storage,
   required ContentKeyService contentKey,
@@ -46,14 +47,36 @@ Handler eventsHandler({
       since: since,
       limit: pageLimit,
     );
-    final items = events.map((event) {
+    // For each event row, prefer the persisted wire-EncryptedEvent
+    // captured at author time — that's the only encryption whose msgSeq
+    // matches the media blobs on disk. Fall back to on-the-fly re-encrypt
+    // for re-distributed third-party events (no media) and for own events
+    // from before the v2 migration (no stored payload). The fresh-msgSeq
+    // counter only advances when the fallback fires.
+    var nextSeq = identity.msgSeqCounter;
+    final items = <EnvelopeItem>[];
+    for (final event in events) {
+      if (event.pubkey == identity.pubkey) {
+        final stored = await storage.getEncryptedPayload(event.id);
+        if (stored != null) {
+          items.add(EnvelopeItem(type: 'event', payload: stored));
+          continue;
+        }
+      }
+      final msgSeq = nextSeq++;
       final encrypted = contentKey.encryptEvent(
         event,
         identity.feedKey,
         identity.feedKeyEpoch,
+        msgSeq,
       );
-      return EnvelopeItem(type: 'event', payload: encrypted.toBytes());
-    }).toList();
+      items.add(EnvelopeItem(type: 'event', payload: encrypted.toBytes()));
+    }
+    if (nextSeq != identity.msgSeqCounter) {
+      await storage.saveIdentity(
+        identity.copyWith(msgSeqCounter: nextSeq),
+      );
+    }
     final envelope = Envelope(
       version: kFinchProtocolVersion,
       items: items,

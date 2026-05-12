@@ -6,333 +6,326 @@ part of 'feed_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$feedHash() => r'772c4ca05ae3ea7bca6bd55aa605c323689e7bb3';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Single-instance LastViewedTracker for the running app. Lives at the
+/// provider scope so the dedupe set survives across feed rebuilds but
+/// dies with the app process.
+
+@ProviderFor(lastViewedTracker)
+final lastViewedTrackerProvider = LastViewedTrackerProvider._();
+
+/// Single-instance LastViewedTracker for the running app. Lives at the
+/// provider scope so the dedupe set survives across feed rebuilds but
+/// dies with the app process.
+
+final class LastViewedTrackerProvider
+    extends
+        $FunctionalProvider<
+          LastViewedTracker,
+          LastViewedTracker,
+          LastViewedTracker
+        >
+    with $Provider<LastViewedTracker> {
+  /// Single-instance LastViewedTracker for the running app. Lives at the
+  /// provider scope so the dedupe set survives across feed rebuilds but
+  /// dies with the app process.
+  LastViewedTrackerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lastViewedTrackerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lastViewedTrackerHash();
+
+  @$internal
+  @override
+  $ProviderElement<LastViewedTracker> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LastViewedTracker create(Ref ref) {
+    return lastViewedTracker(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LastViewedTracker value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LastViewedTracker>(value),
+    );
+  }
+}
+
+String _$lastViewedTrackerHash() => r'96e1cb52d02aab043d964b7b9131a8bdafaf6b87';
 
 /// Reverse-chronological feed of kind=1 posts from own identity + active
 /// follows. Posts with a kind=6 tombstone from the same author are excluded
 /// at the storage layer. Plan 09 plugs sync into this — the provider shape
 /// doesn't change.
-///
-/// Copied from [feed].
+
 @ProviderFor(feed)
-final feedProvider = AutoDisposeFutureProvider<List<Event>>.internal(
-  feed,
-  name: r'feedProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$feedHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final feedProvider = FeedProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef FeedRef = AutoDisposeFutureProviderRef<List<Event>>;
-String _$eventByIdHash() => r'42e583f34e64c93a50c539c577f10eb14c3d555b';
+/// Reverse-chronological feed of kind=1 posts from own identity + active
+/// follows. Posts with a kind=6 tombstone from the same author are excluded
+/// at the storage layer. Plan 09 plugs sync into this — the provider shape
+/// doesn't change.
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-/// Single event by id, used by the post-detail screen so it doesn't have
-/// to re-query the whole feed.
-///
-/// Copied from [eventById].
-@ProviderFor(eventById)
-const eventByIdProvider = EventByIdFamily();
-
-/// Single event by id, used by the post-detail screen so it doesn't have
-/// to re-query the whole feed.
-///
-/// Copied from [eventById].
-class EventByIdFamily extends Family<AsyncValue<Event?>> {
-  /// Single event by id, used by the post-detail screen so it doesn't have
-  /// to re-query the whole feed.
-  ///
-  /// Copied from [eventById].
-  const EventByIdFamily();
-
-  /// Single event by id, used by the post-detail screen so it doesn't have
-  /// to re-query the whole feed.
-  ///
-  /// Copied from [eventById].
-  EventByIdProvider call(String id) {
-    return EventByIdProvider(id);
-  }
-
-  @override
-  EventByIdProvider getProviderOverride(covariant EventByIdProvider provider) {
-    return call(provider.id);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'eventByIdProvider';
-}
-
-/// Single event by id, used by the post-detail screen so it doesn't have
-/// to re-query the whole feed.
-///
-/// Copied from [eventById].
-class EventByIdProvider extends AutoDisposeFutureProvider<Event?> {
-  /// Single event by id, used by the post-detail screen so it doesn't have
-  /// to re-query the whole feed.
-  ///
-  /// Copied from [eventById].
-  EventByIdProvider(String id)
-    : this._internal(
-        (ref) => eventById(ref as EventByIdRef, id),
-        from: eventByIdProvider,
-        name: r'eventByIdProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$eventByIdHash,
-        dependencies: EventByIdFamily._dependencies,
-        allTransitiveDependencies: EventByIdFamily._allTransitiveDependencies,
-        id: id,
+final class FeedProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          List<Event>,
+          FutureOr<List<Event>>
+        >
+    with $FutureModifier<List<Event>>, $FutureProvider<List<Event>> {
+  /// Reverse-chronological feed of kind=1 posts from own identity + active
+  /// follows. Posts with a kind=6 tombstone from the same author are excluded
+  /// at the storage layer. Plan 09 plugs sync into this — the provider shape
+  /// doesn't change.
+  FeedProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'feedProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
       );
 
-  EventByIdProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.id,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$feedHash();
 
-  final String id;
+  @$internal
+  @override
+  $FutureProviderElement<List<Event>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<Event?> Function(EventByIdRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: EventByIdProvider._internal(
-        (ref) => create(ref as EventByIdRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        id: id,
-      ),
-    );
+  FutureOr<List<Event>> create(Ref ref) {
+    return feed(ref);
+  }
+}
+
+String _$feedHash() => r'7b48a5dbe60b144ea3bf37dbea65d161355a8186';
+
+/// Single event by id, used by the post-detail screen so it doesn't have
+/// to re-query the whole feed.
+
+@ProviderFor(eventById)
+final eventByIdProvider = EventByIdFamily._();
+
+/// Single event by id, used by the post-detail screen so it doesn't have
+/// to re-query the whole feed.
+
+final class EventByIdProvider
+    extends $FunctionalProvider<AsyncValue<Event?>, Event?, FutureOr<Event?>>
+    with $FutureModifier<Event?>, $FutureProvider<Event?> {
+  /// Single event by id, used by the post-detail screen so it doesn't have
+  /// to re-query the whole feed.
+  EventByIdProvider._({
+    required EventByIdFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'eventByIdProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$eventByIdHash();
+
+  @override
+  String toString() {
+    return r'eventByIdProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<Event?> createElement() {
-    return _EventByIdProviderElement(this);
+  $FutureProviderElement<Event?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Event?> create(Ref ref) {
+    final argument = this.argument as String;
+    return eventById(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is EventByIdProvider && other.id == id;
+    return other is EventByIdProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, id.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin EventByIdRef on AutoDisposeFutureProviderRef<Event?> {
-  /// The parameter `id` of this provider.
-  String get id;
-}
+String _$eventByIdHash() => r'1c419a1fe059310f471dc7ebe37dee164123713c';
 
-class _EventByIdProviderElement extends AutoDisposeFutureProviderElement<Event?>
-    with EventByIdRef {
-  _EventByIdProviderElement(super.provider);
+/// Single event by id, used by the post-detail screen so it doesn't have
+/// to re-query the whole feed.
+
+final class EventByIdFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<Event?>, String> {
+  EventByIdFamily._()
+    : super(
+        retry: null,
+        name: r'eventByIdProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Single event by id, used by the post-detail screen so it doesn't have
+  /// to re-query the whole feed.
+
+  EventByIdProvider call(String id) =>
+      EventByIdProvider._(argument: id, from: this);
 
   @override
-  String get id => (origin as EventByIdProvider).id;
+  String toString() => r'eventByIdProvider';
 }
-
-String _$ownPostsHash() => r'ba195c5526984f8ad0166a58da6196465ec861b7';
 
 /// Own posts (kind=1, deletes excluded) for the "You"-tab grid.
-///
-/// Copied from [ownPosts].
+
 @ProviderFor(ownPosts)
-final ownPostsProvider = AutoDisposeFutureProvider<List<Event>>.internal(
-  ownPosts,
-  name: r'ownPostsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$ownPostsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final ownPostsProvider = OwnPostsProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef OwnPostsRef = AutoDisposeFutureProviderRef<List<Event>>;
-String _$profilePostsHash() => r'7351f14ed5a79283df6c7f6d07f7ac5b2f4a5da0';
+/// Own posts (kind=1, deletes excluded) for the "You"-tab grid.
 
-/// Posts authored by a given pubkey, for other-profile grid.
-///
-/// Copied from [profilePosts].
-@ProviderFor(profilePosts)
-const profilePostsProvider = ProfilePostsFamily();
-
-/// Posts authored by a given pubkey, for other-profile grid.
-///
-/// Copied from [profilePosts].
-class ProfilePostsFamily extends Family<AsyncValue<List<Event>>> {
-  /// Posts authored by a given pubkey, for other-profile grid.
-  ///
-  /// Copied from [profilePosts].
-  const ProfilePostsFamily();
-
-  /// Posts authored by a given pubkey, for other-profile grid.
-  ///
-  /// Copied from [profilePosts].
-  ProfilePostsProvider call(String pubkey) {
-    return ProfilePostsProvider(pubkey);
-  }
-
-  @override
-  ProfilePostsProvider getProviderOverride(
-    covariant ProfilePostsProvider provider,
-  ) {
-    return call(provider.pubkey);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'profilePostsProvider';
-}
-
-/// Posts authored by a given pubkey, for other-profile grid.
-///
-/// Copied from [profilePosts].
-class ProfilePostsProvider extends AutoDisposeFutureProvider<List<Event>> {
-  /// Posts authored by a given pubkey, for other-profile grid.
-  ///
-  /// Copied from [profilePosts].
-  ProfilePostsProvider(String pubkey)
-    : this._internal(
-        (ref) => profilePosts(ref as ProfilePostsRef, pubkey),
-        from: profilePostsProvider,
-        name: r'profilePostsProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$profilePostsHash,
-        dependencies: ProfilePostsFamily._dependencies,
-        allTransitiveDependencies:
-            ProfilePostsFamily._allTransitiveDependencies,
-        pubkey: pubkey,
+final class OwnPostsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          List<Event>,
+          FutureOr<List<Event>>
+        >
+    with $FutureModifier<List<Event>>, $FutureProvider<List<Event>> {
+  /// Own posts (kind=1, deletes excluded) for the "You"-tab grid.
+  OwnPostsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ownPostsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
       );
 
-  ProfilePostsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.pubkey,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$ownPostsHash();
 
-  final String pubkey;
+  @$internal
+  @override
+  $FutureProviderElement<List<Event>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<List<Event>> Function(ProfilePostsRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ProfilePostsProvider._internal(
-        (ref) => create(ref as ProfilePostsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        pubkey: pubkey,
-      ),
-    );
+  FutureOr<List<Event>> create(Ref ref) {
+    return ownPosts(ref);
+  }
+}
+
+String _$ownPostsHash() => r'2f4352c8fdc7bc624452fca2403100d0e82e85ee';
+
+/// Posts authored by a given pubkey, for other-profile grid.
+
+@ProviderFor(profilePosts)
+final profilePostsProvider = ProfilePostsFamily._();
+
+/// Posts authored by a given pubkey, for other-profile grid.
+
+final class ProfilePostsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Event>>,
+          List<Event>,
+          FutureOr<List<Event>>
+        >
+    with $FutureModifier<List<Event>>, $FutureProvider<List<Event>> {
+  /// Posts authored by a given pubkey, for other-profile grid.
+  ProfilePostsProvider._({
+    required ProfilePostsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'profilePostsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$profilePostsHash();
+
+  @override
+  String toString() {
+    return r'profilePostsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<List<Event>> createElement() {
-    return _ProfilePostsProviderElement(this);
+  $FutureProviderElement<List<Event>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Event>> create(Ref ref) {
+    final argument = this.argument as String;
+    return profilePosts(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ProfilePostsProvider && other.pubkey == pubkey;
+    return other is ProfilePostsProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, pubkey.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ProfilePostsRef on AutoDisposeFutureProviderRef<List<Event>> {
-  /// The parameter `pubkey` of this provider.
-  String get pubkey;
-}
+String _$profilePostsHash() => r'57f87e6321e83224bd2535b309c5703fe7c9cbf9';
 
-class _ProfilePostsProviderElement
-    extends AutoDisposeFutureProviderElement<List<Event>>
-    with ProfilePostsRef {
-  _ProfilePostsProviderElement(super.provider);
+/// Posts authored by a given pubkey, for other-profile grid.
+
+final class ProfilePostsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<Event>>, String> {
+  ProfilePostsFamily._()
+    : super(
+        retry: null,
+        name: r'profilePostsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Posts authored by a given pubkey, for other-profile grid.
+
+  ProfilePostsProvider call(String pubkey) =>
+      ProfilePostsProvider._(argument: pubkey, from: this);
 
   @override
-  String get pubkey => (origin as ProfilePostsProvider).pubkey;
+  String toString() => r'profilePostsProvider';
 }
-
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

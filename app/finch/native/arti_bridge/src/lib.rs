@@ -13,17 +13,44 @@
 //! See `native/arti_bridge/README.md` for build instructions and the
 //! "Key decisions" section of the Plan 11a plan file for context.
 
+use std::cell::RefCell;
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::ptr;
 use std::sync::Arc;
 
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use tokio::runtime::Runtime;
 
 mod inner;
 use inner::{Inner, StatusSnapshot};
+
+thread_local! {
+    /// Most recent error message produced by an FFI call on this thread.
+    /// Populated when an FFI returns NULL or a negative status; the caller
+    /// can retrieve it via [`arti_last_error`] for richer diagnostics than
+    /// the bare integer status code allows.
+    static LAST_ERROR: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// Process-wide handle slot. Survives Flutter hot restart (which destroys
+/// the Dart isolate but leaves the native process alive). Tracks the
+/// most recent live handle so a subsequent `arti_init` can tear the
+/// orphan down before building a fresh one — without that, the second
+/// init succeeds but `arti_create_onion_service` fails with "local
+/// resource already in use" because `tor-hsservice` still holds an
+/// exclusive lock on the nickname's on-disk state. Cleared by
+/// [`arti_shutdown`].
+static HANDLE_SLOT: Mutex<Option<usize>> = Mutex::new(None);
+
+fn set_last_error(msg: impl Into<String>) {
+    LAST_ERROR.with(|slot| *slot.borrow_mut() = Some(msg.into()));
+}
+
+fn clear_last_error() {
+    LAST_ERROR.with(|slot| *slot.borrow_mut() = None);
+}
 
 // --- Status codes ---
 
@@ -64,13 +91,31 @@ pub struct ArtiHandle {
 /// to release resources.
 #[no_mangle]
 pub unsafe extern "C" fn arti_init(data_dir: *const c_char) -> *mut ArtiHandle {
+    clear_last_error();
     let result = catch_unwind(AssertUnwindSafe(|| {
+        // Hot-restart cleanup: if a prior Dart isolate left an Arti handle
+        // alive in this process, tear it down before standing a new one
+        // up. Otherwise `tor-hsservice`'s on-disk lock for our nickname
+        // is still held and the new handle's `arti_create_onion_service`
+        // fails with "local resource already in use".
+        if let Some(addr) = HANDLE_SLOT.lock().take() {
+            let prior = Box::from_raw(addr as *mut ArtiHandle);
+            prior.runtime.block_on(async {
+                let mut guard = prior.inner.write();
+                guard.shutdown().await;
+            });
+            drop(prior);
+        }
         if data_dir.is_null() {
+            set_last_error("data_dir is NULL");
             return Err(ARTI_ERR_NULL);
         }
         let dir = match CStr::from_ptr(data_dir).to_str() {
             Ok(s) => PathBuf::from(s),
-            Err(_) => return Err(ARTI_ERR_UTF8),
+            Err(e) => {
+                set_last_error(format!("data_dir is not valid UTF-8: {e}"));
+                return Err(ARTI_ERR_UTF8);
+            }
         };
         let runtime = match tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -79,19 +124,53 @@ pub unsafe extern "C" fn arti_init(data_dir: *const c_char) -> *mut ArtiHandle {
             .build()
         {
             Ok(rt) => rt,
-            Err(_) => return Err(ARTI_ERR_INIT),
+            Err(e) => {
+                set_last_error(format!("build tokio runtime: {e}"));
+                return Err(ARTI_ERR_INIT);
+            }
         };
         let inner = match runtime.block_on(Inner::start(dir)) {
             Ok(i) => Arc::new(RwLock::new(i)),
             Err(e) => {
-                log::error!("arti_init failed: {e:?}");
+                let msg = format!("arti_init failed: {e:?}");
+                log::error!("{msg}");
+                set_last_error(msg);
                 return Err(ARTI_ERR_INIT);
             }
         };
         Ok(ArtiHandle { runtime, inner })
     }));
     match result {
-        Ok(Ok(h)) => Box::into_raw(Box::new(h)),
+        Ok(Ok(h)) => {
+            let ptr = Box::into_raw(Box::new(h));
+            *HANDLE_SLOT.lock() = Some(ptr as usize);
+            ptr
+        }
+        Ok(Err(_)) => ptr::null_mut(),
+        Err(_) => {
+            set_last_error("arti_init panicked");
+            ptr::null_mut()
+        }
+    }
+}
+
+/// Return a heap-allocated copy of the most recent error message produced
+/// on this thread, or NULL if none has been recorded since the last clear.
+/// The caller must free the returned string with [`arti_string_free`].
+///
+/// Errors are stored per-thread; call this from the same thread that
+/// observed the failing FFI return.
+#[no_mangle]
+pub unsafe extern "C" fn arti_last_error() -> *mut c_char {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        LAST_ERROR.with(|slot| {
+            slot.borrow()
+                .as_ref()
+                .and_then(|s| CString::new(s.as_str()).ok())
+        })
+    }));
+    match result {
+        Ok(Some(c)) => c.into_raw(),
         _ => ptr::null_mut(),
     }
 }
@@ -108,8 +187,10 @@ pub unsafe extern "C" fn arti_create_onion_service(
     handle: *mut ArtiHandle,
     local_port: u16,
 ) -> *mut c_char {
+    clear_last_error();
     let result = catch_unwind(AssertUnwindSafe(|| {
         if handle.is_null() {
+            set_last_error("handle is NULL");
             return Err(ARTI_ERR_NULL);
         }
         let h = &*handle;
@@ -121,14 +202,23 @@ pub unsafe extern "C" fn arti_create_onion_service(
                 guard.create_onion_service(local_port).await
             })
             .map_err(|e| {
-                log::error!("arti_create_onion_service failed: {e:?}");
+                let msg = format!("arti_create_onion_service failed: {e:?}");
+                log::error!("{msg}");
+                set_last_error(msg);
                 ARTI_ERR_ONION
             })?;
-        CString::new(address).map_err(|_| ARTI_ERR_UTF8)
+        CString::new(address).map_err(|_| {
+            set_last_error("onion address contained NUL byte");
+            ARTI_ERR_UTF8
+        })
     }));
     match result {
         Ok(Ok(c)) => c.into_raw(),
-        _ => ptr::null_mut(),
+        Ok(Err(_)) => ptr::null_mut(),
+        Err(_) => {
+            set_last_error("arti_create_onion_service panicked");
+            ptr::null_mut()
+        }
     }
 }
 
@@ -186,6 +276,18 @@ pub unsafe extern "C" fn arti_shutdown(handle: *mut ArtiHandle) -> c_int {
     let result = catch_unwind(AssertUnwindSafe(|| {
         if handle.is_null() {
             return ARTI_ERR_NULL;
+        }
+        // Clear the singleton first so a concurrent `arti_init` doesn't
+        // hand the same address back to a new caller mid-shutdown. Only
+        // drop the box if it's the registered handle — otherwise we'd be
+        // freeing memory still owned by the slot.
+        {
+            let mut slot = HANDLE_SLOT.lock();
+            if matches!(*slot, Some(addr) if addr == handle as usize) {
+                *slot = None;
+            } else {
+                return ARTI_OK;
+            }
         }
         let boxed = Box::from_raw(handle);
         // Drop the inner state on the runtime so any pending tasks wind

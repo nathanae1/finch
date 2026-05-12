@@ -28,7 +28,7 @@ class OwnProfileSnapshot {
 /// does not write one — see the project README and Plan 04 spec for the
 /// kind=2 contract; a future profile-edit screen, Plan 15, will create it).
 @riverpod
-Future<OwnProfileSnapshot> ownProfile(OwnProfileRef ref) async {
+Future<OwnProfileSnapshot> ownProfile(Ref ref) async {
   final identity = await ref.watch(identityControllerProvider.future);
   if (identity == null) {
     return const OwnProfileSnapshot(displayName: 'You');

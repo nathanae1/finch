@@ -12,8 +12,13 @@ class _CapturingTransport implements SyncTransport {
   bool nextThrows = false;
 
   @override
-  Future<Manifest> fetchManifest(PeerConnection peer,
-          {int? since, int? until}) async =>
+  Future<Manifest> fetchManifest(
+    PeerConnection peer, {
+    int? since,
+    int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
+  }) async =>
       throw UnimplementedError();
 
   @override

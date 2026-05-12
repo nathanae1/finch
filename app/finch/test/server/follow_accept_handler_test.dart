@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
 
+import '../helpers/fake_peer_reachability_monitor.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -75,6 +77,7 @@ void main() {
         storage: storage,
         clock: clock,
         transport: HandshakeTransport(http.Client()),
+        reachabilityMonitor: FakePeerReachabilityMonitor(),
         identityLookup: storage.getIdentity,
         ownSecretKeyLookup: () async => ownSecretKey,
         ownEndpointsLookup: () async => const [],

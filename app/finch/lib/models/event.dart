@@ -18,6 +18,7 @@ class Event {
     this.media = const [],
     this.extensions = const {},
     required this.sig,
+    this.msgSeq,
   });
 
   final String version;
@@ -30,6 +31,12 @@ class Event {
   final List<MediaRef> media;
   final Map<String, Uint8List> extensions;
   final Uint8List sig;
+  // Local-storage-only metadata. Carries the publisher's `msg_seq` from
+  // the EncryptedEvent wrapper through to disk so media decryption can
+  // re-derive the per-message AEAD key. Deliberately excluded from
+  // `toMap`/`toIdFields`/wire serialization — Event id/sig must remain
+  // stable across the encrypt/decrypt boundary.
+  final int? msgSeq;
 
   Map<String, dynamic> toMap() => {
         'version': version,
@@ -112,6 +119,7 @@ class Event {
     List<MediaRef>? media,
     Map<String, Uint8List>? extensions,
     Uint8List? sig,
+    int? msgSeq,
   }) =>
       Event(
         version: version ?? this.version,
@@ -124,6 +132,7 @@ class Event {
         media: media ?? this.media,
         extensions: extensions ?? this.extensions,
         sig: sig ?? this.sig,
+        msgSeq: msgSeq ?? this.msgSeq,
       );
 }
 

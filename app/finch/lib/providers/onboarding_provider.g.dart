@@ -6,25 +6,58 @@ part of 'onboarding_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$onboardingControllerHash() =>
-    r'7536a7c28229d94224385612b9369cc954d17246';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [OnboardingController].
 @ProviderFor(OnboardingController)
-final onboardingControllerProvider =
-    AutoDisposeNotifierProvider<
-      OnboardingController,
-      OnboardingSession
-    >.internal(
-      OnboardingController.new,
-      name: r'onboardingControllerProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$onboardingControllerHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final onboardingControllerProvider = OnboardingControllerProvider._();
 
-typedef _$OnboardingController = AutoDisposeNotifier<OnboardingSession>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class OnboardingControllerProvider
+    extends $NotifierProvider<OnboardingController, OnboardingSession> {
+  OnboardingControllerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'onboardingControllerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$onboardingControllerHash();
+
+  @$internal
+  @override
+  OnboardingController create() => OnboardingController();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(OnboardingSession value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<OnboardingSession>(value),
+    );
+  }
+}
+
+String _$onboardingControllerHash() =>
+    r'ef80a91d4b2f703fec600ca85edbeb9d76704c63';
+
+abstract class _$OnboardingController extends $Notifier<OnboardingSession> {
+  OnboardingSession build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<OnboardingSession, OnboardingSession>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<OnboardingSession, OnboardingSession>,
+              OnboardingSession,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../theme/finch_theme.dart';
 import '../../widgets/buttons.dart';
 
-/// Placeholder settings screen. Real implementation arrives with Plan 15.
+/// Top-level settings menu. Storage management lives here as of Plan 12;
+/// other rows arrive in Plan 15.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -27,7 +28,7 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   FinchIconButton(
                     onPressed: () => context.pop(),
-                    child: const Icon(PhosphorIconsRegular.arrowLeft, size: 20),
+                    child: const Icon(LucideIcons.arrowLeft, size: 20),
                   ),
                   Expanded(
                     child: Text(
@@ -44,16 +45,78 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
-                    'Settings — Plan 15 fills this in.',
-                    textAlign: TextAlign.center,
-                    style: finch.typography.small.copyWith(color: finch.colors.stone),
+              child: ListView(
+                children: [
+                  _SettingsRow(
+                    icon: LucideIcons.hardDrive,
+                    label: 'Storage',
+                    detail: 'Cache size, clear cache, export',
+                    onTap: () => context.push('/settings/storage'),
                   ),
-                ),
+                  _SettingsRow(
+                    icon: LucideIcons.radio,
+                    label: 'Connection',
+                    detail: 'Per-friend LAN and Tor reachability',
+                    onTap: () => context.push('/settings/connection'),
+                  ),
+                ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
+    required this.icon,
+    required this.label,
+    required this.detail,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final finch = FinchTheme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          border:
+              Border(bottom: BorderSide(color: finch.colors.hairline)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: finch.colors.graphite),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: finch.typography.body.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: finch.colors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(detail, style: finch.typography.micro),
+                ],
+              ),
+            ),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: finch.colors.stone,
             ),
           ],
         ),

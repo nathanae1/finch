@@ -7,27 +7,32 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'providers/deep_link_provider.dart';
 import 'providers/discovery_provider.dart';
 import 'providers/follow_provider.dart';
-import 'providers/onboarding_provider.dart';
+import 'providers/identity_provider.dart';
 import 'providers/server_provider.dart';
 import 'providers/service_providers.dart';
+import 'providers/sync_provider.dart';
 import 'router.dart';
 import 'screens/friends/confirm_request_sheet.dart';
 import 'services/clock.dart';
 import 'services/content_key_service.dart';
+import 'services/crypto/crockford_base32.dart';
 import 'services/crypto/key_cache.dart';
 import 'services/crypto/pairwise_content_key_service.dart';
 import 'services/crypto/sodium_crypto_service.dart';
 import 'services/follow_retry_pump.dart';
 import 'services/mdns_service.dart';
+import 'services/sync_pump.dart';
 import 'services/storage/database.dart';
 import 'services/storage/drift_storage_service.dart';
+import 'services/storage/keychain_manager.dart';
+import 'services/storage/retention.dart';
 import 'services/tor/arti_tor_service.dart';
+import 'sync/peer_reachability_provider.dart';
 import 'theme/finch_theme.dart';
 import 'utils/connection_card_parser.dart';
 import 'widgets/sheet.dart';
@@ -35,13 +40,14 @@ import 'widgets/sheet.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final storage = await _initStorageService();
+  final keychain = KeychainManager();
+  final storage = await _initStorageService(keychain);
   final crypto = await SodiumCryptoService.init();
 
   final mdns = MethodChannelMdnsService();
   final torService = _shouldUseRealTor() ? ArtiTorService() : null;
 
-  final overrides = <Override>[
+  final overrides = [
     storageServiceProvider.overrideWithValue(storage),
     cryptoServiceProvider.overrideWithValue(crypto),
     mdnsServiceProvider.overrideWithValue(mdns),
@@ -54,14 +60,72 @@ Future<void> main() async {
   // Plan 04's scope actually invokes it, and the first launch after
   // onboarding will wire it up.
   final identity = await storage.getIdentity();
+  if (identity == null) {
+    _keysLog('boot identity=null (pre-onboarding or restore-in-progress)');
+  } else {
+    _keysLog(
+      'boot identity pubkey=${identity.pubkey} '
+      'feedKeyFp=${_shortBytes(identity.feedKey)} '
+      'epoch=${identity.feedKeyEpoch} '
+      'msgSeq=${identity.msgSeqCounter}',
+    );
+  }
   if (identity != null) {
-    final secretKey = await _loadSecretKey();
-    if (secretKey != null) {
+    final secretKey = await _loadSecretKey(keychain);
+    if (secretKey == null) {
+      _keysLog(
+        'WARNING boot secret_key=null but identity row present — '
+        'PairwiseContentKeyService will NOT be wired (signing/decrypt broken)',
+      );
+    } else {
+      _keysLog(
+        'boot secret_key loaded len=${secretKey.length} '
+        'fp=${_shortBytes(secretKey)}',
+      );
+      // libsodium Ed25519: 64-byte secret key carries the 32-byte public
+      // key in its trailing half. Compare against the DB-stored pubkey to
+      // surface the silent-mismatch failure mode (rebuild bumped one store
+      // but not the other).
+      if (secretKey.length == 64) {
+        final derivedPub = Uint8List.sublistView(secretKey, 32, 64);
+        final derivedPubEnc = _crockfordSafe(derivedPub);
+        if (derivedPubEnc != identity.pubkey) {
+          _keysLog(
+            'WARNING pubkey MISMATCH: '
+            'identity.pubkey=${identity.pubkey} '
+            'derivedFromSecret=$derivedPubEnc — '
+            'keychain secret was regenerated independently of DB identity',
+          );
+        } else {
+          _keysLog('boot pubkey match OK (keychain secret ↔ DB identity)');
+        }
+      } else {
+        _keysLog(
+          'WARNING boot secret_key unexpected len=${secretKey.length} '
+          '(expected 64 for Ed25519)',
+        );
+      }
+
       final follows = await storage.getFollows();
       final cache = FeedKeyCache()
         ..put(identity.pubkey, identity.feedKey, identity.feedKeyEpoch);
       for (final f in follows) {
         cache.put(f.pubkey, f.feedKey, f.feedKeyEpoch);
+      }
+      _keysLog('boot FeedKeyCache hydrated entries=${follows.length + 1}');
+      if (kDebugMode) {
+        final preview = follows.take(20);
+        for (final f in preview) {
+          _keysLog(
+            'boot follow pubkey=${f.pubkey} '
+            'feedKeyFp=${_shortBytes(f.feedKey)} '
+            'epoch=${f.feedKeyEpoch} '
+            'lastDecryptFailureAt=${f.lastDecryptFailureAt}',
+          );
+        }
+        if (follows.length > 20) {
+          _keysLog('boot follow … (+${follows.length - 20} more)');
+        }
       }
       final contentKey = PairwiseContentKeyService(
         crypto: crypto,
@@ -73,33 +137,77 @@ Future<void> main() async {
         contentKeyServiceProvider
             .overrideWithValue(contentKey as ContentKeyService),
       );
+      // KeyRotationService (Plan 13) and PairwiseContentKeyService both
+      // read from this single cache instance — rotations must update the
+      // same cache the publish path reads from.
+      overrides.add(feedKeyCacheProvider.overrideWithValue(cache));
     }
   }
+
+  // Run retention once per launch — fire-and-forget. The DB is already
+  // open and encrypted by the time we get here.
+  unawaited(_runRetention(storage));
 
   runApp(ProviderScope(overrides: overrides, child: const FinchApp()));
 }
 
-Future<DriftStorageService> _initStorageService() async {
-  const storage = FlutterSecureStorage();
-  const keyName = 'finch_db_key';
-
-  var dbKey = await storage.read(key: keyName);
+Future<DriftStorageService> _initStorageService(KeychainManager keychain) async {
+  var dbKey = await keychain.read(KeychainManager.dbKeyName);
   if (dbKey == null) {
     final random = Random.secure();
     final keyBytes = List<int>.generate(32, (_) => random.nextInt(256));
     dbKey = keyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    await storage.write(key: keyName, value: dbKey);
+    await keychain.write(KeychainManager.dbKeyName, dbKey);
   }
 
   final db = AppDatabase.encrypted(dbKey);
   return DriftStorageService(db, const SystemClock());
 }
 
-Future<Uint8List?> _loadSecretKey() async {
-  const secure = FlutterSecureStorage();
-  final encoded = await secure.read(key: kSecretKeyStorageName);
+Future<Uint8List?> _loadSecretKey(KeychainManager keychain) async {
+  final encoded = await keychain.read(KeychainManager.identitySecretKeyName);
   if (encoded == null) return null;
   return Uint8List.fromList(base64Decode(encoded));
+}
+
+/// First 8 hex chars of [bytes] for safe-to-log fingerprints. Same shape as
+/// `_FinchAppState._short` so log lines can be diffed across the two sites.
+String _shortBytes(Uint8List bytes) {
+  final hex = bytes
+      .take(4)
+      .map((b) => b.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '$hex…';
+}
+
+String _crockfordSafe(Uint8List bytes) {
+  try {
+    return crockfordBase32Encode(bytes);
+  } catch (e) {
+    return 'encode_failed:$e';
+  }
+}
+
+/// Boot-time key state line — always-on (warnings included). DevTools sees
+/// it via `developer.log`; Xcode/adb console sees it via `print`.
+void _keysLog(String msg) {
+  developer.log(msg, name: 'finch.keys');
+  // ignore: avoid_print
+  print('[finch.keys] $msg');
+}
+
+Future<void> _runRetention(DriftStorageService storage) async {
+  try {
+    final supportDir = await getApplicationSupportDirectory();
+    final retention = RetentionService(
+      storage: storage,
+      mediaRoot: supportDir,
+    );
+    await retention.run();
+  } catch (e, st) {
+    developer.log('retention failed: $e',
+        name: 'finch.retention', stackTrace: st);
+  }
 }
 
 /// Real Tor only on iOS/Android — those are the only platforms the
@@ -121,6 +229,7 @@ class FinchApp extends ConsumerStatefulWidget {
 class _FinchAppState extends ConsumerState<FinchApp>
     with WidgetsBindingObserver {
   FollowRetryPump? _retryPump;
+  SyncPump? _syncPump;
   ProviderSubscription<AsyncValue<ParsedInvite>>? _deepLinkSub;
   ProviderSubscription<AsyncValue<int?>>? _torPortSub;
   String? _onionAddress;
@@ -138,12 +247,21 @@ class _FinchAppState extends ConsumerState<FinchApp>
     // Eagerly bring up mDNS discovery; the controller no-ops until both
     // identity and the server port are ready.
     ref.read(discoveryControllerProvider);
+    // Bring up the peer reachability monitor (Plan 11c). Probes run in
+    // the background; consumers ask `bestConnectionFor(pubkey)` for a
+    // pre-validated transport instead of doing their own cascade.
+    unawaited(ref.read(peerReachabilityMonitorProvider).start());
     _retryPump = FollowRetryPump(followService: ref.read(followServiceProvider))
       ..start();
+    _syncPump = SyncPump(
+      runSync: () =>
+          ref.read(syncControllerProvider.notifier).syncNow().then((_) {}),
+    )..start();
+    ref.read(reconnectPusherProvider).start();
     _deepLinkSub = ref.listenManual<AsyncValue<ParsedInvite>>(
       deepLinkInvitesProvider,
       (_, next) {
-        final invite = next.valueOrNull;
+        final invite = next.value;
         if (invite is ValidInvite) {
           final ctx = ref.read(routerProvider).routerDelegate.navigatorKey
               .currentContext;
@@ -160,13 +278,26 @@ class _FinchAppState extends ConsumerState<FinchApp>
     // can take 10–30s; we deliberately don't await it so LAN sync stays
     // available during startup. Failures are logged but never thrown.
     unawaited(_ensureTorInit());
+    // Debug: dump identity + per-follow key state every time the
+    // identity controller hydrates. Fires on first launch and again
+    // after any subsequent identity refresh — so a hot restart is
+    // enough to surface the dump (no full kill required).
+    ref.listenManual<AsyncValue<dynamic>>(
+      identityControllerProvider,
+      (_, next) {
+        if (next is AsyncData) {
+          unawaited(_debugDumpKeyState());
+        }
+      },
+      fireImmediately: true,
+    );
     // Re-create the onion service whenever the HTTP server's bound port
     // changes (initial start, after a lifecycle restart). Arti reuses the
     // persisted keypair so the .onion address is stable across rebinds.
     _torPortSub = ref.listenManual<AsyncValue<int?>>(
       httpServerControllerProvider,
       (_, next) {
-        final port = next.valueOrNull;
+        final port = next.value;
         if (port != null) {
           unawaited(_publishOnion(port));
         }
@@ -179,6 +310,8 @@ class _FinchAppState extends ConsumerState<FinchApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_retryPump?.stop());
+    unawaited(_syncPump?.stop());
+    unawaited(ref.read(reconnectPusherProvider).stop());
     _deepLinkSub?.close();
     _torPortSub?.close();
     super.dispose();
@@ -186,19 +319,25 @@ class _FinchAppState extends ConsumerState<FinchApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _torLog('lifecycle=$state');
     final notifier = ref.read(httpServerControllerProvider.notifier);
     final tor = ref.read(torServiceProvider);
     switch (state) {
       case AppLifecycleState.resumed:
         unawaited(notifier.restart());
         unawaited(_ensureTorInit());
+        _syncPump?.start();
+        ref.read(reconnectPusherProvider).start();
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         unawaited(notifier.stop());
         _onionAddress = null;
+        ref.read(onionAddressProvider.notifier).set(null);
         _torInitFuture = null;
         unawaited(tor.shutdown());
+        unawaited(_syncPump?.stop());
+        unawaited(ref.read(reconnectPusherProvider).stop());
       case AppLifecycleState.inactive:
         break;
     }
@@ -207,18 +346,17 @@ class _FinchAppState extends ConsumerState<FinchApp>
   Future<void> _ensureTorInit() {
     return _torInitFuture ??= () async {
       try {
+        _torLog('tor.init begin');
         final tor = ref.read(torServiceProvider);
+        _torLog('tor.init service=${tor.runtimeType}');
         final supportDir = await getApplicationSupportDirectory();
         final torDir = Directory('${supportDir.path}/tor');
         await torDir.create(recursive: true);
+        _torLog('tor.init dataDir=${torDir.path}');
         await tor.init(torDir.path);
-        developer.log('tor.init complete', name: 'finch.tor');
+        _torLog('tor.init complete socksPort=${tor.socksPort}');
       } catch (e, st) {
-        developer.log(
-          'tor.init failed: $e',
-          name: 'finch.tor',
-          stackTrace: st,
-        );
+        _torLog('tor.init failed: $e\n$st');
         // Drop the cached future on failure so a future port event can
         // retry from a clean slate.
         _torInitFuture = null;
@@ -228,20 +366,81 @@ class _FinchAppState extends ConsumerState<FinchApp>
   }
 
   Future<void> _publishOnion(int port) async {
-    if (_onionAddress != null) return;
+    if (_onionAddress != null) {
+      _torLog('publishOnion skipped (already have $_onionAddress)');
+      return;
+    }
     try {
+      _torLog('publishOnion begin port=$port');
       await _ensureTorInit();
       final tor = ref.read(torServiceProvider);
+      _torLog('publishOnion calling createOnionService isReady=${tor.isReady}');
       final addr = await tor.createOnionService(port);
       _onionAddress = addr;
-      developer.log('onion=$addr port=$port', name: 'finch.tor');
+      ref.read(onionAddressProvider.notifier).set(addr);
+      _torLog('onion=$addr port=$port');
     } catch (e, st) {
-      developer.log(
-        'createOnionService failed: $e',
-        name: 'finch.tor',
-        stackTrace: st,
-      );
+      _torLog('createOnionService failed: $e\n$st');
     }
+  }
+
+  /// Mirrors Tor lifecycle traces to both DevTools and stdout. `print` is
+  /// what actually shows up in `adb logcat -s flutter` on Android — without
+  /// it we have no visibility into whether Arti boots at all.
+  void _torLog(String msg) {
+    developer.log(msg, name: 'finch.tor');
+    // ignore: avoid_print
+    print('[finch.tor] $msg');
+  }
+
+  Future<void> _debugDumpKeyState() async {
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final identity = await storage.getIdentity();
+      if (identity == null) {
+        _debugLine('no identity row');
+        return;
+      }
+      _debugLine(
+        'IDENTITY pubkey=${identity.pubkey} '
+        'feedKey=${_short(identity.feedKey)} '
+        'epoch=${identity.feedKeyEpoch}',
+      );
+      final follows = await storage.getFollows();
+      _debugLine('FOLLOWS count=${follows.length}');
+      for (final f in follows) {
+        _debugLine(
+          'FOLLOW pubkey=${f.pubkey} '
+          'feedKey=${_short(f.feedKey)} '
+          'epoch=${f.feedKeyEpoch} '
+          'lastSyncedAt=${f.lastSyncedAt} '
+          'lastReceivedRotationAt=${f.lastReceivedRotationAt} '
+          'lastDecryptFailureAt=${f.lastDecryptFailureAt}',
+        );
+      }
+    } catch (e, st) {
+      _debugLine('KEY DUMP FAILED: $e\n$st');
+    }
+  }
+
+  /// Routes a debug line through both `developer.log` (for DevTools) and
+  /// `print` (for `flutter run` stdout / Xcode console). Intentionally
+  /// loud so we can compare key state across devices without hunting in
+  /// filtered log panels.
+  void _debugLine(String msg) {
+    developer.log(msg, name: 'finch.debug.keys');
+    // ignore: avoid_print
+    print('[finch.debug.keys] $msg');
+  }
+
+  /// First 8 hex chars of [bytes]. Enough to compare across devices in a
+  /// log line without putting a full key on screen.
+  static String _short(Uint8List bytes) {
+    final hex = bytes
+        .take(4)
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return '$hex…';
   }
 
   @override

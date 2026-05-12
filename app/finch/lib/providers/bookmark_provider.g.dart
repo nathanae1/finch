@@ -6,311 +6,194 @@ part of 'bookmark_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$eventSavedHash() => r'666a99ce69a576c269ef432126c6fe948ec4f6a6';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 /// Whether the local viewer has bookmarked (saved) the post with [id].
 /// Local-only — never produces a synced event. See Plan 10's Save discussion.
-///
-/// Copied from [eventSaved].
+
 @ProviderFor(eventSaved)
-const eventSavedProvider = EventSavedFamily();
+final eventSavedProvider = EventSavedFamily._();
 
 /// Whether the local viewer has bookmarked (saved) the post with [id].
 /// Local-only — never produces a synced event. See Plan 10's Save discussion.
-///
-/// Copied from [eventSaved].
-class EventSavedFamily extends Family<AsyncValue<bool>> {
+
+final class EventSavedProvider
+    extends $FunctionalProvider<AsyncValue<bool>, bool, FutureOr<bool>>
+    with $FutureModifier<bool>, $FutureProvider<bool> {
   /// Whether the local viewer has bookmarked (saved) the post with [id].
   /// Local-only — never produces a synced event. See Plan 10's Save discussion.
-  ///
-  /// Copied from [eventSaved].
-  const EventSavedFamily();
+  EventSavedProvider._({
+    required EventSavedFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'eventSavedProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// Whether the local viewer has bookmarked (saved) the post with [id].
-  /// Local-only — never produces a synced event. See Plan 10's Save discussion.
-  ///
-  /// Copied from [eventSaved].
-  EventSavedProvider call(String id) {
-    return EventSavedProvider(id);
+  @override
+  String debugGetCreateSourceHash() => _$eventSavedHash();
+
+  @override
+  String toString() {
+    return r'eventSavedProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  EventSavedProvider getProviderOverride(
-    covariant EventSavedProvider provider,
-  ) {
-    return call(provider.id);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
+  $FutureProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'eventSavedProvider';
-}
-
-/// Whether the local viewer has bookmarked (saved) the post with [id].
-/// Local-only — never produces a synced event. See Plan 10's Save discussion.
-///
-/// Copied from [eventSaved].
-class EventSavedProvider extends AutoDisposeFutureProvider<bool> {
-  /// Whether the local viewer has bookmarked (saved) the post with [id].
-  /// Local-only — never produces a synced event. See Plan 10's Save discussion.
-  ///
-  /// Copied from [eventSaved].
-  EventSavedProvider(String id)
-    : this._internal(
-        (ref) => eventSaved(ref as EventSavedRef, id),
-        from: eventSavedProvider,
-        name: r'eventSavedProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$eventSavedHash,
-        dependencies: EventSavedFamily._dependencies,
-        allTransitiveDependencies: EventSavedFamily._allTransitiveDependencies,
-        id: id,
-      );
-
-  EventSavedProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.id,
-  }) : super.internal();
-
-  final String id;
-
-  @override
-  Override overrideWith(
-    FutureOr<bool> Function(EventSavedRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: EventSavedProvider._internal(
-        (ref) => create(ref as EventSavedRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        id: id,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<bool> createElement() {
-    return _EventSavedProviderElement(this);
+  FutureOr<bool> create(Ref ref) {
+    final argument = this.argument as String;
+    return eventSaved(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is EventSavedProvider && other.id == id;
+    return other is EventSavedProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, id.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin EventSavedRef on AutoDisposeFutureProviderRef<bool> {
-  /// The parameter `id` of this provider.
-  String get id;
-}
+String _$eventSavedHash() => r'3865267031314ef5e23a1587c89bd5ae114941fa';
 
-class _EventSavedProviderElement extends AutoDisposeFutureProviderElement<bool>
-    with EventSavedRef {
-  _EventSavedProviderElement(super.provider);
+/// Whether the local viewer has bookmarked (saved) the post with [id].
+/// Local-only — never produces a synced event. See Plan 10's Save discussion.
+
+final class EventSavedFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<bool>, String> {
+  EventSavedFamily._()
+    : super(
+        retry: null,
+        name: r'eventSavedProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Whether the local viewer has bookmarked (saved) the post with [id].
+  /// Local-only — never produces a synced event. See Plan 10's Save discussion.
+
+  EventSavedProvider call(String id) =>
+      EventSavedProvider._(argument: id, from: this);
 
   @override
-  String get id => (origin as EventSavedProvider).id;
+  String toString() => r'eventSavedProvider';
+}
+
+/// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
+/// the same id so widgets reading the flag rebuild.
+
+@ProviderFor(BookmarkController)
+final bookmarkControllerProvider = BookmarkControllerFamily._();
+
+/// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
+/// the same id so widgets reading the flag rebuild.
+final class BookmarkControllerProvider
+    extends $NotifierProvider<BookmarkController, void> {
+  /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
+  /// the same id so widgets reading the flag rebuild.
+  BookmarkControllerProvider._({
+    required BookmarkControllerFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'bookmarkControllerProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$bookmarkControllerHash();
+
+  @override
+  String toString() {
+    return r'bookmarkControllerProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  BookmarkController create() => BookmarkController();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BookmarkControllerProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$bookmarkControllerHash() =>
     r'ee7a9f787cb15f1e9cc10483be81dbd694c7fa9e';
 
-abstract class _$BookmarkController extends BuildlessAutoDisposeNotifier<void> {
-  late final String id;
-
-  void build(String id);
-}
-
 /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
 /// the same id so widgets reading the flag rebuild.
-///
-/// Copied from [BookmarkController].
-@ProviderFor(BookmarkController)
-const bookmarkControllerProvider = BookmarkControllerFamily();
 
-/// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
-/// the same id so widgets reading the flag rebuild.
-///
-/// Copied from [BookmarkController].
-class BookmarkControllerFamily extends Family<void> {
-  /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
-  /// the same id so widgets reading the flag rebuild.
-  ///
-  /// Copied from [BookmarkController].
-  const BookmarkControllerFamily();
-
-  /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
-  /// the same id so widgets reading the flag rebuild.
-  ///
-  /// Copied from [BookmarkController].
-  BookmarkControllerProvider call(String id) {
-    return BookmarkControllerProvider(id);
-  }
-
-  @override
-  BookmarkControllerProvider getProviderOverride(
-    covariant BookmarkControllerProvider provider,
-  ) {
-    return call(provider.id);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'bookmarkControllerProvider';
-}
-
-/// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
-/// the same id so widgets reading the flag rebuild.
-///
-/// Copied from [BookmarkController].
-class BookmarkControllerProvider
-    extends AutoDisposeNotifierProviderImpl<BookmarkController, void> {
-  /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
-  /// the same id so widgets reading the flag rebuild.
-  ///
-  /// Copied from [BookmarkController].
-  BookmarkControllerProvider(String id)
-    : this._internal(
-        () => BookmarkController()..id = id,
-        from: bookmarkControllerProvider,
+final class BookmarkControllerFamily extends $Family
+    with $ClassFamilyOverride<BookmarkController, void, void, void, String> {
+  BookmarkControllerFamily._()
+    : super(
+        retry: null,
         name: r'bookmarkControllerProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$bookmarkControllerHash,
-        dependencies: BookmarkControllerFamily._dependencies,
-        allTransitiveDependencies:
-            BookmarkControllerFamily._allTransitiveDependencies,
-        id: id,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
       );
 
-  BookmarkControllerProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.id,
-  }) : super.internal();
+  /// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
+  /// the same id so widgets reading the flag rebuild.
 
-  final String id;
+  BookmarkControllerProvider call(String id) =>
+      BookmarkControllerProvider._(argument: id, from: this);
 
   @override
-  void runNotifierBuild(covariant BookmarkController notifier) {
-    return notifier.build(id);
-  }
-
-  @override
-  Override overrideWith(BookmarkController Function() create) {
-    return ProviderOverride(
-      origin: this,
-      override: BookmarkControllerProvider._internal(
-        () => create()..id = id,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        id: id,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeNotifierProviderElement<BookmarkController, void> createElement() {
-    return _BookmarkControllerProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is BookmarkControllerProvider && other.id == id;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, id.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'bookmarkControllerProvider';
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin BookmarkControllerRef on AutoDisposeNotifierProviderRef<void> {
-  /// The parameter `id` of this provider.
-  String get id;
-}
+/// Toggles `is_saved` on an event row. Invalidates [eventSavedProvider] for
+/// the same id so widgets reading the flag rebuild.
 
-class _BookmarkControllerProviderElement
-    extends AutoDisposeNotifierProviderElement<BookmarkController, void>
-    with BookmarkControllerRef {
-  _BookmarkControllerProviderElement(super.provider);
+abstract class _$BookmarkController extends $Notifier<void> {
+  late final _$args = ref.$arg as String;
+  String get id => _$args;
 
+  void build(String id);
+  @$mustCallSuper
   @override
-  String get id => (origin as BookmarkControllerProvider).id;
+  void runBuild() {
+    final ref = this.ref as $Ref<void, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<void, void>,
+              void,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }
-
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

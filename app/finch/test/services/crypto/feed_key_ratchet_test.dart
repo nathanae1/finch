@@ -88,4 +88,54 @@ void main() {
       );
     });
   });
+
+  group('deriveMsgKey', () {
+    test('produces 32 bytes', () {
+      final root = Uint8List.fromList(List.generate(32, (i) => i));
+      expect(deriveMsgKey(root, 0, crypto).length, 32);
+    });
+
+    test('is deterministic for the same (root, seq)', () {
+      final root = Uint8List.fromList(List.filled(32, 0x42));
+      expect(deriveMsgKey(root, 7, crypto), deriveMsgKey(root, 7, crypto));
+    });
+
+    test('different seq under same root produces different keys', () {
+      final root = Uint8List.fromList(List.filled(32, 0x42));
+      expect(
+        deriveMsgKey(root, 0, crypto),
+        isNot(deriveMsgKey(root, 1, crypto)),
+      );
+    });
+
+    test('different roots under same seq produce different keys', () {
+      final r0 = Uint8List.fromList(List.filled(32, 0x42));
+      final r1 = Uint8List.fromList(List.filled(32, 0x43));
+      expect(
+        deriveMsgKey(r0, 0, crypto),
+        isNot(deriveMsgKey(r1, 0, crypto)),
+      );
+    });
+
+    test('msg_key is distinct from chainRoot', () {
+      // Domain separation: deriveMsgKey must not produce the chain root,
+      // even at seq=0.
+      final root = Uint8List.fromList(List.generate(32, (i) => i * 5));
+      expect(deriveMsgKey(root, 0, crypto), isNot(root));
+    });
+
+    test('msg_key is distinct from ratchetFeedKey output', () {
+      // Domain separation: msg_key derivation uses a different domain
+      // string than the epoch ratchet.
+      final root = Uint8List.fromList(List.generate(32, (i) => i * 5));
+      expect(deriveMsgKey(root, 0, crypto), isNot(ratchetFeedKey(root, crypto)));
+    });
+
+    test('negative seq throws', () {
+      expect(
+        () => deriveMsgKey(Uint8List(32), -1, crypto),
+        throwsArgumentError,
+      );
+    });
+  });
 }

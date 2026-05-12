@@ -29,4 +29,12 @@ class FollowsDao extends DatabaseAccessor<AppDatabase>
   Future<void> updateLastSynced(String pubkey, int timestamp) =>
       (update(followEntries)..where((f) => f.pubkey.equals(pubkey)))
           .write(FollowEntriesCompanion(lastSyncedAt: Value(timestamp)));
+
+  /// Stamps `last_decrypt_failure_at` for [pubkey]. Pass `null` to clear
+  /// (used after a fresh feed-key rotation lands).
+  Future<void> setLastDecryptFailureAt(String pubkey, int? timestamp) =>
+      (update(followEntries)..where((f) => f.pubkey.equals(pubkey)))
+          .write(FollowEntriesCompanion(
+            lastDecryptFailureAt: Value(timestamp),
+          ));
 }

@@ -10,7 +10,7 @@ part 'events_provider.g.dart';
 /// default ordering. Plan 06 will layer a richer feed query on top; this
 /// minimal provider exists so the post-publish path can invalidate it.
 @riverpod
-Future<List<Event>> ownEvents(OwnEventsRef ref) async {
+Future<List<Event>> ownEvents(Ref ref) async {
   final identity = await ref.watch(identityControllerProvider.future);
   if (identity == null) return const [];
   final storage = ref.watch(storageServiceProvider);

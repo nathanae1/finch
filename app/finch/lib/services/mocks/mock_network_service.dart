@@ -28,6 +28,8 @@ class MockNetworkService implements NetworkService {
     PeerConnection connection, {
     int? since,
     int? until,
+    String? requesterPubkey,
+    int? ackRotationAt,
   }) async =>
       Manifest(
         pubkey: connection.pubkey,
