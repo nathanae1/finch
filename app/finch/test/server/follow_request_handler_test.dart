@@ -101,7 +101,7 @@ void main() {
   test('over-1MB body → 413 (exercises body-size middleware via server)',
       () async {
     final tmpDir = await Directory.systemTemp.createTemp('finch-fr-');
-    final server = FinchHttpServer(
+    final server = FinchHttpServer.social(
       storage: storage,
       contentKey: MockContentKeyService(),
       identityLookup: () async => identity,

@@ -30,7 +30,7 @@ void main() {
     tmpDir = await Directory.systemTemp.createTemp('finch-media-test-');
     identity = buildIdentity();
     await storage.saveIdentity(identity);
-    server = FinchHttpServer(
+    server = FinchHttpServer.social(
       storage: storage,
       contentKey: MockContentKeyService(),
       identityLookup: () async => identity,

@@ -50,7 +50,7 @@ void main() {
   });
 
   FinchHttpServer makeServer({Random? random, int rateLimitPerMinute = 120}) {
-    return FinchHttpServer(
+    return FinchHttpServer.social(
       storage: storage,
       contentKey: MockContentKeyService(),
       identityLookup: () async => identity,

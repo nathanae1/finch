@@ -26,7 +26,7 @@ class HttpServerController extends _$HttpServerController {
     final clock = ref.watch(clockProvider);
     final appSupportDir = await ref.watch(appSupportDirectoryProvider.future);
 
-    final server = FinchHttpServer(
+    final server = FinchHttpServer.social(
       storage: storage,
       contentKey: contentKey,
       identityLookup: storage.getIdentity,

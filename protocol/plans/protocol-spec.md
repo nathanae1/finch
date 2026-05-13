@@ -204,8 +204,19 @@ All sync happens over HTTP. The same API is implemented by:
 
 **GET /manifest?since={timestamp}&until={timestamp}**
 - Returns a lightweight list of event IDs and timestamps
-- Response: CBOR `{ pubkey, events: [{ id, created_at }], has_older: bool }`
+- Response: CBOR `{ pubkey, events: [{ id, created_at }], has_older: bool, connection_card_update?: ConnectionCardUpdate }`
 - Used by the requester to determine which events they're missing
+- The optional `connection_card_update` field carries the Owner's latest Connection card to a specific Follower when the Owner has changed endpoints (e.g., added a Relay). The Follower verifies the embedded signature against the Owner's pubkey (known from their `Follow` row) and replaces their stored card. The next `/manifest` request acks the update by including the new card's `created_at` in a `card_seen_at` query parameter; the server clears the pending distribution row on ack.
+
+```
+ConnectionCardUpdate {
+  card:       ConnectionCard   // full updated Connection card
+  sig:        bytes             // Ed25519.sign(owner_sk, blake2b_256(cbor(card) || u64_be(created_at)))
+  created_at: uint64            // when the Owner authored this update
+}
+```
+
+Trust model: this is an Envelope-style transport hint, but signed. Followers MUST verify the signature before applying the update. An unsigned or invalid-sig card update MUST be discarded — the server is treated as an untrusted relay even when it is the Owner's own phone. Replay is bounded by `created_at`: a Follower ignores updates with `created_at <=` the one they last applied.
 
 **GET /events?since={timestamp}**
 - Returns EncryptedEvents created after `timestamp`

@@ -100,10 +100,13 @@ class PeerReachabilityMonitor {
   final Duration _torProbeTimeout;
   final Duration _firstCallWindow;
 
-  // Transport priority order — first reachable wins. LAN is preferred for
-  // latency; Tor is the WAN-resilient fallback.
+  // Transport priority order — first reachable wins. LAN beats Relay
+  // when we're on the same network as the Friend; Relay beats direct
+  // Tor because a paired Relay's onion is always-up while a phone's is
+  // foreground-only; Tor is the universal fallback.
   static const List<PeerTransport> _priority = [
     PeerTransport.lan,
+    PeerTransport.relay,
     PeerTransport.tor,
   ];
 
@@ -316,7 +319,8 @@ class PeerReachabilityMonitor {
       ok = await _executeProbe(
         pubkey,
         url,
-        useTor: transport == PeerTransport.tor,
+        useTor: transport == PeerTransport.tor ||
+            transport == PeerTransport.relay,
       );
     } catch (_) {
       ok = false;
@@ -366,6 +370,22 @@ class PeerReachabilityMonitor {
       );
       if (onion.type.isEmpty) return null;
       final addr = onion.address;
+      return addr.contains(':') ? 'http://$addr' : 'http://$addr:80';
+    }
+    if (transport == PeerTransport.relay) {
+      // Relay endpoints are onion addresses too — they ride the same Tor
+      // SOCKS5 client. The only difference vs the direct-Tor tier is
+      // which endpoint type we pull from the Connection card.
+      if (!_tor.isReady) return null;
+      if (follow == null) return null;
+      final card = _parseCard(follow.connectionCard);
+      if (card == null) return null;
+      final relay = card.endpoints.firstWhere(
+        (e) => e.type == 'relay',
+        orElse: () => const Endpoint(type: '', address: ''),
+      );
+      if (relay.type.isEmpty) return null;
+      final addr = relay.address;
       return addr.contains(':') ? 'http://$addr' : 'http://$addr:80';
     }
     return null;
@@ -497,6 +517,7 @@ extension on PeerReachability {
         pubkey: pubkey,
         transports: const {
           PeerTransport.lan: TransportStatus(state: TransportState.unknown),
+          PeerTransport.relay: TransportStatus(state: TransportState.unknown),
           PeerTransport.tor: TransportStatus(state: TransportState.unknown),
         },
       );

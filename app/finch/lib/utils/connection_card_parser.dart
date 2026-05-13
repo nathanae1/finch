@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../models/connection_card.dart';
 import '../services/crypto/crockford_base32.dart';
+import '../services/relay_pairing_initiator.dart';
 
 /// Result of parsing scanned/pasted invite text.
 sealed class ParsedInvite {
@@ -14,14 +15,27 @@ class ValidInvite extends ParsedInvite {
   final ConnectionCard card;
 }
 
+/// Recognized `finch-relay://pair?card=<base64url>` — the Owner scanned
+/// a desktop Relay's first-run QR. UI branches to the relay-pairing
+/// confirmation flow (Plan 15) instead of the friend-add flow.
+class ValidRelayPair extends ParsedInvite {
+  const ValidRelayPair(this.payload);
+  final RelayPairingPayload payload;
+}
+
 class InvalidInvite extends ParsedInvite {
   const InvalidInvite(this.reason);
   final String reason;
 }
 
-/// Parses a Finch invite. Accepts the full deep-link form
-/// `finch://connect?card=<base64url>` or a bare base64url payload of the
-/// CBOR-encoded [ConnectionCard]. Whitespace is stripped before parsing.
+/// Parses a Finch QR / invite. Accepts:
+///   - `finch://connect?card=<b64url>` (or bare b64url) — a Friend's
+///     Connection card.
+///   - `finch-relay://pair?card=<b64url>` — a desktop Relay's first-run
+///     pairing payload (Plan 15).
+///
+/// Whitespace is stripped before parsing. Bare b64url is treated as a
+/// Friend invite for backwards-compat with shipped invite links.
 ParsedInvite parseInvite(String input) {
   final trimmed = input.trim();
   if (trimmed.isEmpty) {
@@ -29,6 +43,7 @@ ParsedInvite parseInvite(String input) {
   }
 
   String b64;
+  bool relayPair = false;
   final hasScheme = trimmed.contains('://');
   if (hasScheme) {
     final Uri uri;
@@ -37,8 +52,12 @@ ParsedInvite parseInvite(String input) {
     } catch (_) {
       return const InvalidInvite('not a valid URL');
     }
-    if (uri.scheme != 'finch' || uri.host != 'connect') {
-      return const InvalidInvite('not a finch://connect URL');
+    if (uri.scheme == 'finch-relay' && uri.host == 'pair') {
+      relayPair = true;
+    } else if (uri.scheme == 'finch' && uri.host == 'connect') {
+      relayPair = false;
+    } else {
+      return const InvalidInvite('not a finch invite URL');
     }
     final card = uri.queryParameters['card'];
     if (card == null || card.isEmpty) {
@@ -47,6 +66,17 @@ ParsedInvite parseInvite(String input) {
     b64 = card;
   } else {
     b64 = trimmed;
+  }
+
+  if (relayPair) {
+    try {
+      final payload = RelayPairingPayload.fromBase64(b64);
+      return ValidRelayPair(payload);
+    } on FormatException catch (e) {
+      return InvalidInvite(e.message);
+    } catch (_) {
+      return const InvalidInvite('relay pair payload is malformed');
+    }
   }
 
   final Uint8List bytes;

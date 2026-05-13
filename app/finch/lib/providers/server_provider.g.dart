@@ -43,7 +43,7 @@ final class HttpServerControllerProvider
 }
 
 String _$httpServerControllerHash() =>
-    r'2913f1bc537efa0e253f64151cccf219f644b2fe';
+    r'795242871477a51e4bf91321741fbb640edf7bd7';
 
 /// Lifecycle owner for the embedded [FinchHttpServer]. The published
 /// state is the bound port (or `null` while pre-onboarding / stopped),

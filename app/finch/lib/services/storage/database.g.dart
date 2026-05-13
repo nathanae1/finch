@@ -5117,6 +5117,2386 @@ class PendingKeyDistributionEntriesCompanion
   }
 }
 
+class $RelayPairedOwnerEntriesTable extends RelayPairedOwnerEntries
+    with TableInfo<$RelayPairedOwnerEntriesTable, RelayPairedOwnerEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RelayPairedOwnerEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pubkeyMeta = const VerificationMeta('pubkey');
+  @override
+  late final GeneratedColumn<String> pubkey = GeneratedColumn<String>(
+    'pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boundAtMeta = const VerificationMeta(
+    'boundAt',
+  );
+  @override
+  late final GeneratedColumn<int> boundAt = GeneratedColumn<int>(
+    'bound_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [pubkey, boundAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'relay_paired_owner_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RelayPairedOwnerEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('pubkey')) {
+      context.handle(
+        _pubkeyMeta,
+        pubkey.isAcceptableOrUnknown(data['pubkey']!, _pubkeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pubkeyMeta);
+    }
+    if (data.containsKey('bound_at')) {
+      context.handle(
+        _boundAtMeta,
+        boundAt.isAcceptableOrUnknown(data['bound_at']!, _boundAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_boundAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {pubkey};
+  @override
+  RelayPairedOwnerEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RelayPairedOwnerEntry(
+      pubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pubkey'],
+      )!,
+      boundAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bound_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RelayPairedOwnerEntriesTable createAlias(String alias) {
+    return $RelayPairedOwnerEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class RelayPairedOwnerEntry extends DataClass
+    implements Insertable<RelayPairedOwnerEntry> {
+  final String pubkey;
+  final int boundAt;
+  const RelayPairedOwnerEntry({required this.pubkey, required this.boundAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['pubkey'] = Variable<String>(pubkey);
+    map['bound_at'] = Variable<int>(boundAt);
+    return map;
+  }
+
+  RelayPairedOwnerEntriesCompanion toCompanion(bool nullToAbsent) {
+    return RelayPairedOwnerEntriesCompanion(
+      pubkey: Value(pubkey),
+      boundAt: Value(boundAt),
+    );
+  }
+
+  factory RelayPairedOwnerEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RelayPairedOwnerEntry(
+      pubkey: serializer.fromJson<String>(json['pubkey']),
+      boundAt: serializer.fromJson<int>(json['boundAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'pubkey': serializer.toJson<String>(pubkey),
+      'boundAt': serializer.toJson<int>(boundAt),
+    };
+  }
+
+  RelayPairedOwnerEntry copyWith({String? pubkey, int? boundAt}) =>
+      RelayPairedOwnerEntry(
+        pubkey: pubkey ?? this.pubkey,
+        boundAt: boundAt ?? this.boundAt,
+      );
+  RelayPairedOwnerEntry copyWithCompanion(
+    RelayPairedOwnerEntriesCompanion data,
+  ) {
+    return RelayPairedOwnerEntry(
+      pubkey: data.pubkey.present ? data.pubkey.value : this.pubkey,
+      boundAt: data.boundAt.present ? data.boundAt.value : this.boundAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RelayPairedOwnerEntry(')
+          ..write('pubkey: $pubkey, ')
+          ..write('boundAt: $boundAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(pubkey, boundAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RelayPairedOwnerEntry &&
+          other.pubkey == this.pubkey &&
+          other.boundAt == this.boundAt);
+}
+
+class RelayPairedOwnerEntriesCompanion
+    extends UpdateCompanion<RelayPairedOwnerEntry> {
+  final Value<String> pubkey;
+  final Value<int> boundAt;
+  final Value<int> rowid;
+  const RelayPairedOwnerEntriesCompanion({
+    this.pubkey = const Value.absent(),
+    this.boundAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RelayPairedOwnerEntriesCompanion.insert({
+    required String pubkey,
+    required int boundAt,
+    this.rowid = const Value.absent(),
+  }) : pubkey = Value(pubkey),
+       boundAt = Value(boundAt);
+  static Insertable<RelayPairedOwnerEntry> custom({
+    Expression<String>? pubkey,
+    Expression<int>? boundAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (pubkey != null) 'pubkey': pubkey,
+      if (boundAt != null) 'bound_at': boundAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RelayPairedOwnerEntriesCompanion copyWith({
+    Value<String>? pubkey,
+    Value<int>? boundAt,
+    Value<int>? rowid,
+  }) {
+    return RelayPairedOwnerEntriesCompanion(
+      pubkey: pubkey ?? this.pubkey,
+      boundAt: boundAt ?? this.boundAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (pubkey.present) {
+      map['pubkey'] = Variable<String>(pubkey.value);
+    }
+    if (boundAt.present) {
+      map['bound_at'] = Variable<int>(boundAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RelayPairedOwnerEntriesCompanion(')
+          ..write('pubkey: $pubkey, ')
+          ..write('boundAt: $boundAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RelayPairingEntriesTable extends RelayPairingEntries
+    with TableInfo<$RelayPairingEntriesTable, RelayPairingEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RelayPairingEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _tokenMeta = const VerificationMeta('token');
+  @override
+  late final GeneratedColumn<Uint8List> token = GeneratedColumn<Uint8List>(
+    'token',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
+  );
+  @override
+  late final GeneratedColumn<int> expiresAt = GeneratedColumn<int>(
+    'expires_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _consumedAtMeta = const VerificationMeta(
+    'consumedAt',
+  );
+  @override
+  late final GeneratedColumn<int> consumedAt = GeneratedColumn<int>(
+    'consumed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    token,
+    createdAt,
+    expiresAt,
+    consumedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'relay_pairing_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RelayPairingEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('token')) {
+      context.handle(
+        _tokenMeta,
+        token.isAcceptableOrUnknown(data['token']!, _tokenMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tokenMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_expiresAtMeta);
+    }
+    if (data.containsKey('consumed_at')) {
+      context.handle(
+        _consumedAtMeta,
+        consumedAt.isAcceptableOrUnknown(data['consumed_at']!, _consumedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {token};
+  @override
+  RelayPairingEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RelayPairingEntry(
+      token: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}token'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      expiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expires_at'],
+      )!,
+      consumedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}consumed_at'],
+      ),
+    );
+  }
+
+  @override
+  $RelayPairingEntriesTable createAlias(String alias) {
+    return $RelayPairingEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class RelayPairingEntry extends DataClass
+    implements Insertable<RelayPairingEntry> {
+  final Uint8List token;
+  final int createdAt;
+  final int expiresAt;
+  final int? consumedAt;
+  const RelayPairingEntry({
+    required this.token,
+    required this.createdAt,
+    required this.expiresAt,
+    this.consumedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['token'] = Variable<Uint8List>(token);
+    map['created_at'] = Variable<int>(createdAt);
+    map['expires_at'] = Variable<int>(expiresAt);
+    if (!nullToAbsent || consumedAt != null) {
+      map['consumed_at'] = Variable<int>(consumedAt);
+    }
+    return map;
+  }
+
+  RelayPairingEntriesCompanion toCompanion(bool nullToAbsent) {
+    return RelayPairingEntriesCompanion(
+      token: Value(token),
+      createdAt: Value(createdAt),
+      expiresAt: Value(expiresAt),
+      consumedAt: consumedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(consumedAt),
+    );
+  }
+
+  factory RelayPairingEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RelayPairingEntry(
+      token: serializer.fromJson<Uint8List>(json['token']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      expiresAt: serializer.fromJson<int>(json['expiresAt']),
+      consumedAt: serializer.fromJson<int?>(json['consumedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'token': serializer.toJson<Uint8List>(token),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'expiresAt': serializer.toJson<int>(expiresAt),
+      'consumedAt': serializer.toJson<int?>(consumedAt),
+    };
+  }
+
+  RelayPairingEntry copyWith({
+    Uint8List? token,
+    int? createdAt,
+    int? expiresAt,
+    Value<int?> consumedAt = const Value.absent(),
+  }) => RelayPairingEntry(
+    token: token ?? this.token,
+    createdAt: createdAt ?? this.createdAt,
+    expiresAt: expiresAt ?? this.expiresAt,
+    consumedAt: consumedAt.present ? consumedAt.value : this.consumedAt,
+  );
+  RelayPairingEntry copyWithCompanion(RelayPairingEntriesCompanion data) {
+    return RelayPairingEntry(
+      token: data.token.present ? data.token.value : this.token,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+      consumedAt: data.consumedAt.present
+          ? data.consumedAt.value
+          : this.consumedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RelayPairingEntry(')
+          ..write('token: $token, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('consumedAt: $consumedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    $driftBlobEquality.hash(token),
+    createdAt,
+    expiresAt,
+    consumedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RelayPairingEntry &&
+          $driftBlobEquality.equals(other.token, this.token) &&
+          other.createdAt == this.createdAt &&
+          other.expiresAt == this.expiresAt &&
+          other.consumedAt == this.consumedAt);
+}
+
+class RelayPairingEntriesCompanion extends UpdateCompanion<RelayPairingEntry> {
+  final Value<Uint8List> token;
+  final Value<int> createdAt;
+  final Value<int> expiresAt;
+  final Value<int?> consumedAt;
+  final Value<int> rowid;
+  const RelayPairingEntriesCompanion({
+    this.token = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+    this.consumedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RelayPairingEntriesCompanion.insert({
+    required Uint8List token,
+    required int createdAt,
+    required int expiresAt,
+    this.consumedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : token = Value(token),
+       createdAt = Value(createdAt),
+       expiresAt = Value(expiresAt);
+  static Insertable<RelayPairingEntry> custom({
+    Expression<Uint8List>? token,
+    Expression<int>? createdAt,
+    Expression<int>? expiresAt,
+    Expression<int>? consumedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (token != null) 'token': token,
+      if (createdAt != null) 'created_at': createdAt,
+      if (expiresAt != null) 'expires_at': expiresAt,
+      if (consumedAt != null) 'consumed_at': consumedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RelayPairingEntriesCompanion copyWith({
+    Value<Uint8List>? token,
+    Value<int>? createdAt,
+    Value<int>? expiresAt,
+    Value<int?>? consumedAt,
+    Value<int>? rowid,
+  }) {
+    return RelayPairingEntriesCompanion(
+      token: token ?? this.token,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      consumedAt: consumedAt ?? this.consumedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (token.present) {
+      map['token'] = Variable<Uint8List>(token.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<int>(expiresAt.value);
+    }
+    if (consumedAt.present) {
+      map['consumed_at'] = Variable<int>(consumedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RelayPairingEntriesCompanion(')
+          ..write('token: $token, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('consumedAt: $consumedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ServedEventEntriesTable extends ServedEventEntries
+    with TableInfo<$ServedEventEntriesTable, ServedEventEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ServedEventEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pubkeyMeta = const VerificationMeta('pubkey');
+  @override
+  late final GeneratedColumn<String> pubkey = GeneratedColumn<String>(
+    'pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _msgSeqMeta = const VerificationMeta('msgSeq');
+  @override
+  late final GeneratedColumn<int> msgSeq = GeneratedColumn<int>(
+    'msg_seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nonceMeta = const VerificationMeta('nonce');
+  @override
+  late final GeneratedColumn<Uint8List> nonce = GeneratedColumn<Uint8List>(
+    'nonce',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> payload = GeneratedColumn<Uint8List>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    pubkey,
+    createdAt,
+    msgSeq,
+    nonce,
+    payload,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'served_event_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ServedEventEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('pubkey')) {
+      context.handle(
+        _pubkeyMeta,
+        pubkey.isAcceptableOrUnknown(data['pubkey']!, _pubkeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pubkeyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('msg_seq')) {
+      context.handle(
+        _msgSeqMeta,
+        msgSeq.isAcceptableOrUnknown(data['msg_seq']!, _msgSeqMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_msgSeqMeta);
+    }
+    if (data.containsKey('nonce')) {
+      context.handle(
+        _nonceMeta,
+        nonce.isAcceptableOrUnknown(data['nonce']!, _nonceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nonceMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ServedEventEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ServedEventEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      pubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pubkey'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      msgSeq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}msg_seq'],
+      )!,
+      nonce: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}nonce'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}payload'],
+      )!,
+    );
+  }
+
+  @override
+  $ServedEventEntriesTable createAlias(String alias) {
+    return $ServedEventEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class ServedEventEntry extends DataClass
+    implements Insertable<ServedEventEntry> {
+  final String id;
+  final String pubkey;
+  final int createdAt;
+  final int msgSeq;
+  final Uint8List nonce;
+  final Uint8List payload;
+  const ServedEventEntry({
+    required this.id,
+    required this.pubkey,
+    required this.createdAt,
+    required this.msgSeq,
+    required this.nonce,
+    required this.payload,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['pubkey'] = Variable<String>(pubkey);
+    map['created_at'] = Variable<int>(createdAt);
+    map['msg_seq'] = Variable<int>(msgSeq);
+    map['nonce'] = Variable<Uint8List>(nonce);
+    map['payload'] = Variable<Uint8List>(payload);
+    return map;
+  }
+
+  ServedEventEntriesCompanion toCompanion(bool nullToAbsent) {
+    return ServedEventEntriesCompanion(
+      id: Value(id),
+      pubkey: Value(pubkey),
+      createdAt: Value(createdAt),
+      msgSeq: Value(msgSeq),
+      nonce: Value(nonce),
+      payload: Value(payload),
+    );
+  }
+
+  factory ServedEventEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ServedEventEntry(
+      id: serializer.fromJson<String>(json['id']),
+      pubkey: serializer.fromJson<String>(json['pubkey']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      msgSeq: serializer.fromJson<int>(json['msgSeq']),
+      nonce: serializer.fromJson<Uint8List>(json['nonce']),
+      payload: serializer.fromJson<Uint8List>(json['payload']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'pubkey': serializer.toJson<String>(pubkey),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'msgSeq': serializer.toJson<int>(msgSeq),
+      'nonce': serializer.toJson<Uint8List>(nonce),
+      'payload': serializer.toJson<Uint8List>(payload),
+    };
+  }
+
+  ServedEventEntry copyWith({
+    String? id,
+    String? pubkey,
+    int? createdAt,
+    int? msgSeq,
+    Uint8List? nonce,
+    Uint8List? payload,
+  }) => ServedEventEntry(
+    id: id ?? this.id,
+    pubkey: pubkey ?? this.pubkey,
+    createdAt: createdAt ?? this.createdAt,
+    msgSeq: msgSeq ?? this.msgSeq,
+    nonce: nonce ?? this.nonce,
+    payload: payload ?? this.payload,
+  );
+  ServedEventEntry copyWithCompanion(ServedEventEntriesCompanion data) {
+    return ServedEventEntry(
+      id: data.id.present ? data.id.value : this.id,
+      pubkey: data.pubkey.present ? data.pubkey.value : this.pubkey,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      msgSeq: data.msgSeq.present ? data.msgSeq.value : this.msgSeq,
+      nonce: data.nonce.present ? data.nonce.value : this.nonce,
+      payload: data.payload.present ? data.payload.value : this.payload,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServedEventEntry(')
+          ..write('id: $id, ')
+          ..write('pubkey: $pubkey, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('msgSeq: $msgSeq, ')
+          ..write('nonce: $nonce, ')
+          ..write('payload: $payload')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    pubkey,
+    createdAt,
+    msgSeq,
+    $driftBlobEquality.hash(nonce),
+    $driftBlobEquality.hash(payload),
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ServedEventEntry &&
+          other.id == this.id &&
+          other.pubkey == this.pubkey &&
+          other.createdAt == this.createdAt &&
+          other.msgSeq == this.msgSeq &&
+          $driftBlobEquality.equals(other.nonce, this.nonce) &&
+          $driftBlobEquality.equals(other.payload, this.payload));
+}
+
+class ServedEventEntriesCompanion extends UpdateCompanion<ServedEventEntry> {
+  final Value<String> id;
+  final Value<String> pubkey;
+  final Value<int> createdAt;
+  final Value<int> msgSeq;
+  final Value<Uint8List> nonce;
+  final Value<Uint8List> payload;
+  final Value<int> rowid;
+  const ServedEventEntriesCompanion({
+    this.id = const Value.absent(),
+    this.pubkey = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.msgSeq = const Value.absent(),
+    this.nonce = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ServedEventEntriesCompanion.insert({
+    required String id,
+    required String pubkey,
+    required int createdAt,
+    required int msgSeq,
+    required Uint8List nonce,
+    required Uint8List payload,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       pubkey = Value(pubkey),
+       createdAt = Value(createdAt),
+       msgSeq = Value(msgSeq),
+       nonce = Value(nonce),
+       payload = Value(payload);
+  static Insertable<ServedEventEntry> custom({
+    Expression<String>? id,
+    Expression<String>? pubkey,
+    Expression<int>? createdAt,
+    Expression<int>? msgSeq,
+    Expression<Uint8List>? nonce,
+    Expression<Uint8List>? payload,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (pubkey != null) 'pubkey': pubkey,
+      if (createdAt != null) 'created_at': createdAt,
+      if (msgSeq != null) 'msg_seq': msgSeq,
+      if (nonce != null) 'nonce': nonce,
+      if (payload != null) 'payload': payload,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ServedEventEntriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? pubkey,
+    Value<int>? createdAt,
+    Value<int>? msgSeq,
+    Value<Uint8List>? nonce,
+    Value<Uint8List>? payload,
+    Value<int>? rowid,
+  }) {
+    return ServedEventEntriesCompanion(
+      id: id ?? this.id,
+      pubkey: pubkey ?? this.pubkey,
+      createdAt: createdAt ?? this.createdAt,
+      msgSeq: msgSeq ?? this.msgSeq,
+      nonce: nonce ?? this.nonce,
+      payload: payload ?? this.payload,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (pubkey.present) {
+      map['pubkey'] = Variable<String>(pubkey.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (msgSeq.present) {
+      map['msg_seq'] = Variable<int>(msgSeq.value);
+    }
+    if (nonce.present) {
+      map['nonce'] = Variable<Uint8List>(nonce.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<Uint8List>(payload.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServedEventEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('pubkey: $pubkey, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('msgSeq: $msgSeq, ')
+          ..write('nonce: $nonce, ')
+          ..write('payload: $payload, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ServedMediaEntriesTable extends ServedMediaEntries
+    with TableInfo<$ServedMediaEntriesTable, ServedMediaEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ServedMediaEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _hashMeta = const VerificationMeta('hash');
+  @override
+  late final GeneratedColumn<String> hash = GeneratedColumn<String>(
+    'hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<int> size = GeneratedColumn<int>(
+    'size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [hash, size, createdAt, path];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'served_media_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ServedMediaEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('hash')) {
+      context.handle(
+        _hashMeta,
+        hash.isAcceptableOrUnknown(data['hash']!, _hashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hashMeta);
+    }
+    if (data.containsKey('size')) {
+      context.handle(
+        _sizeMeta,
+        size.isAcceptableOrUnknown(data['size']!, _sizeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {hash};
+  @override
+  ServedMediaEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ServedMediaEntry(
+      hash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hash'],
+      )!,
+      size: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+    );
+  }
+
+  @override
+  $ServedMediaEntriesTable createAlias(String alias) {
+    return $ServedMediaEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class ServedMediaEntry extends DataClass
+    implements Insertable<ServedMediaEntry> {
+  final String hash;
+  final int size;
+  final int createdAt;
+  final String path;
+  const ServedMediaEntry({
+    required this.hash,
+    required this.size,
+    required this.createdAt,
+    required this.path,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['hash'] = Variable<String>(hash);
+    map['size'] = Variable<int>(size);
+    map['created_at'] = Variable<int>(createdAt);
+    map['path'] = Variable<String>(path);
+    return map;
+  }
+
+  ServedMediaEntriesCompanion toCompanion(bool nullToAbsent) {
+    return ServedMediaEntriesCompanion(
+      hash: Value(hash),
+      size: Value(size),
+      createdAt: Value(createdAt),
+      path: Value(path),
+    );
+  }
+
+  factory ServedMediaEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ServedMediaEntry(
+      hash: serializer.fromJson<String>(json['hash']),
+      size: serializer.fromJson<int>(json['size']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      path: serializer.fromJson<String>(json['path']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'hash': serializer.toJson<String>(hash),
+      'size': serializer.toJson<int>(size),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'path': serializer.toJson<String>(path),
+    };
+  }
+
+  ServedMediaEntry copyWith({
+    String? hash,
+    int? size,
+    int? createdAt,
+    String? path,
+  }) => ServedMediaEntry(
+    hash: hash ?? this.hash,
+    size: size ?? this.size,
+    createdAt: createdAt ?? this.createdAt,
+    path: path ?? this.path,
+  );
+  ServedMediaEntry copyWithCompanion(ServedMediaEntriesCompanion data) {
+    return ServedMediaEntry(
+      hash: data.hash.present ? data.hash.value : this.hash,
+      size: data.size.present ? data.size.value : this.size,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      path: data.path.present ? data.path.value : this.path,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServedMediaEntry(')
+          ..write('hash: $hash, ')
+          ..write('size: $size, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('path: $path')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(hash, size, createdAt, path);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ServedMediaEntry &&
+          other.hash == this.hash &&
+          other.size == this.size &&
+          other.createdAt == this.createdAt &&
+          other.path == this.path);
+}
+
+class ServedMediaEntriesCompanion extends UpdateCompanion<ServedMediaEntry> {
+  final Value<String> hash;
+  final Value<int> size;
+  final Value<int> createdAt;
+  final Value<String> path;
+  final Value<int> rowid;
+  const ServedMediaEntriesCompanion({
+    this.hash = const Value.absent(),
+    this.size = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.path = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ServedMediaEntriesCompanion.insert({
+    required String hash,
+    required int size,
+    required int createdAt,
+    required String path,
+    this.rowid = const Value.absent(),
+  }) : hash = Value(hash),
+       size = Value(size),
+       createdAt = Value(createdAt),
+       path = Value(path);
+  static Insertable<ServedMediaEntry> custom({
+    Expression<String>? hash,
+    Expression<int>? size,
+    Expression<int>? createdAt,
+    Expression<String>? path,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (hash != null) 'hash': hash,
+      if (size != null) 'size': size,
+      if (createdAt != null) 'created_at': createdAt,
+      if (path != null) 'path': path,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ServedMediaEntriesCompanion copyWith({
+    Value<String>? hash,
+    Value<int>? size,
+    Value<int>? createdAt,
+    Value<String>? path,
+    Value<int>? rowid,
+  }) {
+    return ServedMediaEntriesCompanion(
+      hash: hash ?? this.hash,
+      size: size ?? this.size,
+      createdAt: createdAt ?? this.createdAt,
+      path: path ?? this.path,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (hash.present) {
+      map['hash'] = Variable<String>(hash.value);
+    }
+    if (size.present) {
+      map['size'] = Variable<int>(size.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServedMediaEntriesCompanion(')
+          ..write('hash: $hash, ')
+          ..write('size: $size, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('path: $path, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ServedFollowRequestEntriesTable extends ServedFollowRequestEntries
+    with TableInfo<$ServedFollowRequestEntriesTable, ServedFollowRequestEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ServedFollowRequestEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pubkeyMeta = const VerificationMeta('pubkey');
+  @override
+  late final GeneratedColumn<String> pubkey = GeneratedColumn<String>(
+    'pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedEndpointsMeta =
+      const VerificationMeta('encryptedEndpoints');
+  @override
+  late final GeneratedColumn<Uint8List> encryptedEndpoints =
+      GeneratedColumn<Uint8List>(
+        'encrypted_endpoints',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _requestTimestampMeta = const VerificationMeta(
+    'requestTimestamp',
+  );
+  @override
+  late final GeneratedColumn<int> requestTimestamp = GeneratedColumn<int>(
+    'request_timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    pubkey,
+    encryptedEndpoints,
+    createdAt,
+    requestTimestamp,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'served_follow_request_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ServedFollowRequestEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('pubkey')) {
+      context.handle(
+        _pubkeyMeta,
+        pubkey.isAcceptableOrUnknown(data['pubkey']!, _pubkeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pubkeyMeta);
+    }
+    if (data.containsKey('encrypted_endpoints')) {
+      context.handle(
+        _encryptedEndpointsMeta,
+        encryptedEndpoints.isAcceptableOrUnknown(
+          data['encrypted_endpoints']!,
+          _encryptedEndpointsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedEndpointsMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('request_timestamp')) {
+      context.handle(
+        _requestTimestampMeta,
+        requestTimestamp.isAcceptableOrUnknown(
+          data['request_timestamp']!,
+          _requestTimestampMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {pubkey};
+  @override
+  ServedFollowRequestEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ServedFollowRequestEntry(
+      pubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pubkey'],
+      )!,
+      encryptedEndpoints: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}encrypted_endpoints'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      requestTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}request_timestamp'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $ServedFollowRequestEntriesTable createAlias(String alias) {
+    return $ServedFollowRequestEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class ServedFollowRequestEntry extends DataClass
+    implements Insertable<ServedFollowRequestEntry> {
+  final String pubkey;
+  final Uint8List encryptedEndpoints;
+  final int createdAt;
+  final int requestTimestamp;
+  final String status;
+  const ServedFollowRequestEntry({
+    required this.pubkey,
+    required this.encryptedEndpoints,
+    required this.createdAt,
+    required this.requestTimestamp,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['pubkey'] = Variable<String>(pubkey);
+    map['encrypted_endpoints'] = Variable<Uint8List>(encryptedEndpoints);
+    map['created_at'] = Variable<int>(createdAt);
+    map['request_timestamp'] = Variable<int>(requestTimestamp);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  ServedFollowRequestEntriesCompanion toCompanion(bool nullToAbsent) {
+    return ServedFollowRequestEntriesCompanion(
+      pubkey: Value(pubkey),
+      encryptedEndpoints: Value(encryptedEndpoints),
+      createdAt: Value(createdAt),
+      requestTimestamp: Value(requestTimestamp),
+      status: Value(status),
+    );
+  }
+
+  factory ServedFollowRequestEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ServedFollowRequestEntry(
+      pubkey: serializer.fromJson<String>(json['pubkey']),
+      encryptedEndpoints: serializer.fromJson<Uint8List>(
+        json['encryptedEndpoints'],
+      ),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      requestTimestamp: serializer.fromJson<int>(json['requestTimestamp']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'pubkey': serializer.toJson<String>(pubkey),
+      'encryptedEndpoints': serializer.toJson<Uint8List>(encryptedEndpoints),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'requestTimestamp': serializer.toJson<int>(requestTimestamp),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  ServedFollowRequestEntry copyWith({
+    String? pubkey,
+    Uint8List? encryptedEndpoints,
+    int? createdAt,
+    int? requestTimestamp,
+    String? status,
+  }) => ServedFollowRequestEntry(
+    pubkey: pubkey ?? this.pubkey,
+    encryptedEndpoints: encryptedEndpoints ?? this.encryptedEndpoints,
+    createdAt: createdAt ?? this.createdAt,
+    requestTimestamp: requestTimestamp ?? this.requestTimestamp,
+    status: status ?? this.status,
+  );
+  ServedFollowRequestEntry copyWithCompanion(
+    ServedFollowRequestEntriesCompanion data,
+  ) {
+    return ServedFollowRequestEntry(
+      pubkey: data.pubkey.present ? data.pubkey.value : this.pubkey,
+      encryptedEndpoints: data.encryptedEndpoints.present
+          ? data.encryptedEndpoints.value
+          : this.encryptedEndpoints,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      requestTimestamp: data.requestTimestamp.present
+          ? data.requestTimestamp.value
+          : this.requestTimestamp,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServedFollowRequestEntry(')
+          ..write('pubkey: $pubkey, ')
+          ..write('encryptedEndpoints: $encryptedEndpoints, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('requestTimestamp: $requestTimestamp, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    pubkey,
+    $driftBlobEquality.hash(encryptedEndpoints),
+    createdAt,
+    requestTimestamp,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ServedFollowRequestEntry &&
+          other.pubkey == this.pubkey &&
+          $driftBlobEquality.equals(
+            other.encryptedEndpoints,
+            this.encryptedEndpoints,
+          ) &&
+          other.createdAt == this.createdAt &&
+          other.requestTimestamp == this.requestTimestamp &&
+          other.status == this.status);
+}
+
+class ServedFollowRequestEntriesCompanion
+    extends UpdateCompanion<ServedFollowRequestEntry> {
+  final Value<String> pubkey;
+  final Value<Uint8List> encryptedEndpoints;
+  final Value<int> createdAt;
+  final Value<int> requestTimestamp;
+  final Value<String> status;
+  final Value<int> rowid;
+  const ServedFollowRequestEntriesCompanion({
+    this.pubkey = const Value.absent(),
+    this.encryptedEndpoints = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.requestTimestamp = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ServedFollowRequestEntriesCompanion.insert({
+    required String pubkey,
+    required Uint8List encryptedEndpoints,
+    required int createdAt,
+    this.requestTimestamp = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : pubkey = Value(pubkey),
+       encryptedEndpoints = Value(encryptedEndpoints),
+       createdAt = Value(createdAt);
+  static Insertable<ServedFollowRequestEntry> custom({
+    Expression<String>? pubkey,
+    Expression<Uint8List>? encryptedEndpoints,
+    Expression<int>? createdAt,
+    Expression<int>? requestTimestamp,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (pubkey != null) 'pubkey': pubkey,
+      if (encryptedEndpoints != null) 'encrypted_endpoints': encryptedEndpoints,
+      if (createdAt != null) 'created_at': createdAt,
+      if (requestTimestamp != null) 'request_timestamp': requestTimestamp,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ServedFollowRequestEntriesCompanion copyWith({
+    Value<String>? pubkey,
+    Value<Uint8List>? encryptedEndpoints,
+    Value<int>? createdAt,
+    Value<int>? requestTimestamp,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return ServedFollowRequestEntriesCompanion(
+      pubkey: pubkey ?? this.pubkey,
+      encryptedEndpoints: encryptedEndpoints ?? this.encryptedEndpoints,
+      createdAt: createdAt ?? this.createdAt,
+      requestTimestamp: requestTimestamp ?? this.requestTimestamp,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (pubkey.present) {
+      map['pubkey'] = Variable<String>(pubkey.value);
+    }
+    if (encryptedEndpoints.present) {
+      map['encrypted_endpoints'] = Variable<Uint8List>(
+        encryptedEndpoints.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (requestTimestamp.present) {
+      map['request_timestamp'] = Variable<int>(requestTimestamp.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServedFollowRequestEntriesCompanion(')
+          ..write('pubkey: $pubkey, ')
+          ..write('encryptedEndpoints: $encryptedEndpoints, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('requestTimestamp: $requestTimestamp, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PairedRelayEntriesTable extends PairedRelayEntries
+    with TableInfo<$PairedRelayEntriesTable, PairedRelayEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PairedRelayEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _relayIdMeta = const VerificationMeta(
+    'relayId',
+  );
+  @override
+  late final GeneratedColumn<String> relayId = GeneratedColumn<String>(
+    'relay_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _relayOnionMeta = const VerificationMeta(
+    'relayOnion',
+  );
+  @override
+  late final GeneratedColumn<String> relayOnion = GeneratedColumn<String>(
+    'relay_onion',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pairedAtMeta = const VerificationMeta(
+    'pairedAt',
+  );
+  @override
+  late final GeneratedColumn<int> pairedAt = GeneratedColumn<int>(
+    'paired_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _relayBackfillCompleteMeta =
+      const VerificationMeta('relayBackfillComplete');
+  @override
+  late final GeneratedColumn<int> relayBackfillComplete = GeneratedColumn<int>(
+    'relay_backfill_complete',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    relayId,
+    relayOnion,
+    pairedAt,
+    relayBackfillComplete,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'paired_relay_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PairedRelayEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('relay_id')) {
+      context.handle(
+        _relayIdMeta,
+        relayId.isAcceptableOrUnknown(data['relay_id']!, _relayIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_relayIdMeta);
+    }
+    if (data.containsKey('relay_onion')) {
+      context.handle(
+        _relayOnionMeta,
+        relayOnion.isAcceptableOrUnknown(data['relay_onion']!, _relayOnionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_relayOnionMeta);
+    }
+    if (data.containsKey('paired_at')) {
+      context.handle(
+        _pairedAtMeta,
+        pairedAt.isAcceptableOrUnknown(data['paired_at']!, _pairedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pairedAtMeta);
+    }
+    if (data.containsKey('relay_backfill_complete')) {
+      context.handle(
+        _relayBackfillCompleteMeta,
+        relayBackfillComplete.isAcceptableOrUnknown(
+          data['relay_backfill_complete']!,
+          _relayBackfillCompleteMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {relayId};
+  @override
+  PairedRelayEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PairedRelayEntry(
+      relayId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relay_id'],
+      )!,
+      relayOnion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relay_onion'],
+      )!,
+      pairedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}paired_at'],
+      )!,
+      relayBackfillComplete: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}relay_backfill_complete'],
+      )!,
+    );
+  }
+
+  @override
+  $PairedRelayEntriesTable createAlias(String alias) {
+    return $PairedRelayEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class PairedRelayEntry extends DataClass
+    implements Insertable<PairedRelayEntry> {
+  final String relayId;
+  final String relayOnion;
+  final int pairedAt;
+  final int relayBackfillComplete;
+  const PairedRelayEntry({
+    required this.relayId,
+    required this.relayOnion,
+    required this.pairedAt,
+    required this.relayBackfillComplete,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['relay_id'] = Variable<String>(relayId);
+    map['relay_onion'] = Variable<String>(relayOnion);
+    map['paired_at'] = Variable<int>(pairedAt);
+    map['relay_backfill_complete'] = Variable<int>(relayBackfillComplete);
+    return map;
+  }
+
+  PairedRelayEntriesCompanion toCompanion(bool nullToAbsent) {
+    return PairedRelayEntriesCompanion(
+      relayId: Value(relayId),
+      relayOnion: Value(relayOnion),
+      pairedAt: Value(pairedAt),
+      relayBackfillComplete: Value(relayBackfillComplete),
+    );
+  }
+
+  factory PairedRelayEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PairedRelayEntry(
+      relayId: serializer.fromJson<String>(json['relayId']),
+      relayOnion: serializer.fromJson<String>(json['relayOnion']),
+      pairedAt: serializer.fromJson<int>(json['pairedAt']),
+      relayBackfillComplete: serializer.fromJson<int>(
+        json['relayBackfillComplete'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'relayId': serializer.toJson<String>(relayId),
+      'relayOnion': serializer.toJson<String>(relayOnion),
+      'pairedAt': serializer.toJson<int>(pairedAt),
+      'relayBackfillComplete': serializer.toJson<int>(relayBackfillComplete),
+    };
+  }
+
+  PairedRelayEntry copyWith({
+    String? relayId,
+    String? relayOnion,
+    int? pairedAt,
+    int? relayBackfillComplete,
+  }) => PairedRelayEntry(
+    relayId: relayId ?? this.relayId,
+    relayOnion: relayOnion ?? this.relayOnion,
+    pairedAt: pairedAt ?? this.pairedAt,
+    relayBackfillComplete: relayBackfillComplete ?? this.relayBackfillComplete,
+  );
+  PairedRelayEntry copyWithCompanion(PairedRelayEntriesCompanion data) {
+    return PairedRelayEntry(
+      relayId: data.relayId.present ? data.relayId.value : this.relayId,
+      relayOnion: data.relayOnion.present
+          ? data.relayOnion.value
+          : this.relayOnion,
+      pairedAt: data.pairedAt.present ? data.pairedAt.value : this.pairedAt,
+      relayBackfillComplete: data.relayBackfillComplete.present
+          ? data.relayBackfillComplete.value
+          : this.relayBackfillComplete,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PairedRelayEntry(')
+          ..write('relayId: $relayId, ')
+          ..write('relayOnion: $relayOnion, ')
+          ..write('pairedAt: $pairedAt, ')
+          ..write('relayBackfillComplete: $relayBackfillComplete')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(relayId, relayOnion, pairedAt, relayBackfillComplete);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PairedRelayEntry &&
+          other.relayId == this.relayId &&
+          other.relayOnion == this.relayOnion &&
+          other.pairedAt == this.pairedAt &&
+          other.relayBackfillComplete == this.relayBackfillComplete);
+}
+
+class PairedRelayEntriesCompanion extends UpdateCompanion<PairedRelayEntry> {
+  final Value<String> relayId;
+  final Value<String> relayOnion;
+  final Value<int> pairedAt;
+  final Value<int> relayBackfillComplete;
+  final Value<int> rowid;
+  const PairedRelayEntriesCompanion({
+    this.relayId = const Value.absent(),
+    this.relayOnion = const Value.absent(),
+    this.pairedAt = const Value.absent(),
+    this.relayBackfillComplete = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PairedRelayEntriesCompanion.insert({
+    required String relayId,
+    required String relayOnion,
+    required int pairedAt,
+    this.relayBackfillComplete = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : relayId = Value(relayId),
+       relayOnion = Value(relayOnion),
+       pairedAt = Value(pairedAt);
+  static Insertable<PairedRelayEntry> custom({
+    Expression<String>? relayId,
+    Expression<String>? relayOnion,
+    Expression<int>? pairedAt,
+    Expression<int>? relayBackfillComplete,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (relayId != null) 'relay_id': relayId,
+      if (relayOnion != null) 'relay_onion': relayOnion,
+      if (pairedAt != null) 'paired_at': pairedAt,
+      if (relayBackfillComplete != null)
+        'relay_backfill_complete': relayBackfillComplete,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PairedRelayEntriesCompanion copyWith({
+    Value<String>? relayId,
+    Value<String>? relayOnion,
+    Value<int>? pairedAt,
+    Value<int>? relayBackfillComplete,
+    Value<int>? rowid,
+  }) {
+    return PairedRelayEntriesCompanion(
+      relayId: relayId ?? this.relayId,
+      relayOnion: relayOnion ?? this.relayOnion,
+      pairedAt: pairedAt ?? this.pairedAt,
+      relayBackfillComplete:
+          relayBackfillComplete ?? this.relayBackfillComplete,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (relayId.present) {
+      map['relay_id'] = Variable<String>(relayId.value);
+    }
+    if (relayOnion.present) {
+      map['relay_onion'] = Variable<String>(relayOnion.value);
+    }
+    if (pairedAt.present) {
+      map['paired_at'] = Variable<int>(pairedAt.value);
+    }
+    if (relayBackfillComplete.present) {
+      map['relay_backfill_complete'] = Variable<int>(
+        relayBackfillComplete.value,
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PairedRelayEntriesCompanion(')
+          ..write('relayId: $relayId, ')
+          ..write('relayOnion: $relayOnion, ')
+          ..write('pairedAt: $pairedAt, ')
+          ..write('relayBackfillComplete: $relayBackfillComplete, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PendingCardDistributionEntriesTable
+    extends PendingCardDistributionEntries
+    with
+        TableInfo<
+          $PendingCardDistributionEntriesTable,
+          PendingCardDistributionEntry
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingCardDistributionEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _targetPubkeyMeta = const VerificationMeta(
+    'targetPubkey',
+  );
+  @override
+  late final GeneratedColumn<String> targetPubkey = GeneratedColumn<String>(
+    'target_pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cardCborMeta = const VerificationMeta(
+    'cardCbor',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> cardCbor = GeneratedColumn<Uint8List>(
+    'card_cbor',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sigMeta = const VerificationMeta('sig');
+  @override
+  late final GeneratedColumn<Uint8List> sig = GeneratedColumn<Uint8List>(
+    'sig',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _distributedMeta = const VerificationMeta(
+    'distributed',
+  );
+  @override
+  late final GeneratedColumn<int> distributed = GeneratedColumn<int>(
+    'distributed',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    targetPubkey,
+    cardCbor,
+    sig,
+    createdAt,
+    distributed,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_card_distribution_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingCardDistributionEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('target_pubkey')) {
+      context.handle(
+        _targetPubkeyMeta,
+        targetPubkey.isAcceptableOrUnknown(
+          data['target_pubkey']!,
+          _targetPubkeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetPubkeyMeta);
+    }
+    if (data.containsKey('card_cbor')) {
+      context.handle(
+        _cardCborMeta,
+        cardCbor.isAcceptableOrUnknown(data['card_cbor']!, _cardCborMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cardCborMeta);
+    }
+    if (data.containsKey('sig')) {
+      context.handle(
+        _sigMeta,
+        sig.isAcceptableOrUnknown(data['sig']!, _sigMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sigMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('distributed')) {
+      context.handle(
+        _distributedMeta,
+        distributed.isAcceptableOrUnknown(
+          data['distributed']!,
+          _distributedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {targetPubkey, createdAt};
+  @override
+  PendingCardDistributionEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingCardDistributionEntry(
+      targetPubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_pubkey'],
+      )!,
+      cardCbor: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}card_cbor'],
+      )!,
+      sig: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}sig'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      distributed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}distributed'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingCardDistributionEntriesTable createAlias(String alias) {
+    return $PendingCardDistributionEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class PendingCardDistributionEntry extends DataClass
+    implements Insertable<PendingCardDistributionEntry> {
+  final String targetPubkey;
+  final Uint8List cardCbor;
+  final Uint8List sig;
+  final int createdAt;
+  final int distributed;
+  const PendingCardDistributionEntry({
+    required this.targetPubkey,
+    required this.cardCbor,
+    required this.sig,
+    required this.createdAt,
+    required this.distributed,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['target_pubkey'] = Variable<String>(targetPubkey);
+    map['card_cbor'] = Variable<Uint8List>(cardCbor);
+    map['sig'] = Variable<Uint8List>(sig);
+    map['created_at'] = Variable<int>(createdAt);
+    map['distributed'] = Variable<int>(distributed);
+    return map;
+  }
+
+  PendingCardDistributionEntriesCompanion toCompanion(bool nullToAbsent) {
+    return PendingCardDistributionEntriesCompanion(
+      targetPubkey: Value(targetPubkey),
+      cardCbor: Value(cardCbor),
+      sig: Value(sig),
+      createdAt: Value(createdAt),
+      distributed: Value(distributed),
+    );
+  }
+
+  factory PendingCardDistributionEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingCardDistributionEntry(
+      targetPubkey: serializer.fromJson<String>(json['targetPubkey']),
+      cardCbor: serializer.fromJson<Uint8List>(json['cardCbor']),
+      sig: serializer.fromJson<Uint8List>(json['sig']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      distributed: serializer.fromJson<int>(json['distributed']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'targetPubkey': serializer.toJson<String>(targetPubkey),
+      'cardCbor': serializer.toJson<Uint8List>(cardCbor),
+      'sig': serializer.toJson<Uint8List>(sig),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'distributed': serializer.toJson<int>(distributed),
+    };
+  }
+
+  PendingCardDistributionEntry copyWith({
+    String? targetPubkey,
+    Uint8List? cardCbor,
+    Uint8List? sig,
+    int? createdAt,
+    int? distributed,
+  }) => PendingCardDistributionEntry(
+    targetPubkey: targetPubkey ?? this.targetPubkey,
+    cardCbor: cardCbor ?? this.cardCbor,
+    sig: sig ?? this.sig,
+    createdAt: createdAt ?? this.createdAt,
+    distributed: distributed ?? this.distributed,
+  );
+  PendingCardDistributionEntry copyWithCompanion(
+    PendingCardDistributionEntriesCompanion data,
+  ) {
+    return PendingCardDistributionEntry(
+      targetPubkey: data.targetPubkey.present
+          ? data.targetPubkey.value
+          : this.targetPubkey,
+      cardCbor: data.cardCbor.present ? data.cardCbor.value : this.cardCbor,
+      sig: data.sig.present ? data.sig.value : this.sig,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      distributed: data.distributed.present
+          ? data.distributed.value
+          : this.distributed,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingCardDistributionEntry(')
+          ..write('targetPubkey: $targetPubkey, ')
+          ..write('cardCbor: $cardCbor, ')
+          ..write('sig: $sig, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('distributed: $distributed')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    targetPubkey,
+    $driftBlobEquality.hash(cardCbor),
+    $driftBlobEquality.hash(sig),
+    createdAt,
+    distributed,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingCardDistributionEntry &&
+          other.targetPubkey == this.targetPubkey &&
+          $driftBlobEquality.equals(other.cardCbor, this.cardCbor) &&
+          $driftBlobEquality.equals(other.sig, this.sig) &&
+          other.createdAt == this.createdAt &&
+          other.distributed == this.distributed);
+}
+
+class PendingCardDistributionEntriesCompanion
+    extends UpdateCompanion<PendingCardDistributionEntry> {
+  final Value<String> targetPubkey;
+  final Value<Uint8List> cardCbor;
+  final Value<Uint8List> sig;
+  final Value<int> createdAt;
+  final Value<int> distributed;
+  final Value<int> rowid;
+  const PendingCardDistributionEntriesCompanion({
+    this.targetPubkey = const Value.absent(),
+    this.cardCbor = const Value.absent(),
+    this.sig = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.distributed = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingCardDistributionEntriesCompanion.insert({
+    required String targetPubkey,
+    required Uint8List cardCbor,
+    required Uint8List sig,
+    required int createdAt,
+    this.distributed = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : targetPubkey = Value(targetPubkey),
+       cardCbor = Value(cardCbor),
+       sig = Value(sig),
+       createdAt = Value(createdAt);
+  static Insertable<PendingCardDistributionEntry> custom({
+    Expression<String>? targetPubkey,
+    Expression<Uint8List>? cardCbor,
+    Expression<Uint8List>? sig,
+    Expression<int>? createdAt,
+    Expression<int>? distributed,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (targetPubkey != null) 'target_pubkey': targetPubkey,
+      if (cardCbor != null) 'card_cbor': cardCbor,
+      if (sig != null) 'sig': sig,
+      if (createdAt != null) 'created_at': createdAt,
+      if (distributed != null) 'distributed': distributed,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingCardDistributionEntriesCompanion copyWith({
+    Value<String>? targetPubkey,
+    Value<Uint8List>? cardCbor,
+    Value<Uint8List>? sig,
+    Value<int>? createdAt,
+    Value<int>? distributed,
+    Value<int>? rowid,
+  }) {
+    return PendingCardDistributionEntriesCompanion(
+      targetPubkey: targetPubkey ?? this.targetPubkey,
+      cardCbor: cardCbor ?? this.cardCbor,
+      sig: sig ?? this.sig,
+      createdAt: createdAt ?? this.createdAt,
+      distributed: distributed ?? this.distributed,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (targetPubkey.present) {
+      map['target_pubkey'] = Variable<String>(targetPubkey.value);
+    }
+    if (cardCbor.present) {
+      map['card_cbor'] = Variable<Uint8List>(cardCbor.value);
+    }
+    if (sig.present) {
+      map['sig'] = Variable<Uint8List>(sig.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (distributed.present) {
+      map['distributed'] = Variable<int>(distributed.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingCardDistributionEntriesCompanion(')
+          ..write('targetPubkey: $targetPubkey, ')
+          ..write('cardCbor: $cardCbor, ')
+          ..write('sig: $sig, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('distributed: $distributed, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5141,6 +7521,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $FollowFeedKeyHistoryEntriesTable(this);
   late final $PendingKeyDistributionEntriesTable pendingKeyDistributionEntries =
       $PendingKeyDistributionEntriesTable(this);
+  late final $RelayPairedOwnerEntriesTable relayPairedOwnerEntries =
+      $RelayPairedOwnerEntriesTable(this);
+  late final $RelayPairingEntriesTable relayPairingEntries =
+      $RelayPairingEntriesTable(this);
+  late final $ServedEventEntriesTable servedEventEntries =
+      $ServedEventEntriesTable(this);
+  late final $ServedMediaEntriesTable servedMediaEntries =
+      $ServedMediaEntriesTable(this);
+  late final $ServedFollowRequestEntriesTable servedFollowRequestEntries =
+      $ServedFollowRequestEntriesTable(this);
+  late final $PairedRelayEntriesTable pairedRelayEntries =
+      $PairedRelayEntriesTable(this);
+  late final $PendingCardDistributionEntriesTable
+  pendingCardDistributionEntries = $PendingCardDistributionEntriesTable(this);
   late final IdentityDao identityDao = IdentityDao(this as AppDatabase);
   late final FollowsDao followsDao = FollowsDao(this as AppDatabase);
   late final EventsDao eventsDao = EventsDao(this as AppDatabase);
@@ -5155,6 +7549,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final KeyRotationDao keyRotationDao = KeyRotationDao(
+    this as AppDatabase,
+  );
+  late final RelayDao relayDao = RelayDao(this as AppDatabase);
+  late final PairedRelayDao pairedRelayDao = PairedRelayDao(
     this as AppDatabase,
   );
   @override
@@ -5173,6 +7571,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     feedKeyHistoryEntries,
     followFeedKeyHistoryEntries,
     pendingKeyDistributionEntries,
+    relayPairedOwnerEntries,
+    relayPairingEntries,
+    servedEventEntries,
+    servedMediaEntries,
+    servedFollowRequestEntries,
+    pairedRelayEntries,
+    pendingCardDistributionEntries,
   ];
 }
 
@@ -7918,6 +10323,1437 @@ typedef $$PendingKeyDistributionEntriesTableProcessedTableManager =
       PendingKeyDistributionEntry,
       PrefetchHooks Function()
     >;
+typedef $$RelayPairedOwnerEntriesTableCreateCompanionBuilder =
+    RelayPairedOwnerEntriesCompanion Function({
+      required String pubkey,
+      required int boundAt,
+      Value<int> rowid,
+    });
+typedef $$RelayPairedOwnerEntriesTableUpdateCompanionBuilder =
+    RelayPairedOwnerEntriesCompanion Function({
+      Value<String> pubkey,
+      Value<int> boundAt,
+      Value<int> rowid,
+    });
+
+class $$RelayPairedOwnerEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $RelayPairedOwnerEntriesTable> {
+  $$RelayPairedOwnerEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get boundAt => $composableBuilder(
+    column: $table.boundAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RelayPairedOwnerEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RelayPairedOwnerEntriesTable> {
+  $$RelayPairedOwnerEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get boundAt => $composableBuilder(
+    column: $table.boundAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RelayPairedOwnerEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RelayPairedOwnerEntriesTable> {
+  $$RelayPairedOwnerEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get pubkey =>
+      $composableBuilder(column: $table.pubkey, builder: (column) => column);
+
+  GeneratedColumn<int> get boundAt =>
+      $composableBuilder(column: $table.boundAt, builder: (column) => column);
+}
+
+class $$RelayPairedOwnerEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RelayPairedOwnerEntriesTable,
+          RelayPairedOwnerEntry,
+          $$RelayPairedOwnerEntriesTableFilterComposer,
+          $$RelayPairedOwnerEntriesTableOrderingComposer,
+          $$RelayPairedOwnerEntriesTableAnnotationComposer,
+          $$RelayPairedOwnerEntriesTableCreateCompanionBuilder,
+          $$RelayPairedOwnerEntriesTableUpdateCompanionBuilder,
+          (
+            RelayPairedOwnerEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $RelayPairedOwnerEntriesTable,
+              RelayPairedOwnerEntry
+            >,
+          ),
+          RelayPairedOwnerEntry,
+          PrefetchHooks Function()
+        > {
+  $$RelayPairedOwnerEntriesTableTableManager(
+    _$AppDatabase db,
+    $RelayPairedOwnerEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RelayPairedOwnerEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RelayPairedOwnerEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RelayPairedOwnerEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> pubkey = const Value.absent(),
+                Value<int> boundAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RelayPairedOwnerEntriesCompanion(
+                pubkey: pubkey,
+                boundAt: boundAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String pubkey,
+                required int boundAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RelayPairedOwnerEntriesCompanion.insert(
+                pubkey: pubkey,
+                boundAt: boundAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RelayPairedOwnerEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RelayPairedOwnerEntriesTable,
+      RelayPairedOwnerEntry,
+      $$RelayPairedOwnerEntriesTableFilterComposer,
+      $$RelayPairedOwnerEntriesTableOrderingComposer,
+      $$RelayPairedOwnerEntriesTableAnnotationComposer,
+      $$RelayPairedOwnerEntriesTableCreateCompanionBuilder,
+      $$RelayPairedOwnerEntriesTableUpdateCompanionBuilder,
+      (
+        RelayPairedOwnerEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $RelayPairedOwnerEntriesTable,
+          RelayPairedOwnerEntry
+        >,
+      ),
+      RelayPairedOwnerEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$RelayPairingEntriesTableCreateCompanionBuilder =
+    RelayPairingEntriesCompanion Function({
+      required Uint8List token,
+      required int createdAt,
+      required int expiresAt,
+      Value<int?> consumedAt,
+      Value<int> rowid,
+    });
+typedef $$RelayPairingEntriesTableUpdateCompanionBuilder =
+    RelayPairingEntriesCompanion Function({
+      Value<Uint8List> token,
+      Value<int> createdAt,
+      Value<int> expiresAt,
+      Value<int?> consumedAt,
+      Value<int> rowid,
+    });
+
+class $$RelayPairingEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $RelayPairingEntriesTable> {
+  $$RelayPairingEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<Uint8List> get token => $composableBuilder(
+    column: $table.token,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get consumedAt => $composableBuilder(
+    column: $table.consumedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RelayPairingEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RelayPairingEntriesTable> {
+  $$RelayPairingEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<Uint8List> get token => $composableBuilder(
+    column: $table.token,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get consumedAt => $composableBuilder(
+    column: $table.consumedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RelayPairingEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RelayPairingEntriesTable> {
+  $$RelayPairingEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<Uint8List> get token =>
+      $composableBuilder(column: $table.token, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
+
+  GeneratedColumn<int> get consumedAt => $composableBuilder(
+    column: $table.consumedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$RelayPairingEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RelayPairingEntriesTable,
+          RelayPairingEntry,
+          $$RelayPairingEntriesTableFilterComposer,
+          $$RelayPairingEntriesTableOrderingComposer,
+          $$RelayPairingEntriesTableAnnotationComposer,
+          $$RelayPairingEntriesTableCreateCompanionBuilder,
+          $$RelayPairingEntriesTableUpdateCompanionBuilder,
+          (
+            RelayPairingEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $RelayPairingEntriesTable,
+              RelayPairingEntry
+            >,
+          ),
+          RelayPairingEntry,
+          PrefetchHooks Function()
+        > {
+  $$RelayPairingEntriesTableTableManager(
+    _$AppDatabase db,
+    $RelayPairingEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RelayPairingEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RelayPairingEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RelayPairingEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<Uint8List> token = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> expiresAt = const Value.absent(),
+                Value<int?> consumedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RelayPairingEntriesCompanion(
+                token: token,
+                createdAt: createdAt,
+                expiresAt: expiresAt,
+                consumedAt: consumedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required Uint8List token,
+                required int createdAt,
+                required int expiresAt,
+                Value<int?> consumedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RelayPairingEntriesCompanion.insert(
+                token: token,
+                createdAt: createdAt,
+                expiresAt: expiresAt,
+                consumedAt: consumedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RelayPairingEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RelayPairingEntriesTable,
+      RelayPairingEntry,
+      $$RelayPairingEntriesTableFilterComposer,
+      $$RelayPairingEntriesTableOrderingComposer,
+      $$RelayPairingEntriesTableAnnotationComposer,
+      $$RelayPairingEntriesTableCreateCompanionBuilder,
+      $$RelayPairingEntriesTableUpdateCompanionBuilder,
+      (
+        RelayPairingEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $RelayPairingEntriesTable,
+          RelayPairingEntry
+        >,
+      ),
+      RelayPairingEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$ServedEventEntriesTableCreateCompanionBuilder =
+    ServedEventEntriesCompanion Function({
+      required String id,
+      required String pubkey,
+      required int createdAt,
+      required int msgSeq,
+      required Uint8List nonce,
+      required Uint8List payload,
+      Value<int> rowid,
+    });
+typedef $$ServedEventEntriesTableUpdateCompanionBuilder =
+    ServedEventEntriesCompanion Function({
+      Value<String> id,
+      Value<String> pubkey,
+      Value<int> createdAt,
+      Value<int> msgSeq,
+      Value<Uint8List> nonce,
+      Value<Uint8List> payload,
+      Value<int> rowid,
+    });
+
+class $$ServedEventEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ServedEventEntriesTable> {
+  $$ServedEventEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get msgSeq => $composableBuilder(
+    column: $table.msgSeq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get nonce => $composableBuilder(
+    column: $table.nonce,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ServedEventEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ServedEventEntriesTable> {
+  $$ServedEventEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get msgSeq => $composableBuilder(
+    column: $table.msgSeq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get nonce => $composableBuilder(
+    column: $table.nonce,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ServedEventEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ServedEventEntriesTable> {
+  $$ServedEventEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get pubkey =>
+      $composableBuilder(column: $table.pubkey, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get msgSeq =>
+      $composableBuilder(column: $table.msgSeq, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get nonce =>
+      $composableBuilder(column: $table.nonce, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+}
+
+class $$ServedEventEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ServedEventEntriesTable,
+          ServedEventEntry,
+          $$ServedEventEntriesTableFilterComposer,
+          $$ServedEventEntriesTableOrderingComposer,
+          $$ServedEventEntriesTableAnnotationComposer,
+          $$ServedEventEntriesTableCreateCompanionBuilder,
+          $$ServedEventEntriesTableUpdateCompanionBuilder,
+          (
+            ServedEventEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $ServedEventEntriesTable,
+              ServedEventEntry
+            >,
+          ),
+          ServedEventEntry,
+          PrefetchHooks Function()
+        > {
+  $$ServedEventEntriesTableTableManager(
+    _$AppDatabase db,
+    $ServedEventEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ServedEventEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ServedEventEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ServedEventEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> pubkey = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> msgSeq = const Value.absent(),
+                Value<Uint8List> nonce = const Value.absent(),
+                Value<Uint8List> payload = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ServedEventEntriesCompanion(
+                id: id,
+                pubkey: pubkey,
+                createdAt: createdAt,
+                msgSeq: msgSeq,
+                nonce: nonce,
+                payload: payload,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String pubkey,
+                required int createdAt,
+                required int msgSeq,
+                required Uint8List nonce,
+                required Uint8List payload,
+                Value<int> rowid = const Value.absent(),
+              }) => ServedEventEntriesCompanion.insert(
+                id: id,
+                pubkey: pubkey,
+                createdAt: createdAt,
+                msgSeq: msgSeq,
+                nonce: nonce,
+                payload: payload,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ServedEventEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ServedEventEntriesTable,
+      ServedEventEntry,
+      $$ServedEventEntriesTableFilterComposer,
+      $$ServedEventEntriesTableOrderingComposer,
+      $$ServedEventEntriesTableAnnotationComposer,
+      $$ServedEventEntriesTableCreateCompanionBuilder,
+      $$ServedEventEntriesTableUpdateCompanionBuilder,
+      (
+        ServedEventEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $ServedEventEntriesTable,
+          ServedEventEntry
+        >,
+      ),
+      ServedEventEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$ServedMediaEntriesTableCreateCompanionBuilder =
+    ServedMediaEntriesCompanion Function({
+      required String hash,
+      required int size,
+      required int createdAt,
+      required String path,
+      Value<int> rowid,
+    });
+typedef $$ServedMediaEntriesTableUpdateCompanionBuilder =
+    ServedMediaEntriesCompanion Function({
+      Value<String> hash,
+      Value<int> size,
+      Value<int> createdAt,
+      Value<String> path,
+      Value<int> rowid,
+    });
+
+class $$ServedMediaEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ServedMediaEntriesTable> {
+  $$ServedMediaEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get hash => $composableBuilder(
+    column: $table.hash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ServedMediaEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ServedMediaEntriesTable> {
+  $$ServedMediaEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get hash => $composableBuilder(
+    column: $table.hash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ServedMediaEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ServedMediaEntriesTable> {
+  $$ServedMediaEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get hash =>
+      $composableBuilder(column: $table.hash, builder: (column) => column);
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+}
+
+class $$ServedMediaEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ServedMediaEntriesTable,
+          ServedMediaEntry,
+          $$ServedMediaEntriesTableFilterComposer,
+          $$ServedMediaEntriesTableOrderingComposer,
+          $$ServedMediaEntriesTableAnnotationComposer,
+          $$ServedMediaEntriesTableCreateCompanionBuilder,
+          $$ServedMediaEntriesTableUpdateCompanionBuilder,
+          (
+            ServedMediaEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $ServedMediaEntriesTable,
+              ServedMediaEntry
+            >,
+          ),
+          ServedMediaEntry,
+          PrefetchHooks Function()
+        > {
+  $$ServedMediaEntriesTableTableManager(
+    _$AppDatabase db,
+    $ServedMediaEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ServedMediaEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ServedMediaEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ServedMediaEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> hash = const Value.absent(),
+                Value<int> size = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ServedMediaEntriesCompanion(
+                hash: hash,
+                size: size,
+                createdAt: createdAt,
+                path: path,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String hash,
+                required int size,
+                required int createdAt,
+                required String path,
+                Value<int> rowid = const Value.absent(),
+              }) => ServedMediaEntriesCompanion.insert(
+                hash: hash,
+                size: size,
+                createdAt: createdAt,
+                path: path,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ServedMediaEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ServedMediaEntriesTable,
+      ServedMediaEntry,
+      $$ServedMediaEntriesTableFilterComposer,
+      $$ServedMediaEntriesTableOrderingComposer,
+      $$ServedMediaEntriesTableAnnotationComposer,
+      $$ServedMediaEntriesTableCreateCompanionBuilder,
+      $$ServedMediaEntriesTableUpdateCompanionBuilder,
+      (
+        ServedMediaEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $ServedMediaEntriesTable,
+          ServedMediaEntry
+        >,
+      ),
+      ServedMediaEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$ServedFollowRequestEntriesTableCreateCompanionBuilder =
+    ServedFollowRequestEntriesCompanion Function({
+      required String pubkey,
+      required Uint8List encryptedEndpoints,
+      required int createdAt,
+      Value<int> requestTimestamp,
+      Value<String> status,
+      Value<int> rowid,
+    });
+typedef $$ServedFollowRequestEntriesTableUpdateCompanionBuilder =
+    ServedFollowRequestEntriesCompanion Function({
+      Value<String> pubkey,
+      Value<Uint8List> encryptedEndpoints,
+      Value<int> createdAt,
+      Value<int> requestTimestamp,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+class $$ServedFollowRequestEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ServedFollowRequestEntriesTable> {
+  $$ServedFollowRequestEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get encryptedEndpoints => $composableBuilder(
+    column: $table.encryptedEndpoints,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get requestTimestamp => $composableBuilder(
+    column: $table.requestTimestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ServedFollowRequestEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ServedFollowRequestEntriesTable> {
+  $$ServedFollowRequestEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get encryptedEndpoints => $composableBuilder(
+    column: $table.encryptedEndpoints,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get requestTimestamp => $composableBuilder(
+    column: $table.requestTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ServedFollowRequestEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ServedFollowRequestEntriesTable> {
+  $$ServedFollowRequestEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get pubkey =>
+      $composableBuilder(column: $table.pubkey, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get encryptedEndpoints => $composableBuilder(
+    column: $table.encryptedEndpoints,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get requestTimestamp => $composableBuilder(
+    column: $table.requestTimestamp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$ServedFollowRequestEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ServedFollowRequestEntriesTable,
+          ServedFollowRequestEntry,
+          $$ServedFollowRequestEntriesTableFilterComposer,
+          $$ServedFollowRequestEntriesTableOrderingComposer,
+          $$ServedFollowRequestEntriesTableAnnotationComposer,
+          $$ServedFollowRequestEntriesTableCreateCompanionBuilder,
+          $$ServedFollowRequestEntriesTableUpdateCompanionBuilder,
+          (
+            ServedFollowRequestEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $ServedFollowRequestEntriesTable,
+              ServedFollowRequestEntry
+            >,
+          ),
+          ServedFollowRequestEntry,
+          PrefetchHooks Function()
+        > {
+  $$ServedFollowRequestEntriesTableTableManager(
+    _$AppDatabase db,
+    $ServedFollowRequestEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ServedFollowRequestEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ServedFollowRequestEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ServedFollowRequestEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> pubkey = const Value.absent(),
+                Value<Uint8List> encryptedEndpoints = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> requestTimestamp = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ServedFollowRequestEntriesCompanion(
+                pubkey: pubkey,
+                encryptedEndpoints: encryptedEndpoints,
+                createdAt: createdAt,
+                requestTimestamp: requestTimestamp,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String pubkey,
+                required Uint8List encryptedEndpoints,
+                required int createdAt,
+                Value<int> requestTimestamp = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ServedFollowRequestEntriesCompanion.insert(
+                pubkey: pubkey,
+                encryptedEndpoints: encryptedEndpoints,
+                createdAt: createdAt,
+                requestTimestamp: requestTimestamp,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ServedFollowRequestEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ServedFollowRequestEntriesTable,
+      ServedFollowRequestEntry,
+      $$ServedFollowRequestEntriesTableFilterComposer,
+      $$ServedFollowRequestEntriesTableOrderingComposer,
+      $$ServedFollowRequestEntriesTableAnnotationComposer,
+      $$ServedFollowRequestEntriesTableCreateCompanionBuilder,
+      $$ServedFollowRequestEntriesTableUpdateCompanionBuilder,
+      (
+        ServedFollowRequestEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $ServedFollowRequestEntriesTable,
+          ServedFollowRequestEntry
+        >,
+      ),
+      ServedFollowRequestEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$PairedRelayEntriesTableCreateCompanionBuilder =
+    PairedRelayEntriesCompanion Function({
+      required String relayId,
+      required String relayOnion,
+      required int pairedAt,
+      Value<int> relayBackfillComplete,
+      Value<int> rowid,
+    });
+typedef $$PairedRelayEntriesTableUpdateCompanionBuilder =
+    PairedRelayEntriesCompanion Function({
+      Value<String> relayId,
+      Value<String> relayOnion,
+      Value<int> pairedAt,
+      Value<int> relayBackfillComplete,
+      Value<int> rowid,
+    });
+
+class $$PairedRelayEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $PairedRelayEntriesTable> {
+  $$PairedRelayEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get relayId => $composableBuilder(
+    column: $table.relayId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relayOnion => $composableBuilder(
+    column: $table.relayOnion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pairedAt => $composableBuilder(
+    column: $table.pairedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get relayBackfillComplete => $composableBuilder(
+    column: $table.relayBackfillComplete,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PairedRelayEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PairedRelayEntriesTable> {
+  $$PairedRelayEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get relayId => $composableBuilder(
+    column: $table.relayId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relayOnion => $composableBuilder(
+    column: $table.relayOnion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pairedAt => $composableBuilder(
+    column: $table.pairedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get relayBackfillComplete => $composableBuilder(
+    column: $table.relayBackfillComplete,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PairedRelayEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PairedRelayEntriesTable> {
+  $$PairedRelayEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get relayId =>
+      $composableBuilder(column: $table.relayId, builder: (column) => column);
+
+  GeneratedColumn<String> get relayOnion => $composableBuilder(
+    column: $table.relayOnion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get pairedAt =>
+      $composableBuilder(column: $table.pairedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get relayBackfillComplete => $composableBuilder(
+    column: $table.relayBackfillComplete,
+    builder: (column) => column,
+  );
+}
+
+class $$PairedRelayEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PairedRelayEntriesTable,
+          PairedRelayEntry,
+          $$PairedRelayEntriesTableFilterComposer,
+          $$PairedRelayEntriesTableOrderingComposer,
+          $$PairedRelayEntriesTableAnnotationComposer,
+          $$PairedRelayEntriesTableCreateCompanionBuilder,
+          $$PairedRelayEntriesTableUpdateCompanionBuilder,
+          (
+            PairedRelayEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $PairedRelayEntriesTable,
+              PairedRelayEntry
+            >,
+          ),
+          PairedRelayEntry,
+          PrefetchHooks Function()
+        > {
+  $$PairedRelayEntriesTableTableManager(
+    _$AppDatabase db,
+    $PairedRelayEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PairedRelayEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PairedRelayEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PairedRelayEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> relayId = const Value.absent(),
+                Value<String> relayOnion = const Value.absent(),
+                Value<int> pairedAt = const Value.absent(),
+                Value<int> relayBackfillComplete = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PairedRelayEntriesCompanion(
+                relayId: relayId,
+                relayOnion: relayOnion,
+                pairedAt: pairedAt,
+                relayBackfillComplete: relayBackfillComplete,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String relayId,
+                required String relayOnion,
+                required int pairedAt,
+                Value<int> relayBackfillComplete = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PairedRelayEntriesCompanion.insert(
+                relayId: relayId,
+                relayOnion: relayOnion,
+                pairedAt: pairedAt,
+                relayBackfillComplete: relayBackfillComplete,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PairedRelayEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PairedRelayEntriesTable,
+      PairedRelayEntry,
+      $$PairedRelayEntriesTableFilterComposer,
+      $$PairedRelayEntriesTableOrderingComposer,
+      $$PairedRelayEntriesTableAnnotationComposer,
+      $$PairedRelayEntriesTableCreateCompanionBuilder,
+      $$PairedRelayEntriesTableUpdateCompanionBuilder,
+      (
+        PairedRelayEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $PairedRelayEntriesTable,
+          PairedRelayEntry
+        >,
+      ),
+      PairedRelayEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$PendingCardDistributionEntriesTableCreateCompanionBuilder =
+    PendingCardDistributionEntriesCompanion Function({
+      required String targetPubkey,
+      required Uint8List cardCbor,
+      required Uint8List sig,
+      required int createdAt,
+      Value<int> distributed,
+      Value<int> rowid,
+    });
+typedef $$PendingCardDistributionEntriesTableUpdateCompanionBuilder =
+    PendingCardDistributionEntriesCompanion Function({
+      Value<String> targetPubkey,
+      Value<Uint8List> cardCbor,
+      Value<Uint8List> sig,
+      Value<int> createdAt,
+      Value<int> distributed,
+      Value<int> rowid,
+    });
+
+class $$PendingCardDistributionEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingCardDistributionEntriesTable> {
+  $$PendingCardDistributionEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get targetPubkey => $composableBuilder(
+    column: $table.targetPubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get cardCbor => $composableBuilder(
+    column: $table.cardCbor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get sig => $composableBuilder(
+    column: $table.sig,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get distributed => $composableBuilder(
+    column: $table.distributed,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingCardDistributionEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingCardDistributionEntriesTable> {
+  $$PendingCardDistributionEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get targetPubkey => $composableBuilder(
+    column: $table.targetPubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get cardCbor => $composableBuilder(
+    column: $table.cardCbor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get sig => $composableBuilder(
+    column: $table.sig,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get distributed => $composableBuilder(
+    column: $table.distributed,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingCardDistributionEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingCardDistributionEntriesTable> {
+  $$PendingCardDistributionEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get targetPubkey => $composableBuilder(
+    column: $table.targetPubkey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<Uint8List> get cardCbor =>
+      $composableBuilder(column: $table.cardCbor, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get sig =>
+      $composableBuilder(column: $table.sig, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get distributed => $composableBuilder(
+    column: $table.distributed,
+    builder: (column) => column,
+  );
+}
+
+class $$PendingCardDistributionEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingCardDistributionEntriesTable,
+          PendingCardDistributionEntry,
+          $$PendingCardDistributionEntriesTableFilterComposer,
+          $$PendingCardDistributionEntriesTableOrderingComposer,
+          $$PendingCardDistributionEntriesTableAnnotationComposer,
+          $$PendingCardDistributionEntriesTableCreateCompanionBuilder,
+          $$PendingCardDistributionEntriesTableUpdateCompanionBuilder,
+          (
+            PendingCardDistributionEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingCardDistributionEntriesTable,
+              PendingCardDistributionEntry
+            >,
+          ),
+          PendingCardDistributionEntry,
+          PrefetchHooks Function()
+        > {
+  $$PendingCardDistributionEntriesTableTableManager(
+    _$AppDatabase db,
+    $PendingCardDistributionEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingCardDistributionEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PendingCardDistributionEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingCardDistributionEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> targetPubkey = const Value.absent(),
+                Value<Uint8List> cardCbor = const Value.absent(),
+                Value<Uint8List> sig = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> distributed = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingCardDistributionEntriesCompanion(
+                targetPubkey: targetPubkey,
+                cardCbor: cardCbor,
+                sig: sig,
+                createdAt: createdAt,
+                distributed: distributed,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String targetPubkey,
+                required Uint8List cardCbor,
+                required Uint8List sig,
+                required int createdAt,
+                Value<int> distributed = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingCardDistributionEntriesCompanion.insert(
+                targetPubkey: targetPubkey,
+                cardCbor: cardCbor,
+                sig: sig,
+                createdAt: createdAt,
+                distributed: distributed,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingCardDistributionEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingCardDistributionEntriesTable,
+      PendingCardDistributionEntry,
+      $$PendingCardDistributionEntriesTableFilterComposer,
+      $$PendingCardDistributionEntriesTableOrderingComposer,
+      $$PendingCardDistributionEntriesTableAnnotationComposer,
+      $$PendingCardDistributionEntriesTableCreateCompanionBuilder,
+      $$PendingCardDistributionEntriesTableUpdateCompanionBuilder,
+      (
+        PendingCardDistributionEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingCardDistributionEntriesTable,
+          PendingCardDistributionEntry
+        >,
+      ),
+      PendingCardDistributionEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7963,5 +11799,30 @@ class $AppDatabaseManager {
       $$PendingKeyDistributionEntriesTableTableManager(
         _db,
         _db.pendingKeyDistributionEntries,
+      );
+  $$RelayPairedOwnerEntriesTableTableManager get relayPairedOwnerEntries =>
+      $$RelayPairedOwnerEntriesTableTableManager(
+        _db,
+        _db.relayPairedOwnerEntries,
+      );
+  $$RelayPairingEntriesTableTableManager get relayPairingEntries =>
+      $$RelayPairingEntriesTableTableManager(_db, _db.relayPairingEntries);
+  $$ServedEventEntriesTableTableManager get servedEventEntries =>
+      $$ServedEventEntriesTableTableManager(_db, _db.servedEventEntries);
+  $$ServedMediaEntriesTableTableManager get servedMediaEntries =>
+      $$ServedMediaEntriesTableTableManager(_db, _db.servedMediaEntries);
+  $$ServedFollowRequestEntriesTableTableManager
+  get servedFollowRequestEntries =>
+      $$ServedFollowRequestEntriesTableTableManager(
+        _db,
+        _db.servedFollowRequestEntries,
+      );
+  $$PairedRelayEntriesTableTableManager get pairedRelayEntries =>
+      $$PairedRelayEntriesTableTableManager(_db, _db.pairedRelayEntries);
+  $$PendingCardDistributionEntriesTableTableManager
+  get pendingCardDistributionEntries =>
+      $$PendingCardDistributionEntriesTableTableManager(
+        _db,
+        _db.pendingCardDistributionEntries,
       );
 }

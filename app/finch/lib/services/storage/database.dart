@@ -13,6 +13,8 @@ import 'daos/identity_dao.dart';
 import 'daos/key_rotation_dao.dart';
 import 'daos/media_cache_dao.dart';
 import 'daos/outbound_queue_dao.dart';
+import 'daos/paired_relay_dao.dart';
+import 'daos/relay_dao.dart';
 import 'daos/unknown_items_dao.dart';
 import 'tables/events_table.dart';
 import 'tables/feed_key_history_table.dart';
@@ -23,7 +25,14 @@ import 'tables/inbound_follow_requests_table.dart';
 import 'tables/media_cache_table.dart';
 import 'tables/outbound_follow_requests_table.dart';
 import 'tables/outbound_queue_table.dart';
+import 'tables/paired_relay_table.dart';
+import 'tables/pending_card_distributions_table.dart';
 import 'tables/pending_key_distributions_table.dart';
+import 'tables/relay_paired_owner_table.dart';
+import 'tables/relay_pairing_table.dart';
+import 'tables/served_events_table.dart';
+import 'tables/served_follow_requests_table.dart';
+import 'tables/served_media_table.dart';
 import 'tables/unknown_envelope_items_table.dart';
 
 part 'database.g.dart';
@@ -41,6 +50,13 @@ part 'database.g.dart';
     FeedKeyHistoryEntries,
     FollowFeedKeyHistoryEntries,
     PendingKeyDistributionEntries,
+    RelayPairedOwnerEntries,
+    RelayPairingEntries,
+    ServedEventEntries,
+    ServedMediaEntries,
+    ServedFollowRequestEntries,
+    PairedRelayEntries,
+    PendingCardDistributionEntries,
   ],
   daos: [
     IdentityDao,
@@ -51,6 +67,8 @@ part 'database.g.dart';
     OutboundQueueDao,
     UnknownItemsDao,
     KeyRotationDao,
+    RelayDao,
+    PairedRelayDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -67,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -94,10 +112,37 @@ class AppDatabase extends _$AppDatabase {
             'ON pending_key_distribution_entries (target_pubkey) '
             'WHERE distributed = 0',
           );
+          await customStatement(
+            'CREATE INDEX idx_served_events_pubkey_created '
+            'ON served_event_entries (pubkey, created_at)',
+          );
+          await customStatement(
+            'CREATE INDEX idx_pending_card_distributions_undelivered '
+            'ON pending_card_distribution_entries (target_pubkey) '
+            'WHERE distributed = 0',
+          );
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(eventEntries, eventEntries.encryptedPayload);
+          }
+          if (from < 3) {
+            await m.createTable(relayPairedOwnerEntries);
+            await m.createTable(relayPairingEntries);
+            await m.createTable(servedEventEntries);
+            await m.createTable(servedMediaEntries);
+            await m.createTable(servedFollowRequestEntries);
+            await m.createTable(pairedRelayEntries);
+            await m.createTable(pendingCardDistributionEntries);
+            await customStatement(
+              'CREATE INDEX idx_served_events_pubkey_created '
+              'ON served_event_entries (pubkey, created_at)',
+            );
+            await customStatement(
+              'CREATE INDEX idx_pending_card_distributions_undelivered '
+              'ON pending_card_distribution_entries (target_pubkey) '
+              'WHERE distributed = 0',
+            );
           }
         },
       );
