@@ -8,13 +8,13 @@ Plan 06 (feed display), Plan 07 (HTTP server), Plan 08 (follow flow — follows 
 This is the convergence plan. Everything before it is building blocks. This is where two devices talk to each other and content flows. **First end-to-end test of the entire system.**
 
 ### mDNS service registration
-- Register `_finch._tcp` service via `multicast_dns` package
+- Register `_starling._tcp` service via `multicast_dns` package
 - TXT record includes: `pubkey={short_pubkey}`, `port={server_port}`
 - Register on app launch (after server starts)
 - Deregister on app terminate
 
 ### mDNS discovery
-- Scan for `_finch._tcp` services on the local network
+- Scan for `_starling._tcp` services on the local network
 - Build peer cache: `Map<String, LanPeer>` where key is pubkey, value is IP:port
 - Filter: only care about pubkeys in our follows list
 - Rescan on pull-to-refresh and periodically while app is open (every 30s)
@@ -78,7 +78,7 @@ Core orchestration logic, runs on app open and pull-to-refresh.
 5. Device A: create another post → Device B pull-to-refresh → new post appears
 
 **Additional checks:**
-- mDNS: `dns-sd -B _finch._tcp` on macOS shows registered services
+- mDNS: `dns-sd -B _starling._tcp` on macOS shows registered services
 - Manifest exchange: correct event IDs returned
 - Deduplication: re-syncing doesn't create duplicate events
 - Media lazy loading: photo loads when post scrolls into view

@@ -1,4 +1,4 @@
-# Finch
+# Starling
 
 ## A social feed for your real friends. No ads. No algorithm. No corporation.
 
@@ -12,16 +12,16 @@ The platforms know this. They don't care. Your attention is their product. Every
 
 The people who want out aren't looking for a better algorithm. They're looking for the thing social media replaced: a space with your actual friends where nobody else is watching. No audience. No performance. No strangers. No ads. No content optimized to make you feel bad about yourself so you keep scrolling.
 
-That space used to be your friend's living room. Finch is the digital version.
+That space used to be your friend's living room. Starling is the digital version.
 
 ### The product
 
-Finch is a private social feed shared with the people you choose. You post photos and captions. Your friends see them. That's it.
+Starling is a private social feed shared with the people you choose. You post photos and captions. Your friends see them. That's it.
 
 - **No algorithm.** Chronological feed. What your friends posted, in order.
-- **No ads.** Ever. Finch is free and will never charge money or sell data.
+- **No ads.** Ever. Starling is free and will never charge money or sell data.
 - **No strangers.** You add friends by scanning a QR code or tapping an invite link. There is no explore page, no suggested users, no way for anyone to find you unless you give them your link.
-- **No corporation.** Your posts live on your phone, not on a company's server. There is no Finch server. There is no company between you and your friends. When you share a photo, it goes from your phone to theirs. That's the whole path.
+- **No corporation.** Your posts live on your phone, not on a company's server. There is no Starling server. There is no company between you and your friends. When you share a photo, it goes from your phone to theirs. That's the whole path.
 - **No addictive design.** No infinite scroll. No push notifications begging you to come back. Posts arrive when your friends are around, not engineered to interrupt your day.
 
 ### How it works
@@ -30,11 +30,11 @@ You install the app. It generates a cryptographic identity on your phone (you ne
 
 To add a friend, you share an invite link or scan a QR code. When they accept, you exchange encryption keys — again, invisible to you. Now you can see each other's posts. Everything is encrypted end-to-end. Not because of a privacy policy that can change, but because of math that can't.
 
-Your phone runs a tiny server in the background. When a friend opens Finch, their phone talks directly to yours (over your local WiFi if you're nearby, or over the internet via Tor if you're not). They pull your latest posts, decrypt them, and see them in their feed. No middleman. No server. No company storing your photos.
+Your phone runs a tiny server in the background. When a friend opens Starling, their phone talks directly to yours (over your local WiFi if you're nearby, or over the internet via Tor if you're not). They pull your latest posts, decrypt them, and see them in their feed. No middleman. No server. No company storing your photos.
 
 ### What it feels like
 
-You open Finch a few times a day. You see what your friends posted. Maybe you leave a comment or a reaction. You post a photo from your day. Then you close it.
+You open Starling a few times a day. You see what your friends posted. Maybe you leave a comment or a reaction. You post a photo from your day. Then you close it.
 
 There's no feed that refreshes forever. No recommended content. No notification pulling you back in. It's calm. It's small. It's yours.
 
@@ -46,9 +46,9 @@ Sometimes a post takes a few minutes to show up because your friend's phone was 
 
 **BeReal** was supposed to be the anti-Instagram. It peaked at 73 million users, crashed, and started running ads in 2025. That's the lifecycle of every VC-funded "we're different" social app. They need to make money eventually, and the only way to make money on social media is to sell attention.
 
-**Favs** is the closest to what Finch is trying to be — private, friends-only, no algorithm. It's good. But it's a centralized service backed by venture capital. Your data lives on their servers. Their privacy promise is a policy document, not an architectural guarantee. One acquisition and your "private" posts belong to whoever bought the company.
+**Favs** is the closest to what Starling is trying to be — private, friends-only, no algorithm. It's good. But it's a centralized service backed by venture capital. Your data lives on their servers. Their privacy promise is a policy document, not an architectural guarantee. One acquisition and your "private" posts belong to whoever bought the company.
 
-Finch can't decay this way because there's nothing to acquire. There are no servers to sell. No data to monetize. No company to buy. The app is the entire product, and it runs on your phone.
+Starling can't decay this way because there's nothing to acquire. There are no servers to sell. No data to monetize. No company to buy. The app is the entire product, and it runs on your phone.
 
 ### Why now
 
@@ -62,17 +62,17 @@ Three things are converging:
 
 ### The bigger picture
 
-Finch is the first step in a larger vision: making self-hosting normal.
+Starling is the first step in a larger vision: making self-hosting normal.
 
 Today, every meaningful digital interaction goes through a corporation's server. Your photos, your messages, your email, your payments — all stored on hardware you don't control, governed by terms you didn't read, subject to changes you can't prevent.
 
 It doesn't have to be this way. The technology to own your own digital life exists. It's just been too hard to use.
 
-Finch starts with the simplest possible case: a social feed that runs on your phone. No server to set up. No configuration. It just works. But if you want more availability — say, your posts to be reachable even when your phone is off — you can install Finch on an old phone and turn it into your personal server. One QR scan, one toggle. Now your content is available 24/7, running on hardware in your house.
+Starling starts with the simplest possible case: a social feed that runs on your phone. No server to set up. No configuration. It just works. But if you want more availability — say, your posts to be reachable even when your phone is off — you can install Starling on an old phone and turn it into your personal server. One QR scan, one toggle. Now your content is available 24/7, running on hardware in your house.
 
 That's the first step. Once someone has a device running their social feed, adding messaging is natural. Then media storage. Then more. Each step is optional. Each step gives the user more control over their digital life. And none of it requires trusting a corporation.
 
-The identity, encryption, and networking stack that Finch builds is the foundation for all of it.
+The identity, encryption, and networking stack that Starling builds is the foundation for all of it.
 
 ### What we're building
 
@@ -93,19 +93,19 @@ The identity, encryption, and networking stack that Finch builds is the foundati
 
 ### Who this is for
 
-Finch is for anyone who wants a quieter, more private way to share with their friends. But it's especially for:
+Starling is for anyone who wants a quieter, more private way to share with their friends. But it's especially for:
 
 - **People who are done with algorithmic social media** and want a private space that doesn't exploit them
 - **Friend groups** who want a shared feed without the noise of a platform
 - **Anyone who's ever thought** "I wish I could share this with just my actual friends, not the entire internet"
 
-It's not for people who want to go viral, build a following, or consume content from strangers. There's no path to that in Finch, by design.
+It's not for people who want to go viral, build a following, or consume content from strangers. There's no path to that in Starling, by design.
 
 ### The trade-offs (honest version)
 
-Finch is slower than Instagram. Posts don't appear instantly — they appear when your phone and your friend's phone are both awake. Sometimes that's seconds. Sometimes it's hours. If you want real-time delivery, a spare-device relay solves that, but the phone-only experience is intentionally async.
+Starling is slower than Instagram. Posts don't appear instantly — they appear when your phone and your friend's phone are both awake. Sometimes that's seconds. Sometimes it's hours. If you want real-time delivery, a spare-device relay solves that, but the phone-only experience is intentionally async.
 
-There are no push notifications. Nobody buzzes your phone to pull you back in. You check Finch when you want to, not when it tells you to.
+There are no push notifications. Nobody buzzes your phone to pull you back in. You check Starling when you want to, not when it tells you to.
 
 If you lose your phone and didn't save your recovery phrase, your identity is gone. There is no "forgot password" because there is no server that knows who you are.
 

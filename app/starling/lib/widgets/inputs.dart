@@ -1,0 +1,126 @@
+import 'package:flutter/material.dart';
+
+import '../theme/starling_theme.dart';
+
+class StarlingInput extends StatelessWidget {
+  const StarlingInput({
+    super.key,
+    this.controller,
+    this.placeholder,
+    this.onChanged,
+    this.onSubmitted,
+    this.focusNode,
+    this.autofocus = false,
+    this.textInputAction,
+    this.style,
+    this.padding,
+  });
+
+  final TextEditingController? controller;
+  final String? placeholder;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final TextInputAction? textInputAction;
+  final TextStyle? style;
+  final EdgeInsets? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final starling = StarlingTheme.of(context);
+    final textStyle = style ?? starling.typography.body;
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      textInputAction: textInputAction,
+      cursorColor: starling.colors.sage,
+      style: textStyle,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: starling.colors.paper,
+        hintText: placeholder,
+        hintStyle: textStyle.copyWith(color: starling.colors.stone),
+        contentPadding: padding ??
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: starling.colors.hairline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: starling.colors.sage, width: 2),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: starling.colors.hairline),
+        ),
+      ),
+    );
+  }
+}
+
+class StarlingTextarea extends StatelessWidget {
+  const StarlingTextarea({
+    super.key,
+    this.controller,
+    this.placeholder,
+    this.onChanged,
+    this.minLines = 4,
+    this.maxLines = 8,
+  });
+
+  final TextEditingController? controller;
+  final String? placeholder;
+  final ValueChanged<String>? onChanged;
+  final int minLines;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final starling = StarlingTheme.of(context);
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      minLines: minLines,
+      maxLines: maxLines,
+      cursorColor: starling.colors.sage,
+      style: starling.typography.body,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: starling.colors.paper,
+        hintText: placeholder,
+        hintStyle: starling.typography.body.copyWith(color: starling.colors.stone),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: starling.colors.hairline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: starling.colors.sage, width: 2),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: starling.colors.hairline),
+        ),
+      ),
+    );
+  }
+}
+
+class StarlingFieldLabel extends StatelessWidget {
+  const StarlingFieldLabel(this.text, {super.key});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final starling = StarlingTheme.of(context);
+    return Text(text, style: starling.typography.label);
+  }
+}

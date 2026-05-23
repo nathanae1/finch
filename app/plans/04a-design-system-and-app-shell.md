@@ -14,7 +14,7 @@ Ship three typefaces, matching the Claude Design handoff:
 - **IBM Plex Sans** (variable) — UI face. All body copy, labels, buttons, inputs.
 - **IBM Plex Mono** — technical strings. Recovery phrase words, truncated pubkeys, invite-link display.
 
-**Packaging**: ship TTFs in `app/finch/assets/fonts/` and declare them in `pubspec.yaml`. Do not pull from Google Fonts at runtime — the app must work offline on first launch and must not leak a font-CDN request on startup.
+**Packaging**: ship TTFs in `app/starling/assets/fonts/` and declare them in `pubspec.yaml`. Do not pull from Google Fonts at runtime — the app must work offline on first launch and must not leak a font-CDN request on startup.
 
 **Font files to ship** (from the design handoff):
 - `Fraunces-VariableFont_SOFT_WONK_opsz_wght.ttf`
@@ -60,7 +60,7 @@ Warm, paper-based palette — explicitly never blue-gray. Define as a Flutter `T
 Single light theme for v1. No dark mode for MVP — add later if demanded. The Claude Design tweaks panel lets designers preview clay/sage/rust/copper accent swaps; the app ships with clay only. Do not wire accent swapping into user-facing settings.
 
 ### Spacing, radii, type scale
-Publish all tokens on the `FinchTheme` extension. Type scale values (px at logical density): display 48, h1 32, h2 24, h3 20, body 16, small 14, caption 13, micro 12. Radii: 8, 12, 16, `9999` (full). Spacing 8pt grid: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.
+Publish all tokens on the `StarlingTheme` extension. Type scale values (px at logical density): display 48, h1 32, h2 24, h3 20, body 16, small 14, caption 13, micro 12. Radii: 8, 12, 16, `9999` (full). Spacing 8pt grid: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.
 
 ### Icon library
 Use `phosphor_flutter` (the Phosphor icon set). Every icon in the mockup resolves to a `ph-*` name; Phosphor's Dart port provides the same set with identical names. Install:
@@ -69,14 +69,14 @@ Use `phosphor_flutter` (the Phosphor icon set). Every icon in the mockup resolve
 phosphor_flutter: ^2.0.0
 ```
 
-Wrap it in a shared `FinchIcon` widget so call sites don't import Phosphor directly — that gives us a choke point to swap icon sets later without touching every screen.
+Wrap it in a shared `StarlingIcon` widget so call sites don't import Phosphor directly — that gives us a choke point to swap icon sets later without touching every screen.
 
 **Rationale**: the design was built in Phosphor and the visual weight is specific to that set. Flutter's built-in Material/Cupertino icons don't match — shipping them would mean repainting every icon weight and stroke by hand. Ship the real library.
 
 ### Shared components
 Build these first; every subsequent plan consumes them.
 
-- **`FinchIcon`** — thin wrapper around `phosphor_flutter`. Props: `name`, `size`, `color`, `weight` (Regular / Bold / Fill). Default weight is Regular.
+- **`StarlingIcon`** — thin wrapper around `phosphor_flutter`. Props: `name`, `size`, `color`, `weight` (Regular / Bold / Fill). Default weight is Regular.
 - **`Avatar`** — circle with initial fallback or image source. Sizes: xs (20), sm (28), md (36), lg (72), xl (96). Accepts `name`, `color` (background if no image), `imageProvider`. Font is Fraunces display at size/2.6 matching the design.
 - **`TopBar`** — optional left slot, centered-or-left title in Fraunces, optional right slot, optional subtitle row. Used by every screen that has a header (Setup, Recovery, Settings, Post detail, Friends, etc.). Feed and Profile deliberately do not use `TopBar` — they have custom in-screen headers per Plan 06.
 - **`TabBar`** (bottom) — four tabs: **Feed** (house icon), **Friends** (users-three), **Post** (plus-circle), **You** (user). Active tab shows brand color and semi-bold label. "Post" is special: tapping it does not switch tabs — it pushes the Compose screen as a full-screen modal (see App shell below).
@@ -88,7 +88,7 @@ Build these first; every subsequent plan consumes them.
 - **`QRCode`** — deterministic QR rendering. Props: `data` (string), `size` (px), foreground/background colors. For v1, use a Dart QR generator (e.g. `qr` package) rather than the design's fake-grid component — we need real scannable codes, not a visual stand-in. Wrap in a fixed-size paper card with `shadowSoft`.
 - **`SyncDot`** — small (8px) colored dot with optional pulse animation. Used by the feed's sync/search bar (Plan 06). Four states: synced (success), syncing (sage, pulsing), waiting (clay), offline (stone).
 
-**Naming**: all components live under `lib/widgets/` and share the `Finch` prefix only where needed to avoid clashing with Flutter built-ins (e.g. `FinchIcon`). Prefer unprefixed names (`Avatar`, `Sheet`, `TopBar`) when there's no clash.
+**Naming**: all components live under `lib/widgets/` and share the `Starling` prefix only where needed to avoid clashing with Flutter built-ins (e.g. `StarlingIcon`). Prefer unprefixed names (`Avatar`, `Sheet`, `TopBar`) when there's no clash.
 
 ### App shell
 The shell is a single `ShellRoute` in `go_router` that renders:
@@ -104,22 +104,22 @@ Each tab owns its own `Navigator` stack so pushing Settings from Profile doesn't
 **Identity gate**: shell mount checks `identityProvider`. If identity is missing, redirect to `/onboarding/welcome`. This is the one piece of Plan 04 that Plan 04a has to know about.
 
 ### Flutter theme wiring
-Wire tokens into `ThemeData` for default text styles, button themes, and input decoration. But: the design's shapes don't map cleanly to Material defaults (e.g. buttons are 10px radius not 4, inputs are 12px radius with a specific focus halo). Rather than fight Material, ship `FinchTheme` as a `ThemeExtension` and write custom widgets that read from it. Material defaults remain as a fallback for any third-party widget that ignores our extension.
+Wire tokens into `ThemeData` for default text styles, button themes, and input decoration. But: the design's shapes don't map cleanly to Material defaults (e.g. buttons are 10px radius not 4, inputs are 12px radius with a specific focus halo). Rather than fight Material, ship `StarlingTheme` as a `ThemeExtension` and write custom widgets that read from it. Material defaults remain as a fallback for any third-party widget that ignores our extension.
 
 ### Riverpod
-- `finchThemeProvider` — exposes the `FinchTheme` extension for non-widget consumers (e.g. computing a hex string for QR foreground).
+- `starlingThemeProvider` — exposes the `StarlingTheme` extension for non-widget consumers (e.g. computing a hex string for QR foreground).
 - No dynamic theme-swap plumbing. Single light theme.
 
 ## Files created/modified
 - `pubspec.yaml` (add `phosphor_flutter`, `qr`)
 - `pubspec.yaml` (register font assets under `flutter.fonts`)
-- `app/finch/assets/fonts/` — ship the 6 TTFs listed above
-- `lib/theme/finch_theme.dart` — `ThemeExtension` carrying every token
-- `lib/theme/finch_colors.dart` — raw color constants
-- `lib/theme/finch_typography.dart` — `TextStyle` presets (display, h1, h2, h3, body, small, caption, micro, mono, quote)
-- `lib/theme/finch_spacing.dart` — spacing + radii tokens
-- `lib/theme/finch_motion.dart` — curves and durations
-- `lib/widgets/finch_icon.dart`
+- `app/starling/assets/fonts/` — ship the 6 TTFs listed above
+- `lib/theme/starling_theme.dart` — `ThemeExtension` carrying every token
+- `lib/theme/starling_colors.dart` — raw color constants
+- `lib/theme/starling_typography.dart` — `TextStyle` presets (display, h1, h2, h3, body, small, caption, micro, mono, quote)
+- `lib/theme/starling_spacing.dart` — spacing + radii tokens
+- `lib/theme/starling_motion.dart` — curves and durations
+- `lib/widgets/starling_icon.dart`
 - `lib/widgets/avatar.dart`
 - `lib/widgets/top_bar.dart`
 - `lib/widgets/tab_bar.dart`
@@ -131,12 +131,12 @@ Wire tokens into `ThemeData` for default text styles, button themes, and input d
 - `lib/shell/app_shell.dart` — `ShellRoute` scaffold
 - `lib/shell/tab_nav.dart` — per-tab navigator stacks
 - `lib/router.dart` (update from Plan 04: register `ShellRoute`, Compose modal route, onboarding routes)
-- `lib/main.dart` (update: wire `FinchTheme` into `MaterialApp.theme`)
+- `lib/main.dart` (update: wire `StarlingTheme` into `MaterialApp.theme`)
 - `test/widgets/` — golden tests for each shared component
 - `test/shell/app_shell_test.dart` — tab-switching, identity-gate redirect, Compose modal behavior
 
 ## Verification
-- Every token defined in the mockup CSS (`colors_and_type.css`) has a corresponding Dart token on `FinchTheme`
+- Every token defined in the mockup CSS (`colors_and_type.css`) has a corresponding Dart token on `StarlingTheme`
 - Fraunces renders correctly for display text on both platforms (italic variant works for the Welcome "real" accent)
 - IBM Plex Sans renders in Roman + Italic; weights 100–700 are reachable via variable axis
 - IBM Plex Mono renders Regular + Medium
@@ -146,7 +146,7 @@ Wire tokens into `ThemeData` for default text styles, button themes, and input d
 - Shell: tapping the current tab a second time pops its stack to root
 - Shell: no identity → redirects to `/onboarding/welcome`
 - `Sheet` animates in at ~280ms, scrim fades, content is scrollable if it overflows
-- `QRCode` produces a scannable QR for a sample `finch://connect?card=...` payload (scan with another phone)
+- `QRCode` produces a scannable QR for a sample `starling://connect?card=...` payload (scan with another phone)
 - `Avatar` renders image source if provided, otherwise initial over background color
 - Buttons: primary/secondary/ghost/icon all match the design's padding, radius, and hover/pressed states
 - Input focus state shows sage border + sage-soft 3px outer glow
@@ -155,13 +155,13 @@ Wire tokens into `ThemeData` for default text styles, button themes, and input d
 ## Key decisions
 - **Ship fonts, don't fetch them.** The app is supposed to work offline and leak no network requests on first launch. Google Fonts at runtime violates that.
 - **`phosphor_flutter` over hand-rolled icons.** The design's visual weight is Phosphor-specific. Repainting Material icons to match would cost far more than the ~400KB the package adds.
-- **Tokens via `ThemeExtension`, not Material theming.** Material's button/input theming is shaped around its own geometry. Finch's shapes (10/12/14px radii, specific hover/pressed colors, custom focus halo) don't fit cleanly; fighting Material produces subtly-wrong output. Custom widgets reading from an extension is the simpler path.
+- **Tokens via `ThemeExtension`, not Material theming.** Material's button/input theming is shaped around its own geometry. Starling's shapes (10/12/14px radii, specific hover/pressed colors, custom focus halo) don't fit cleanly; fighting Material produces subtly-wrong output. Custom widgets reading from an extension is the simpler path.
 - **"Post" tab opens a modal, not a navigator.** Posting is an event, not a place — modal framing matches the mental model and avoids an empty "Compose tab" state.
 - **Single light theme.** Dark mode is not in the design and would double the design surface. Defer.
 - **No accent-color toggle in Settings.** The mockup exposes clay/sage/rust/copper as a designer-only tweak, not a user feature. Ship clay.
 
 ## Risks
 - **Font size.** The six TTFs add ~2–3MB to the app bundle. Acceptable, but worth confirming against platform size budgets (iOS "over-the-air" 200MB cellular cap, Android APK size).
-- **Phosphor package maintenance.** If `phosphor_flutter` falls behind the upstream icon set, we might miss new icons. Mitigation: our `FinchIcon` wrapper isolates the choke point.
+- **Phosphor package maintenance.** If `phosphor_flutter` falls behind the upstream icon set, we might miss new icons. Mitigation: our `StarlingIcon` wrapper isolates the choke point.
 - **Per-tab navigator state.** `go_router`'s `StatefulShellRoute` handles this correctly but has edge cases around deep links. Test deep links into non-active tabs explicitly.
 - **QR encoding capacity.** Base64url-encoded connection cards can exceed low-density QR capacity if endpoints list is large. The `qr` package supports dynamic sizing — verify the worst-case card (pubkey + .onion + relay .onion + capabilities) stays within scannable density.

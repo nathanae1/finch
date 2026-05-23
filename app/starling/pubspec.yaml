@@ -1,0 +1,135 @@
+name: starling
+description: A private, peer-to-peer social feed.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0-0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
+
+  # Serialization
+  cbor: ^6.5.1
+
+  # HTTP server (Plan 07)
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+
+  # WebSocket signaling (Plan 16)
+  shelf_web_socket: ^3.0.0
+  web_socket_channel: ^3.0.1
+
+  # Database (Plan 02). drift 2.32+ uses sqlite3 3.x with sqlite3mc as the
+  # encryption backend (selected via `hooks: user_defines` below). The legacy
+  # sqlcipher_flutter_libs package is retired.
+  drift: ^2.32.1
+
+  # QR rendering (Plan 04 / 08). Scanning is a bespoke AVFoundation/CameraX
+  # platform channel (Plan 08) — no mobile_scanner, no ML Kit, no Google deps.
+  qr_flutter: ^4.1.0
+
+  # Navigation (Plan 04 / 04a)
+  go_router: ^17.2.2
+
+  # Icon library (Plan 04a). Lucide is the maintained, Flutter 3.44+
+  # compatible replacement for the abandoned phosphor_flutter (which
+  # extended IconData, now sealed in newer Flutter).
+  lucide_icons_flutter: ^3.1.13
+
+  # mDNS (Plan 09): bespoke platform channel via NWListener/NWBrowser on
+  # iOS and NsdManager on Android. See `lib/services/mdns_service.dart`
+  # and the platform-specific `MdnsPlugin.{swift,kt}`. No Dart-side mDNS
+  # package — `multicast_dns` is resolver-only and would still need
+  # native code to advertise.
+
+  # HTTP client for the follow handshake (Plan 08) and LAN sync (Plan 09)
+  http: ^1.2.2
+
+  # Deep linking — starling://connect?card=... (Plan 08)
+  app_links: ^7.0.0
+
+  # Image processing (Plan 05)
+  image: ^4.5.2
+
+  # Photo capture + gallery picking (Plan 05). Uses UIImagePickerController on
+  # iOS and PhotoPicker/ACTION_PICK on Android — no Google Play Services / ML
+  # Kit dependency (unlike mobile_scanner, which is why QR scanning is bespoke).
+  image_picker: ^1.2.2
+
+  # Crypto (Plan 03) — libsodium via native asset build hooks
+  sodium: ^4.0.2
+
+  # Secure storage (Plan 02/03)
+  flutter_secure_storage: ^10.0.0
+
+  # File paths
+  path_provider: ^2.1.5
+
+  # Sharing exported data via the OS share sheet (Plan 12). Capped at ^12 so
+  # win32 stays compatible with flutter_secure_storage_windows ^4 (mobile-only
+  # app, but the pub solver still evaluates Windows transitives).
+  share_plus: ^12.0.2
+
+  # Native FFI for Plan 11 (Arti / Tor bridge — see native/arti_bridge/)
+  ffi: ^2.1.0
+
+  # Background sync (Plan 14). On Android `workmanager` wraps AndroidX
+  # WorkManager (no Google Play Services dep); `flutter_foreground_task`
+  # owns the opt-in foreground service that keeps the HTTP server + Tor
+  # alive in background. iOS uses BGTaskScheduler directly via native
+  # AppDelegate code — no Dart package needed for that path.
+  workmanager: ^0.5.2
+  flutter_foreground_task: ^9.1.0
+
+  # Utilities
+  collection: ^1.19.1
+  path: ^1.9.1
+  sqlite3: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^4.0.0
+  build_runner: ^2.15.0
+  drift_dev: ^2.32.1
+  # TODO: re-add riverpod_lint and custom_lint once the custom_lint family
+  # publishes versions compatible with analyzer ^10 (drift_dev 2.32 requires it).
+  # As of 2026-05-01: custom_lint 0.8.1 caps at analyzer ^8, blocking the upgrade.
+
+# sqlite3 native asset hook — select the SQLite3MultipleCiphers build so the
+# bundled library supports `PRAGMA key = "x'<hex>'"` for at-rest encryption.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/bip39_english.txt
+
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-VariableFont_SOFT_WONK_opsz_wght.ttf
+        - asset: assets/fonts/Fraunces-Italic-VariableFont_SOFT_WONK_opsz_wght.ttf
+          style: italic
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fonts/IBMPlexSansVar-Roman.ttf
+        - asset: assets/fonts/IBMPlexSansVar-Italic.ttf
+          style: italic
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500

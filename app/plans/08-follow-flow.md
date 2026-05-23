@@ -8,9 +8,9 @@ Plan 03 (crypto — key exchange), Plan 04 (identity — connection card), Plan 
 The complete follow lifecycle: discover → request → accept → connected. Plus the Friends tab as a primary destination in the app shell.
 
 ### QR code scanning
-Finch ships its own native QR scanner on both platforms. **No `mobile_scanner`, no Google ML Kit, no Google Play Services dependency.** Two independent reasons:
+Starling ships its own native QR scanner on both platforms. **No `mobile_scanner`, no Google ML Kit, no Google Play Services dependency.** Two independent reasons:
 
-1. **Product/privacy**: Google ML Kit on Android pulls in Google Play Services, which means Google gets a signal every time Finch is installed and has a runtime dep on Google's stack. For a product positioned as "no servers, no corporations, you own everything," that's a tonal mismatch — we shouldn't need Google to turn on the camera.
+1. **Product/privacy**: Google ML Kit on Android pulls in Google Play Services, which means Google gets a signal every time Starling is installed and has a runtime dep on Google's stack. For a product positioned as "no servers, no corporations, you own everything," that's a tonal mismatch — we shouldn't need Google to turn on the camera.
 2. **Developer experience**: Google ML Kit's iOS pods don't ship arm64-simulator slices. On Apple Silicon Macs running native arm64 iOS simulators, any project that imports `mobile_scanner` fails to install — the whole simulator dev loop for QR-related flows is gated behind running the sim under Rosetta. That's a non-starter for iteration.
 
 QR decoding is a solved, built-in capability on both platforms. We don't need the heavyweight barcode detector.
@@ -39,14 +39,14 @@ A single `QrScannerChannel` method-channel-backed service:
 - `Future<void> stop()` — tears down the capture session
 - Errors: `permission-denied`, `camera-unavailable`, `cancelled`
 
-The Flutter widget (`QrScannerView`) wraps `UiKitView` / `AndroidView` and subscribes to the stream. The widget handles UI (reticle overlay, "Point at a Finch QR" copy, paste-invite-link fallback button per Plan 08's earlier spec); the platform channel just wraps the native detector.
+The Flutter widget (`QrScannerView`) wraps `UiKitView` / `AndroidView` and subscribes to the stream. The widget handles UI (reticle overlay, "Point at a Starling QR" copy, paste-invite-link fallback button per Plan 08's earlier spec); the platform channel just wraps the native detector.
 
 **Payload handling**
-Parse scanned data: extract `finch://connect?card={base64url}` URL. Decode base64url → JSON → `ConnectionCard` model. Validate: pubkey present, at least one endpoint. Invalid payloads surface an error in the confirm sheet, not a crash.
+Parse scanned data: extract `starling://connect?card={base64url}` URL. Decode base64url → JSON → `ConnectionCard` model. Validate: pubkey present, at least one endpoint. Invalid payloads surface an error in the confirm sheet, not a crash.
 
 ### Deep link handling
-- Register `finch://` custom URL scheme on both platforms
-- `finch://connect?card={base64url}` → parse connection card → initiate follow
+- Register `starling://` custom URL scheme on both platforms
+- `starling://connect?card={base64url}` → parse connection card → initiate follow
 - Use `app_links` package for cross-platform deep link handling
 - iOS: Info.plist URL scheme registration
 - Android: AndroidManifest.xml intent filter
@@ -97,7 +97,7 @@ The Friends tab renders `FriendsScreen`, which is the friends list itself — no
 
 - **Header**: `TopBar` with title "Friends" and a right-slot `+` `IconButton` that opens `QrInviteSheet` (see below). No back button — this is a tab root.
 - **"Add a friend" card** pinned at top of the scroll view: linen background, hairline border, radius 14, with a qr-code icon in a sage-soft rounded tile on the left, "Add a friend" / "Scan their QR, or share yours." on the center, and a **PrimaryButton** "Open" on the right. Tapping the card or the button opens `QrInviteSheet`.
-- **Section header**: a `finch-micro` "N friends" label below the card.
+- **Section header**: a `starling-micro` "N friends" label below the card.
 - **Friend rows**: one per follow, separated by hairline borders. Each row:
   - `Avatar md` (36) with the friend's color
   - Display name in 15 ink
@@ -110,8 +110,8 @@ The Friends tab renders `FriendsScreen`, which is the friends list itself — no
 Full-screen camera view, pushed as a modal over the Friends tab (or from the Restore / onboarding flows if needed). Not a sheet — we need the whole viewport for the camera preview.
 
 - Uses `mobile_scanner` for the camera feed
-- Overlay: a centered square reticle with a hairline border, dimmed surround, and small "Point at a Finch QR" copy
-- A **GhostButton** "Paste invite link" at the bottom falls back to `finch://connect?card=...` text entry if the camera is denied or the user prefers pasting
+- Overlay: a centered square reticle with a hairline border, dimmed surround, and small "Point at a Starling QR" copy
+- A **GhostButton** "Paste invite link" at the bottom falls back to `starling://connect?card=...` text entry if the camera is denied or the user prefers pasting
 - On successful parse: dismisses scan, advances to a confirm sheet showing the requester's pubkey (short form) and a "Send follow request" primary action
 
 ### QR invite sheet
@@ -120,7 +120,7 @@ Moved from "full-screen QR page" to a bottom-sheet modal. Uses the shared `Sheet
 - **Headline**: "Scan to add me as a friend" in Fraunces 22/500, centered
 - **Sub**: "Share this with people you trust. There's no way for strangers to find you." in 13 graphite
 - **QR card**: the rendered connection-card QR inside a paper card with hairline border, radius 14, `shadowSoft`. Size ~180px. Built on the `QRCode` component from Plan 04a.
-- **Mono link line**: truncated `finch://connect?card=eyJwdWJrZXkiOiJ4NGs…` in IBM Plex Mono 11/stone, word-break break-all
+- **Mono link line**: truncated `starling://connect?card=eyJwdWJrZXkiOiJ4NGs…` in IBM Plex Mono 11/stone, word-break break-all
 - **Actions row**: **SecondaryButton** "Copy link" (flash to "Copied" for ~1.4s on tap) + **PrimaryButton** "Done" (closes the sheet)
 
 Opened from:
@@ -160,8 +160,8 @@ Opened from:
 - `ios/Runner/QrScannerPlugin.swift` — Swift platform channel: `AVCaptureSession` + `AVCaptureMetadataOutput` + `AVCaptureVideoPreviewLayer`
 - `ios/Runner/AppDelegate.swift` (update: register the plugin with the engine)
 - `ios/Runner/Info.plist` (update: URL scheme **and** `NSCameraUsageDescription`)
-- `android/app/src/main/kotlin/dev/finch/app/QrScannerPlugin.kt` — CameraX + ZXing analyzer
-- `android/app/src/main/kotlin/dev/finch/app/MainActivity.kt` (update: register the plugin)
+- `android/app/src/main/kotlin/dev/starling/app/QrScannerPlugin.kt` — CameraX + ZXing analyzer
+- `android/app/src/main/kotlin/dev/starling/app/MainActivity.kt` (update: register the plugin)
 - `android/app/src/main/AndroidManifest.xml` (update: intent filter + `android.permission.CAMERA`)
 - `android/app/build.gradle` (update: add `androidx.camera:*` + `com.google.zxing:core` deps)
 - `test/services/follow_service_test.dart` — full handshake with two mock identities
@@ -187,7 +187,7 @@ Opened from:
 - Invalid QR code → error message in the confirm sheet, not a crash
 
 ## Key decisions
-- Custom URL scheme (`finch://`) for MVP. Universal Links / App Links can be added later for `https://finch.link/connect` URLs.
+- Custom URL scheme (`starling://`) for MVP. Universal Links / App Links can be added later for `https://starling.link/connect` URLs.
 - Follow-accept is pushed to the requester's endpoint, which requires the requester to be running their HTTP server. If requester is offline, queue the accept and retry later (add to outbound_queue).
 - Mutual follows require both sides to initiate independently. Following someone doesn't automatically follow you back.
 - **Friends tab is a list-first screen, not a request-manager.** Pending requests surface as banners in-context. This keeps the happy-path (viewing your friends) dominant and demotes the admin-path (managing requests) to an inline concern.

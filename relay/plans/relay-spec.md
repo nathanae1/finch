@@ -2,15 +2,15 @@
 
 The relay is an optional, zero-knowledge service that makes your encrypted content available 24/7. It stores only its owner's data and serves it to their followers. It never fetches, proxies, or aggregates content from other users.
 
-The relay is **not required**. Finch works phone-to-phone. The relay is the first step up the self-hosting gradient — it solves the availability problem (your content is reachable even when your phone is off) without requiring any technical knowledge in its simplest form.
+The relay is **not required**. Starling works phone-to-phone. The relay is the first step up the self-hosting gradient — it solves the availability problem (your content is reachable even when your phone is off) without requiring any technical knowledge in its simplest form.
 
 ## Two Deployment Modes
 
 ### 1. Spare Device Mode (zero setup)
 
-Install Finch on any spare device (old phone, old tablet), pair with your main device, flip a toggle. It becomes your always-on relay.
+Install Starling on any spare device (old phone, old tablet), pair with your main device, flip a toggle. It becomes your always-on relay.
 
-- Runs the same on-device HTTP server + Tor onion service already built into the Finch app
+- Runs the same on-device HTTP server + Tor onion service already built into the Starling app
 - Reachable via `.onion` address — no port forwarding, no domain, no DNS
 - Leave on WiFi, plugged in
 - Uses the device's storage (typically 64-128GB+)
@@ -18,7 +18,7 @@ Install Finch on any spare device (old phone, old tablet), pair with your main d
 
 **Pairing flow:**
 1. Main phone: Settings > "Set Up Relay" > shows QR code with owner pubkey + auth token
-2. Spare device: install Finch > "Run as Relay" > scan QR
+2. Spare device: install Starling > "Run as Relay" > scan QR
 3. Spare device receives owner pubkey, starts Tor onion service, reports `.onion` address back to main phone
 4. Main phone updates its connection card to include the relay endpoint
 5. Main phone begins pushing encrypted content to the relay
@@ -26,10 +26,10 @@ Install Finch on any spare device (old phone, old tablet), pair with your main d
 **What the relay device shows:**
 - Minimal dashboard: storage used/available, last push received, connection status, onion address
 - No feed, no content creation, no follow management — just relay status
-- Option to stop relay mode and convert back to a normal Finch device
+- Option to stop relay mode and convert back to a normal Starling device
 
 **Resource management:**
-- Android: foreground service with persistent notification ("Finch Relay active") — reliable
+- Android: foreground service with persistent notification ("Starling Relay active") — reliable
 - iOS: limited by background execution rules — Android strongly preferred for relay duty
 - Storage limit configurable (defaults to 50% of available space)
 
@@ -43,13 +43,13 @@ For self-hosters: a headless Rust binary that runs on a Raspberry Pi, NAS, VPS, 
 ## Design Principles
 
 - **Zero-knowledge**: Stores encrypted blobs it cannot decrypt. Sees only metadata (pubkey, timestamps, sizes).
-- **Single-user**: Each relay serves exactly one Finch identity. No multi-tenancy.
+- **Single-user**: Each relay serves exactly one Starling identity. No multi-tenancy.
 - **Push-only ingest**: Only the owner can write. Followers can only read.
 - **Stateless auth**: Requests authenticated via Ed25519 signatures — no sessions, no tokens.
 
 ## API
 
-Implements the Finch sync protocol endpoints:
+Implements the Starling sync protocol endpoints:
 
 ### Public (no auth required)
 
@@ -73,8 +73,8 @@ Implements the Finch sync protocol endpoints:
 
 Owner-only endpoints require:
 ```
-X-Finch-Sig: base64(Ed25519.sign(owner_key, blake2b_256(request_body)))
-X-Finch-Pubkey: base64(owner_pubkey)
+X-Starling-Sig: base64(Ed25519.sign(owner_key, blake2b_256(request_body)))
+X-Starling-Pubkey: base64(owner_pubkey)
 ```
 
 The relay verifies the pubkey matches its configured owner.
@@ -122,7 +122,7 @@ CREATE TABLE follow_requests (
 
 ## Configuration (Standalone Server)
 
-Single config file (`finch-relay.toml`):
+Single config file (`starling-relay.toml`):
 
 ```toml
 # The owner's public key
@@ -133,14 +133,14 @@ listen_addr = "0.0.0.0"
 listen_port = 8443
 
 # TLS (optional -- not needed if using Tor-only)
-tls_cert = "/etc/finch/cert.pem"
-tls_key = "/etc/finch/key.pem"
+tls_cert = "/etc/starling/cert.pem"
+tls_key = "/etc/starling/key.pem"
 
 # Tor (optional -- enable for .onion reachability)
 tor_enabled = true
 
 # Storage
-data_dir = "/var/lib/finch"
+data_dir = "/var/lib/starling"
 max_storage_bytes = 5368709120  # 5GB
 
 # Rate limiting
@@ -157,15 +157,15 @@ COPY . .
 RUN cargo build --release
 
 FROM alpine:latest
-COPY --from=builder /src/target/release/finch-relay /usr/local/bin/
+COPY --from=builder /src/target/release/starling-relay /usr/local/bin/
 EXPOSE 8443
-ENTRYPOINT ["finch-relay"]
+ENTRYPOINT ["starling-relay"]
 ```
 
 ### Fly.io
 - `fly.toml` included in repo
 - `fly launch` > picks region, provisions volume, deploys
-- Persistent volume for `/var/lib/finch`
+- Persistent volume for `/var/lib/starling`
 
 ### Raspberry Pi
 - Pre-built ARM64 binary

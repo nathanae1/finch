@@ -4,14 +4,14 @@
 
 | Term                | Definition                                                                                     | Aliases to avoid                       |
 | ------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------- |
-| **Identity**        | An Ed25519 keypair generated on device that represents a person in Finch.                      | Account, user, login                   |
+| **Identity**        | An Ed25519 keypair generated on device that represents a person in Starling.                      | Account, user, login                   |
 | **Pubkey**          | The public half of an Identity; the addressable name of a person in the network.               | User ID, handle, username              |
 | **Profile**         | Display name, bio, and avatar for an Identity, stored as a signed kind=2 Event.                | User info, bio data                    |
 | **Recovery phrase** | A 24-word BIP-39 mnemonic that re-derives an Identity keypair.                                 | Seed phrase, mnemonic, backup phrase   |
 | **Friend**          | Someone you follow in the UI — the user-facing word for a Follow.                              | Contact, buddy                         |
 | **Follow**          | The stored relationship that grants you a peer's Feed key and connection endpoints.            | Subscription, connection               |
 | **Follower**        | Someone who follows your Identity; holds your current Feed key.                                | Subscriber                             |
-| **Peer**            | Any Finch device reachable by your device — not necessarily a Friend.                          | Node, host                             |
+| **Peer**            | Any Starling device reachable by your device — not necessarily a Friend.                          | Node, host                             |
 
 ## Content & events
 
@@ -54,7 +54,7 @@
 | **Sync window**        | The 30-day lookback that bounds automatic syncing; older content is only pulled via Backfill.                  | Retention window (reserved — see Retention)     |
 | **Outbound queue**     | Local queue of signed Events destined for a specific target Pubkey on next Sync.                               | Pending events, outbox                          |
 | **Connection card**    | `{ pubkey, endpoints, capabilities }` encoded as JSON→base64url and carried in QR codes and Invite links.      | Card, contact, business card                    |
-| **Invite link**        | A `finch://connect?card={base64url}` URL that embeds a Connection card.                                        | Share link, follow link                         |
+| **Invite link**        | A `starling://connect?card={base64url}` URL that embeds a Connection card.                                        | Share link, follow link                         |
 | **Follow request**    | A `POST /follow-request` containing an encrypted Connection card from a would-be Follower.                     | Add request, friend request                     |
 | **Follow accept**     | The Owner's reply that sends an encrypted Feed key back to the requesting Pubkey.                              | Approval, acceptance                            |
 
@@ -62,10 +62,10 @@
 
 | Term                     | Definition                                                                                                | Aliases to avoid                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| **On-device server**     | The shelf HTTP server running inside the Finch app that serves its Owner's Events and Media.              | Local server, embedded server, node server     |
+| **On-device server**     | The shelf HTTP server running inside the Starling app that serves its Owner's Events and Media.              | Local server, embedded server, node server     |
 | **Onion service**        | An Arti-managed Tor hidden service whose `.onion` address appears in the Connection card.                 | Hidden service, Tor service                    |
 | **Relay**                | An optional zero-knowledge service that stores and serves its single Owner's encrypted content 24/7.      | Server, backend, host                          |
-| **Spare-device relay**   | A Relay hosted by a second Finch install on an old phone or tablet; paired via QR.                        | Phone relay, paired device                     |
+| **Spare-device relay**   | A Relay hosted by a second Starling install on an old phone or tablet; paired via QR.                        | Phone relay, paired device                     |
 | **Standalone relay**     | The headless Rust binary Relay intended for Raspberry Pi, VPS, NAS, etc.                                  | Server relay, self-hosted relay                |
 | **LAN tier**             | mDNS-discovered peers on the same Wi-Fi — the fastest, zero-config Sync path.                             | Local network                                  |
 | **Tor tier**             | WAN-reachability path via Arti and Onion services; used when LAN and Relay are unavailable.               | Onion path                                     |

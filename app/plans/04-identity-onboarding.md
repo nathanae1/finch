@@ -44,7 +44,7 @@ Steps:
 2. On submit: derive seed → Ed25519 keypair → X25519 conversion → write identity row (with `feed_key_epoch=0`, since the recovery phrase does not carry the current epoch — the user restarts from epoch 0 and learns new epochs via follow-accept pushes). Persist secret key to keychain.
 3. Navigate to empty feed.
 
-**What restore does not do**: follows are not recovered (connection cards live only on the original device), and prior posts are not recovered from anywhere (the network has no authoritative copy by design). The user starts with an empty feed and has to re-add friends. A small informational banner on the first post-restore feed render sets this expectation clearly: "Welcome back. Re-add your friends to see their posts — Finch only stores content on your phone, so there's nothing to restore from the network."
+**What restore does not do**: follows are not recovered (connection cards live only on the original device), and prior posts are not recovered from anywhere (the network has no authoritative copy by design). The user starts with an empty feed and has to re-add friends. A small informational banner on the first post-restore feed render sets this expectation clearly: "Welcome back. Re-add your friends to see their posts — Starling only stores content on your phone, so there's nothing to restore from the network."
 
 ### Profile as event
 - Profile data stored as a kind=2 event: `{ name, bio, avatar_hash }`
@@ -57,7 +57,7 @@ Steps:
 - Capabilities defaults to `["pairwise-v1"]` for v1 clients; future capabilities added as they ship
 - Serialized as JSON, base64url-encoded
 - QR code rendered by the shared `QRCode` component from Plan 04a (not `qr_flutter` — see Plan 04a for rationale). The sharing UI itself is a bottom-sheet modal defined in Plan 08 (`QrInviteSheet`).
-- Invite link format: `finch://connect?card={base64url}`
+- Invite link format: `starling://connect?card={base64url}`
 
 ### App launch routing
 - On launch: check if identity exists in DB
@@ -122,7 +122,7 @@ and wiring pieces that require a real identity. This plan picks them up:
 - Recovery phrase: write down phrase, re-derive keypair from phrase — matches stored keypair
 - Profile event: kind=2 event in events table, correctly signed and encrypted
 - Connection card: QR code scannable, contains valid base64url-encoded JSON with pubkey
-- Invite link: valid `finch://connect?card=...` URL
+- Invite link: valid `starling://connect?card=...` URL
 - Re-launch: onboarding skipped, goes directly to the Feed tab
 - Avatar: picked image compressed to ≤256x256, stored as encrypted media
 - Restore: entering the 24 words from a fresh-install identity on a second instance produces matching keypair, writes identity row, lands on empty feed

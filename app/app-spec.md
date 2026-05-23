@@ -1,6 +1,6 @@
 # Mobile App
 
-The Flutter app is the core of Finch. It's the client, the server, the key manager, and the identity — all in one. Every user interaction, crypto operation, and network connection happens here.
+The Flutter app is the core of Starling. It's the client, the server, the key manager, and the identity — all in one. Every user interaction, crypto operation, and network connection happens here.
 
 **Target audience**: People who want a private social space with their real friends — no algorithm, no ads, no strangers, no corporation reading their messages. They don't care about cryptography. They care about having a space that isn't designed to exploit them.
 
@@ -77,7 +77,7 @@ Abstract `CryptoService` interface. Default implementation wraps libsodium via F
 **Nonces:** All nonces are random (24 bytes from a CSPRNG). Never derived from content. This avoids nonce reuse if the same content is posted twice.
 
 **Key exchange:**
-- `derive_shared_key(my_x25519, their_x25519) -> symmetric_key` — X25519 DH + libsodium `crypto_kdf` (BLAKE2b-based) with context `"finchkex"` and info = `requester_pubkey || responder_pubkey || timestamp`
+- `derive_shared_key(my_x25519, their_x25519) -> symmetric_key` — X25519 DH + libsodium `crypto_kdf` (BLAKE2b-based) with context `"starlingkex"` and info = `requester_pubkey || responder_pubkey || timestamp`
 - `encrypt_feed_key(feed_key, shared_key) -> encrypted_feed_key`
 - `decrypt_feed_key(encrypted_feed_key, shared_key) -> feed_key`
 
@@ -99,10 +99,10 @@ A lightweight HTTP server running inside the app. Serves your own content to pee
 - Listens on a random high port
 
 **LAN exposure:**
-- Registers via mDNS/Bonjour with service type `_finch._tcp`
-- Other Finch apps on the same network discover it automatically
+- Registers via mDNS/Bonjour with service type `_starling._tcp`
+- Other Starling apps on the same network discover it automatically
 - Direct HTTP connection — content is already E2E encrypted
-- Note: mDNS announcement reveals the device is running Finch, and HTTP metadata (request paths, timing) is visible to LAN observers. Accepted trade-off for LAN simplicity.
+- Note: mDNS announcement reveals the device is running Starling, and HTTP metadata (request paths, timing) is visible to LAN observers. Accepted trade-off for LAN simplicity.
 
 **Tor exposure:**
 - Embeds Arti (Rust Tor client) via FFI

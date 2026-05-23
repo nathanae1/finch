@@ -35,7 +35,7 @@ Audit and harden the storage layer. Verify encryption is actually working. Imple
 - Used by retention to keep recently-viewed content alive past the 30-day window
 
 ### Storage management UI (Settings)
-- Total storage used by Finch
+- Total storage used by Starling
 - Breakdown: own content vs cached content
 - Cache size display (media from others)
 - "Clear cache" button: deletes all non-own media files and media_cache entries. Events from others are kept (they're small).

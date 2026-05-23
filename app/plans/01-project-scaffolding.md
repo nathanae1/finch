@@ -8,7 +8,7 @@ None (first plan)
 Bootstrap the Flutter project with the foundational structure everything else builds on.
 
 ### Project setup
-- `flutter create` inside `app/` with package name `dev.finch.app`
+- `flutter create` inside `app/` with package name `dev.starling.app`
 - Minimum SDK: iOS 26+, Android API 26+
 - Directory structure:
   ```
@@ -74,7 +74,7 @@ Declare all Phase 1 deps even if unused yet:
 - `riverpod_lint` for provider correctness
 
 ## Files created
-- `app/finch/` — Flutter project root
+- `app/starling/` — Flutter project root
 - `lib/services/crypto_service.dart` — narrow crypto primitives interface
 - `lib/services/content_key_service.dart` — feed key management, audience resolution, encryption-for-recipients
 - `lib/services/storage_service.dart`
@@ -114,7 +114,7 @@ Declare all Phase 1 deps even if unused yet:
 - Clock injectable: MockClock produces deterministic timestamps in tests
 
 ## Key decisions
-- Package name `dev.finch.app` — affects keychain access group, deep link scheme, mDNS service name
+- Package name `dev.starling.app` — affects keychain access group, deep link scheme, mDNS service name
 - iOS 26+ / Android API 26+ — modern crypto and keychain APIs
 - All service interfaces are abstract classes, not mixins or extension types
 - CryptoService is narrow (primitives only). Group key management (feed keys, ratchet, audience) lives in ContentKeyService, which uses CryptoService. This keeps crypto primitives stable forever and puts volatile group-messaging design in a layer that can have multiple implementations (pairwise today, MLS later).

@@ -1,13 +1,13 @@
-# Plan 15: Desktop Finch as Relay Mode
+# Plan 15: Desktop Starling as Relay Mode
 
 ## Dependencies
 Plan 07 (HTTP server), Plan 11 (Tor / Arti), Plan 13 (out-of-band key-distribution pattern), Plan 14 (lifecycle manager).
 
-Replaces the abandoned spare-phone relay. Spare-phone Relay isn't reliable in practice — OEM kills (Xiaomi, Samsung, Huawei, OPPO, Vivo), Doze + App Standby budgets, no iOS analog, and flaky Wi-Fi roaming make a phone-based 24/7 server fragile. The Owner runs a **desktop Flutter build** of Finch (macOS first, then Linux/Windows) on hardware they actually leave on. Standalone Rust binary is Plan 15c. Settings polish is Plan 15b.
+Replaces the abandoned spare-phone relay. Spare-phone Relay isn't reliable in practice — OEM kills (Xiaomi, Samsung, Huawei, OPPO, Vivo), Doze + App Standby budgets, no iOS analog, and flaky Wi-Fi roaming make a phone-based 24/7 server fragile. The Owner runs a **desktop Flutter build** of Starling (macOS first, then Linux/Windows) on hardware they actually leave on. Standalone Rust binary is Plan 15c. Settings polish is Plan 15b.
 
 ## Scope
 
-Ship a desktop build of the existing Flutter app that boots into **Relay mode** instead of social UI. The Relay is the same `lib/` codebase: same `FinchHttpServer`, same Arti onion service, same drift-on-SQLCipher storage, same Ed25519 sign/verify. What changes is the boot path, three new endpoints, a small set of new tables, and a minimal dashboard.
+Ship a desktop build of the existing Flutter app that boots into **Relay mode** instead of social UI. The Relay is the same `lib/` codebase: same `StarlingHttpServer`, same Arti onion service, same drift-on-SQLCipher storage, same Ed25519 sign/verify. What changes is the boot path, three new endpoints, a small set of new tables, and a minimal dashboard.
 
 The Owner's phone gets a pairing entry point and a `relay`-typed `Endpoint` added to its own Connection card, distributed to existing Followers via a `connection_card_update` field piggybacked on `/manifest` — mirroring Plan 13's Feed-key distribution.
 
@@ -15,8 +15,8 @@ The Owner's phone gets a pairing entry point and a `relay`-typed `Endpoint` adde
 
 Single `main.dart` entry. After bindings + storage init, read `app_mode` from `KeychainManager`:
 
-- `null` on desktop → one-shot **Mode picker** ("Run as Finch" vs "Run as Relay"); mobile defaults to `social`
-- `"social"` → existing `FinchApp` shell, unchanged
+- `null` on desktop → one-shot **Mode picker** ("Run as Starling" vs "Run as Relay"); mobile defaults to `social`
+- `"social"` → existing `StarlingApp` shell, unchanged
 - `"relay"` → new `RelayApp` shell
 
 Both modes share the binary, dependencies, and most services. Only the router and the HTTP server's mounted handlers diverge.
@@ -27,12 +27,12 @@ Both modes share the binary, dependencies, and most services. Only the router an
 
 1. Generate a 32-byte `pairing_token`. Persist in `relay_pairing` (`token`, `created_at`, `expires_at = created_at + 600`, `consumed_at NULL`)
 2. Bring up Arti onion service via existing `ArtiTorService`
-3. Render `finch-relay://pair?card={base64url(CBOR{relay_onion, pairing_token, relay_version})}` using `FinchQRCode`
+3. Render `starling-relay://pair?card={base64url(CBOR{relay_onion, pairing_token, relay_version})}` using `StarlingQRCode`
 4. Show plaintext onion + 8-char token suffix as fallback
 
 **Phone scan (extending `lib/screens/friends/scan_screen.dart` and `connection_card_parser.dart`):**
 
-1. Build `claim = blake2b_256("finch-relay-pair-v1" || owner_pubkey || relay_onion || pairing_token)`
+1. Build `claim = blake2b_256("starling-relay-pair-v1" || owner_pubkey || relay_onion || pairing_token)`
 2. Sign with Owner's Ed25519 secret key (`SodiumCryptoService.sign`)
 3. POST to `http://<relay_onion>:80/pair` over Tor: CBOR `{ owner_pubkey, pairing_token, sig }`
 
@@ -48,7 +48,7 @@ Replay protection: single-use token, 10-minute TTL, bound into the signed claim 
 
 ### State after pairing
 
-**Relay side:** singleton `relay_paired_owner(pubkey, bound_at)`. All write endpoints check `X-Finch-Pubkey` against this row.
+**Relay side:** singleton `relay_paired_owner(pubkey, bound_at)`. All write endpoints check `X-Starling-Pubkey` against this row.
 
 **Phone side:** new `paired_relay(relay_id, relay_onion, paired_at)` row. Append `Endpoint(type: 'relay', address: '<relay_onion>')` to the Owner's Connection card (no schema change — `connection_card.dart` already supports `"relay"`).
 
@@ -60,7 +60,7 @@ Implement `pushEvents()` / `pushMedia()` in `lan_network_service.dart:249-263` (
 
 ```
 pushEvents → POST {baseUrl}/events, body = CBOR(Envelope([EnvelopeItem('event', enc_event)])),
-             headers {X-Finch-Sig: base64(Ed25519.sign(owner_sk, blake2b_256(body))), X-Finch-Pubkey}
+             headers {X-Starling-Sig: base64(Ed25519.sign(owner_sk, blake2b_256(body))), X-Starling-Pubkey}
 pushMedia  → POST {baseUrl}/media/{hash}, body = encrypted blob, same auth headers
 ```
 
@@ -91,7 +91,7 @@ Ordering means LAN > Relay (fast, always up) > direct onion (slow, may be off).
 
 ### Relay HTTP server
 
-`FinchHttpServer` gains `mode: RelayMode | SocialMode`. Relay mode mounts:
+`StarlingHttpServer` gains `mode: RelayMode | SocialMode`. Relay mode mounts:
 
 | Endpoint | Handler | Auth | Notes |
 |---|---|---|---|
@@ -104,7 +104,7 @@ Ordering means LAN > Relay (fast, always up) > direct onion (slow, may be off).
 | `POST /follow-request` | reuse `follow_request_handler.dart` | none | Relay queues for Owner pickup on next sync |
 | `POST /pair` | new `relay_pair_handler.dart` | token + sig | see Pairing handshake |
 
-New middleware `lib/server/middleware/owner_signature_middleware.dart` — reads `X-Finch-Pubkey` + `X-Finch-Sig`, computes `blake2b_256(body)`, verifies via `SodiumCryptoService.verify`, checks pubkey == `relay_paired_owner.pubkey`. 401 on bad sig, 403 on pubkey mismatch.
+New middleware `lib/server/middleware/owner_signature_middleware.dart` — reads `X-Starling-Pubkey` + `X-Starling-Sig`, computes `blake2b_256(body)`, verifies via `SodiumCryptoService.verify`, checks pubkey == `relay_paired_owner.pubkey`. 401 on bad sig, 403 on pubkey mismatch.
 
 Existing `rate_limit.dart` middleware applies to all routes; bump Relay default to 360/min for backfill.
 
@@ -127,8 +127,8 @@ Retention: retain forever up to a configurable disk cap (default 50% of free spa
 Two screens in `lib/relay/screens/`.
 
 **`relay_pairing_screen.dart` (pre-pair):**
-- `FinchQRCode` rendering `finch-relay://pair?card=…`
-- Plaintext onion + 8-char token suffix fallback (reuse `widgets/finch_address_row.dart`)
+- `StarlingQRCode` rendering `starling-relay://pair?card=…`
+- Plaintext onion + 8-char token suffix fallback (reuse `widgets/starling_address_row.dart`)
 - Auto-refresh QR when token expires; manual refresh
 - Status line flips to dashboard on `/pair` success via Riverpod stream
 
@@ -151,10 +151,10 @@ Two screens in `lib/relay/screens/`.
 ## Files created/modified
 
 **Shared (mode-aware):**
-- `lib/main.dart` — read `app_mode`, route to `RelayApp` or `FinchApp`
+- `lib/main.dart` — read `app_mode`, route to `RelayApp` or `StarlingApp`
 - `lib/server/http_server.dart` — `mode` arg, conditional router build
 - `lib/services/storage/database.dart` — register new tables
-- `lib/utils/connection_card_parser.dart` — recognize `finch-relay://pair`
+- `lib/utils/connection_card_parser.dart` — recognize `starling-relay://pair`
 
 **Relay-side (new):**
 - `lib/relay/relay_app.dart`
@@ -176,7 +176,7 @@ Two screens in `lib/relay/screens/`.
 - `lib/services/storage/daos/relay_dao.dart`
 
 **Phone-side (modify or new):**
-- `lib/services/lan_network_service.dart` — implement `pushEvents()` / `pushMedia()` with `X-Finch-Sig`
+- `lib/services/lan_network_service.dart` — implement `pushEvents()` / `pushMedia()` with `X-Starling-Sig`
 - `lib/services/post_fanout_service.dart` — fan out to `paired_relay` alongside Followers
 - `lib/services/relay_pairing_initiator.dart` — phone-side `/pair` POST
 - `lib/services/storage/tables/paired_relay_table.dart`
@@ -184,7 +184,7 @@ Two screens in `lib/relay/screens/`.
 - `lib/server/handlers/manifest_handler.dart` — attach `connection_card_update`
 - `lib/sync/peer_reachability_monitor.dart` — add `PeerTransport.relay` to `_priority`, `_candidateUrl`, `_init`
 - `lib/sync/outbound_drain.dart` — handle relay-targeted queue rows
-- `lib/screens/friends/scan_screen.dart` — branch on `finch-relay://pair`
+- `lib/screens/friends/scan_screen.dart` — branch on `starling-relay://pair`
 - `lib/screens/settings/network_settings_screen.dart` — minimal "Set up a relay" entry (full polish in Plan 15b)
 - `lib/providers/paired_relay_provider.dart`
 
@@ -220,15 +220,15 @@ Two screens in `lib/relay/screens/`.
 10. Tap "Unpair" on Relay. Confirms wipe.
 
 **Auth invariants (unit / integration):**
-- POST `/events` without `X-Finch-Sig` → 401
+- POST `/events` without `X-Starling-Sig` → 401
 - POST `/events` with a non-Owner sig → 403
 - POST `/pair` after successful pair → 409 (token consumed)
 - POST `/pair` after token expiry → 410
 - `relay_events_push_handler` never imports `ContentKeyService` (compile-time enforced)
 
 **Test commands:**
-- `cd app/finch && flutter test test/server test/services test/integration`
-- `cd app/finch && flutter test integration_test/relay_pairing_flow_test.dart` (run against `flutter test -d macos` and a connected Android device, or two emulators)
+- `cd app/starling && flutter test test/server test/services test/integration`
+- `cd app/starling && flutter test integration_test/relay_pairing_flow_test.dart` (run against `flutter test -d macos` and a connected Android device, or two emulators)
 
 ## Key decisions
 

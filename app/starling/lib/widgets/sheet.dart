@@ -1,0 +1,81 @@
+import 'package:flutter/material.dart';
+
+import '../theme/starling_theme.dart';
+
+Future<T?> showStarlingSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool isScrollControlled = true,
+  bool isDismissible = true,
+}) {
+  final starling = StarlingTheme.of(context);
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: isScrollControlled,
+    isDismissible: isDismissible,
+    backgroundColor: Colors.transparent,
+    barrierColor: starling.colors.shadowInk.withValues(alpha: 0.35),
+    transitionAnimationController: AnimationController(
+      vsync: Navigator.of(context),
+      duration: const Duration(milliseconds: 280),
+    ),
+    builder: (ctx) => StarlingSheet(child: Builder(builder: builder)),
+  );
+}
+
+class StarlingSheet extends StatelessWidget {
+  const StarlingSheet({
+    super.key,
+    required this.child,
+    this.maxHeightFactor = 0.85,
+  });
+
+  final Widget child;
+  final double maxHeightFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    final starling = StarlingTheme.of(context);
+    final media = MediaQuery.of(context);
+    return Padding(
+      padding: EdgeInsets.only(top: media.padding.top),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: media.size.height * maxHeightFactor,
+        ),
+        decoration: BoxDecoration(
+          color: starling.colors.paper,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: starling.colors.shadowInk.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 8, bottom: 4),
+              decoration: BoxDecoration(
+                color: starling.colors.hairline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+                child: SingleChildScrollView(child: child),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

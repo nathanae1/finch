@@ -22,7 +22,7 @@ Keep content flowing when the app isn't in the foreground. Platform-specific bac
 - `flutter_foreground_task` package
 - User toggle in Settings: "Keep server running in background"
 - When enabled:
-  - Persistent notification: "Finch is running" (minimal, non-alarming)
+  - Persistent notification: "Starling is running" (minimal, non-alarming)
   - HTTP server stays alive
   - Tor stays bootstrapped and onion service remains reachable
   - Device acts as a near-relay (always reachable by friends)

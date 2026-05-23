@@ -1,6 +1,6 @@
 # Protocol Specification
 
-The protocol is the contract between all Finch components. It defines how events are structured, encrypted, signed, synced, and versioned. Both the app and relay implement this spec.
+The protocol is the contract between all Starling components. It defines how events are structured, encrypted, signed, synced, and versioned. Both the app and relay implement this spec.
 
 ## Event Format
 
@@ -92,7 +92,7 @@ Identity Key (Ed25519 keypair)
 - Feed key is shared with each follower individually:
   1. Convert both parties' Ed25519 keys to X25519
   2. Perform X25519 Diffie-Hellman to derive shared secret
-  3. `crypto_kdf_derive_from_key(subkey_len=32, subkey_id=1, ctx="finchkex", key=shared_secret)` using libsodium's BLAKE2b-based KDF, with `info = requester_pubkey || responder_pubkey || timestamp` to ensure unique keys per exchange
+  3. `crypto_kdf_derive_from_key(subkey_len=32, subkey_id=1, ctx="starlingkex", key=shared_secret)` using libsodium's BLAKE2b-based KDF, with `info = requester_pubkey || responder_pubkey || timestamp` to ensure unique keys per exchange
   4. Encrypt feed key with derived key, send to follower
 - On follower removal: generate new feed key, re-encrypt for all remaining followers, distribute on next sync
 
@@ -102,10 +102,10 @@ Feed keys advance forward using a hash ratchet to provide forward secrecy for ne
 
 ```
 epoch_key_0 = random 256-bit key (generated at identity creation)
-epoch_key_1 = BLAKE2b-256(epoch_key_0 || "finch-ratchet-v1")
-epoch_key_2 = BLAKE2b-256(epoch_key_1 || "finch-ratchet-v1")
+epoch_key_1 = BLAKE2b-256(epoch_key_0 || "starling-ratchet-v1")
+epoch_key_2 = BLAKE2b-256(epoch_key_1 || "starling-ratchet-v1")
 ...
-epoch_key_n = BLAKE2b-256(epoch_key_{n-1} || "finch-ratchet-v1")
+epoch_key_n = BLAKE2b-256(epoch_key_{n-1} || "starling-ratchet-v1")
 ```
 
 **How it works:**
@@ -274,8 +274,8 @@ If the client supports the server's version, sync proceeds. If not, the client s
 Requests to relay push endpoints (`POST /events`, `POST /media`) require a signature header:
 
 ```
-X-Finch-Sig: base64(Ed25519.sign(identity_key, blake2b_256(request_body)))
-X-Finch-Pubkey: base64(pubkey)
+X-Starling-Sig: base64(Ed25519.sign(identity_key, blake2b_256(request_body)))
+X-Starling-Pubkey: base64(pubkey)
 ```
 
 The relay verifies that the pubkey matches its configured owner and the signature is valid.
@@ -298,8 +298,8 @@ Encodes everything needed to reach an account:
 The `capabilities` field advertises what the peer supports. v1 clients advertise `["pairwise-v1"]`. Future capabilities (e.g., `"mls-v1"`, `"media-streaming-v1"`) are added as they ship. During handshake, peers compute the intersection of capabilities to determine which protocols to use. Peers with no `capabilities` field are assumed to be pre-v1 and treated as `["pairwise-v1"]`.
 
 - Serialized as JSON, then base64url-encoded for QR codes and links
-- QR code contains: `finch://connect?card={base64url_encoded_card}`
-- Share link: `https://finch.link/connect?card={base64url_encoded_card}` (deeplinks to app)
+- QR code contains: `starling://connect?card={base64url_encoded_card}`
+- Share link: `https://starling.link/connect?card={base64url_encoded_card}` (deeplinks to app)
 
 ## Hole-Punch Signaling (via Tor)
 
@@ -314,7 +314,7 @@ When two peers connect via Tor, they can attempt to upgrade to a direct WAN conn
 
 This is an optimization, not a requirement. The sync protocol works identically over Tor or a direct connection — hole-punching just reduces latency for the data transfer phase.
 
-**STUN servers:** The app ships with a default list of public STUN servers (e.g., Google, Cloudflare). Users can configure their own. The STUN server learns the device's public IP (which it already sees from the connection) but nothing about Finch, content, or identity. This is the only interaction with external infrastructure and it's optional — Tor-only mode works without it.
+**STUN servers:** The app ships with a default list of public STUN servers (e.g., Google, Cloudflare). Users can configure their own. The STUN server learns the device's public IP (which it already sees from the connection) but nothing about Starling, content, or identity. This is the only interaction with external infrastructure and it's optional — Tor-only mode works without it.
 
 ## Versioning
 

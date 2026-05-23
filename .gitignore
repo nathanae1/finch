@@ -22,9 +22,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# IntelliJ default ignored files (was app/finch/.idea/.gitignore)
-app/finch/.idea/shelf/
-app/finch/.idea/workspace.xml
+# IntelliJ default ignored files (was app/starling/.idea/.gitignore)
+app/starling/.idea/shelf/
+app/starling/.idea/workspace.xml
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -33,8 +33,8 @@ app/finch/.idea/workspace.xml
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-app/finch/build/
-app/finch/coverage/
+app/starling/build/
+app/starling/coverage/
 
 # Symbolication related
 app.*.symbols
@@ -42,15 +42,15 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android (was app/finch/android/.gitignore)
-app/finch/android/.gradle
-app/finch/android/captures/
-app/finch/android/gradlew
-app/finch/android/gradlew.bat
-app/finch/android/local.properties
-app/finch/android/app/debug
-app/finch/android/app/profile
-app/finch/android/app/release
+# Android (was app/starling/android/.gitignore)
+app/starling/android/.gradle
+app/starling/android/captures/
+app/starling/android/gradlew
+app/starling/android/gradlew.bat
+app/starling/android/local.properties
+app/starling/android/app/debug
+app/starling/android/app/profile
+app/starling/android/app/release
 gradle-wrapper.jar
 GeneratedPluginRegistrant.java
 .cxx/
@@ -61,7 +61,7 @@ key.properties
 **/*.keystore
 **/*.jks
 
-# iOS (was app/finch/ios/.gitignore)
+# iOS (was app/starling/ios/.gitignore)
 **/dgph
 *.mode1v3
 *.mode2v3
@@ -73,24 +73,24 @@ key.properties
 .tags*
 **/.vagrant/
 **/DerivedData/
-app/finch/ios/build/
+app/starling/ios/build/
 Icon?
 **/Pods/
 **/.symlinks/
 profile
 xcuserdata
 **/.generated/
-app/finch/ios/Flutter/App.framework
-app/finch/ios/Flutter/Flutter.framework
-app/finch/ios/Flutter/Flutter.podspec
-app/finch/ios/Flutter/Generated.xcconfig
-app/finch/ios/Flutter/ephemeral/
-app/finch/ios/Flutter/app.flx
-app/finch/ios/Flutter/app.zip
-app/finch/ios/Flutter/flutter_assets/
-app/finch/ios/Flutter/flutter_export_environment.sh
-app/finch/ios/ServiceDefinitions.json
-app/finch/ios/Runner/GeneratedPluginRegistrant.*
+app/starling/ios/Flutter/App.framework
+app/starling/ios/Flutter/Flutter.framework
+app/starling/ios/Flutter/Flutter.podspec
+app/starling/ios/Flutter/Generated.xcconfig
+app/starling/ios/Flutter/ephemeral/
+app/starling/ios/Flutter/app.flx
+app/starling/ios/Flutter/app.zip
+app/starling/ios/Flutter/flutter_assets/
+app/starling/ios/Flutter/flutter_export_environment.sh
+app/starling/ios/ServiceDefinitions.json
+app/starling/ios/Runner/GeneratedPluginRegistrant.*
 
 # Exceptions to above rules.
 !default.mode1v3
@@ -98,5 +98,5 @@ app/finch/ios/Runner/GeneratedPluginRegistrant.*
 !default.pbxuser
 !default.perspectivev3
 
-# Rust (was app/finch/native/arti_bridge/.gitignore)
-app/finch/native/arti_bridge/target/
+# Rust (was app/starling/native/arti_bridge/.gitignore)
+app/starling/native/arti_bridge/target/

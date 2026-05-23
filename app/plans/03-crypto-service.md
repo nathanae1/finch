@@ -31,7 +31,7 @@ Use `sodium` package v4 (single dependency — `sodium_libs` was discontinued in
 - **Feed key generation** — 256-bit random key via `randombytes_buf(32)` (epoch 0)
 
 ### Feed key ratchet (MegOLM-style) — ContentKeyService
-- `advanceEpoch(currentKey) → nextKey` — `BLAKE2b-256(currentKey || "finch-ratchet-v1")`
+- `advanceEpoch(currentKey) → nextKey` — `BLAKE2b-256(currentKey || "starling-ratchet-v1")`
 - Epoch advances periodically (daily or every N posts)
 - New followers receive current epoch key, can derive forward but not backward
 - On unfollow: force-advance to a new random key (breaks the chain)
@@ -52,7 +52,7 @@ Use `sodium` package v4 (single dependency — `sodium_libs` was discontinued in
 ### Key exchange
 - `deriveSharedKey(my_x25519_sk, their_x25519_pk, requester_pk, responder_pk, timestamp) → symmetric_key` (CryptoService — this is a primitive)
   - X25519 Diffie-Hellman → shared secret
-  - `crypto_kdf_derive_from_key(subkey_len=32, subkey_id=1, ctx="finchkex", key=shared_secret)` with `info = requester_pubkey || responder_pubkey || timestamp`
+  - `crypto_kdf_derive_from_key(subkey_len=32, subkey_id=1, ctx="starlingkex", key=shared_secret)` with `info = requester_pubkey || responder_pubkey || timestamp`
   - Unique per exchange (no static salt reuse between same parties)
 - `encryptFeedKey(feed_key, shared_key) → encrypted_feed_key` — XChaCha20-Poly1305 with random nonce (ContentKeyService)
 - `decryptFeedKey(encrypted_feed_key, shared_key) → feed_key` (ContentKeyService)
@@ -140,4 +140,4 @@ Vector format: `test/vectors/index.json` lists each vector with type, CBOR file 
 - FFI crashes on specific platforms/architectures. Test on real devices early, not just simulators.
 - BIP-39 derivation must be byte-for-byte correct or recovery fails. Use published test vectors.
 - Large media blobs (5-10MB photos) encrypted in memory could cause pressure. Consider streaming encryption for large files, or process in a separate isolate.
-- `crypto_kdf` context field is limited to 8 bytes — "finchkex" fits exactly. The info (pubkeys + timestamp) must be passed via the key material, not the context.
+- `crypto_kdf` context field is limited to 8 bytes — "starlingkex" fits exactly. The info (pubkeys + timestamp) must be passed via the key material, not the context.

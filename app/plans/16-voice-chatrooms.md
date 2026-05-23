@@ -1,6 +1,6 @@
 # Plan 16 — Voice Chatrooms
 
-Voice chatrooms are the first real-time feature and the hardest to fit into Finch's P2P, serverless architecture. The core tension: Finch is async by design (seconds-to-hours latency is fine), but voice needs <200ms round-trip. Tor (3-5s) is unusable for audio. This plan addresses how to deliver voice within Finch's constraints.
+Voice chatrooms are the first real-time feature and the hardest to fit into Starling's P2P, serverless architecture. The core tension: Starling is async by design (seconds-to-hours latency is fine), but voice needs <200ms round-trip. Tor (3-5s) is unusable for audio. This plan addresses how to deliver voice within Starling's constraints.
 
 **Prerequisites**: Plans 07 (HTTP server), 08 (follow flow / key exchange), 09 (LAN sync / mDNS), 11 (Tor).
 
@@ -82,13 +82,13 @@ EphemeralEncryptedEvent {
 ```
 
 The pairwise key is derived the same way as for feed key exchange but with a distinct salt:
-`crypto_kdf(X25519_DH(my_sk, their_pk), ctx="finchsig", info=my_pk || their_pk)`
+`crypto_kdf(X25519_DH(my_sk, their_pk), ctx="starlingsig", info=my_pk || their_pk)`
 
 ### WebSocket Endpoint
 
 New route on shelf server: **`GET /ws/signal`**
 
-- Auth via headers on upgrade: `X-Finch-Pubkey` + `X-Finch-Sig` (Ed25519 sign of `"websocket-upgrade" + timestamp`)
+- Auth via headers on upgrade: `X-Starling-Pubkey` + `X-Starling-Sig` (Ed25519 sign of `"websocket-upgrade" + timestamp`)
 - Rejects if timestamp >30s old (replay protection)
 - Carries CBOR-serialized `EphemeralEncryptedEvent` frames
 - Heartbeat: ping/pong every 30s, close after 3 missed
@@ -136,7 +136,7 @@ One participant (best connectivity) or a spare-device relay acts as mixer/SFU �
 
 ### Signaling
 Pairwise X25519 key exchange (reuses existing crypto infrastructure):
-- Derive key: `crypto_kdf(X25519_DH(my_sk, their_pk), ctx="finchsig", info=my_pk || their_pk)`
+- Derive key: `crypto_kdf(X25519_DH(my_sk, their_pk), ctx="starlingsig", info=my_pk || their_pk)`
 - Encrypt: `XChaCha20-Poly1305(pairwise_key, random_nonce, message)`
 
 ### Audio
@@ -155,7 +155,7 @@ DTLS-SRTP (WebRTC built-in):
 
 - Voice rooms are invite-only among **mutual follows** (both parties follow each other)
 - Creator selects participants from mutual follow list
-- No open/discoverable rooms — consistent with Finch's "no strangers" principle
+- No open/discoverable rooms — consistent with Starling's "no strangers" principle
 
 ## Storage Changes
 
@@ -340,8 +340,8 @@ Modified:
 2. **No voice over Tor** — Tor is signaling only. If peers have no direct IP path, voice is impossible between them.
 3. **4-person cap** — full mesh only, no mixer.
 4. **No background voice on iOS** — call ends on background (unless CallKit is pursued later).
-5. **No push notifications for invites** — consistent with the rest of Finch. App must be open to receive invites.
-6. **No audio recording** — by design, not limitation. Consistent with Finch's privacy philosophy.
+5. **No push notifications for invites** — consistent with the rest of Starling. App must be open to receive invites.
+6. **No audio recording** — by design, not limitation. Consistent with Starling's privacy philosophy.
 
 ## Key Existing Files to Modify
 
@@ -350,7 +350,7 @@ Modified:
 - `lib/services/storage_service.dart` — voice room storage methods
 - `lib/services/storage/database.dart` — migration adding tables
 - `lib/services/storage/drift_storage_service.dart` — implement voice room storage
-- `lib/services/crypto_service.dart` — reuse `deriveSharedKey` with `"finch-signaling-v1"` salt
+- `lib/services/crypto_service.dart` — reuse `deriveSharedKey` with `"starling-signaling-v1"` salt
 - `lib/providers/service_providers.dart` — new providers
 - `lib/server/http_server.dart` — WebSocket route
 - `pubspec.yaml` — new dependencies
