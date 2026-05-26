@@ -26,12 +26,14 @@ private let kBackgroundChannelName = "dev.starling.app/background_sync"
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MdnsPlugin") {
       MdnsPlugin.register(with: registrar)
     }
-    if let messenger = engineBridge.binaryMessenger {
-      backgroundChannel = FlutterMethodChannel(
-        name: kBackgroundChannelName,
-        binaryMessenger: messenger
-      )
-    }
+    // Flutter 3.x exposes the engine's binary messenger via the
+    // `applicationRegistrar` on the implicit-engine bridge, not directly
+    // on the bridge itself. (`engineBridge.binaryMessenger` was removed.)
+    let messenger = engineBridge.applicationRegistrar.messenger()
+    backgroundChannel = FlutterMethodChannel(
+      name: kBackgroundChannelName,
+      binaryMessenger: messenger
+    )
   }
 
   override func applicationDidEnterBackground(_ application: UIApplication) {

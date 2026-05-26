@@ -4,14 +4,20 @@ import 'dart:typed_data';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../services/lan_network_service.dart';
+import '../services/libp2p_network_service.dart';
+import '../services/libp2p_stream_server.dart';
 import '../services/post_fanout_service.dart';
 import '../services/reconnect_pusher.dart';
+import '../services/signaling/signaling_dispatcher.dart';
 import '../services/storage/keychain_manager.dart';
 import '../services/tor/tor_http_client.dart';
+import '../sync/libp2p_upgrader.dart';
 import '../sync/peer_connection_factory.dart';
 import '../sync/peer_reachability_provider.dart';
 import '../sync/sync_engine.dart';
 import '../sync/transport_router.dart';
+import 'app_paths_provider.dart';
+import 'follow_provider.dart';
 import 'service_providers.dart';
 
 part 'sync_provider.g.dart';
@@ -72,15 +78,47 @@ LanNetworkService? torNetworkService(Ref ref) {
   return svc;
 }
 
+/// Plan 11a — Libp2pNetworkService bound to the global [libp2pServiceProvider]
+/// (currently a stub; production override binds the FFI-backed bridge). Used
+/// by [syncTransportProvider] as the dispatch target for `libp2pDirect`.
+@Riverpod(keepAlive: true)
+Libp2pNetworkService libp2pNetworkService(Ref ref) {
+  return Libp2pNetworkService(libp2p: ref.watch(libp2pServiceProvider));
+}
+
+/// Plan 11a — inbound side of the libp2p direct tier. Wires the seven
+/// `/starling/sync/*/1` protocol handlers to the same pure handler
+/// functions the shelf HTTP server uses. `LifecycleManager` reads this
+/// provider after `libp2p.listen()` completes and calls `start()`.
+@Riverpod(keepAlive: true)
+Future<Libp2pStreamServer> libp2pStreamServer(Ref ref) async {
+  final storage = ref.watch(storageServiceProvider);
+  final contentKey = ref.watch(contentKeyServiceProvider);
+  final clock = ref.watch(clockProvider);
+  final appSupportDir = await ref.watch(appSupportDirectoryProvider.future);
+  final libp2p = ref.watch(libp2pServiceProvider);
+  return Libp2pStreamServer(
+    libp2p: libp2p,
+    storage: storage,
+    contentKey: contentKey,
+    clock: clock,
+    appSupportDir: appSupportDir,
+    identityLookup: storage.getIdentity,
+    followServiceLookup: () => ref.read(followServiceProvider),
+  );
+}
+
 /// Singleton [SyncTransport] that routes each `PeerConnection` to the
-/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor).
-/// Shared by [syncEngineProvider] and the on-demand media fetcher so
-/// they all dial through the same routing logic.
+/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor vs
+/// libp2p stream). Shared by [syncEngineProvider] and the on-demand media
+/// fetcher so they all dial through the same routing logic.
 @riverpod
 SyncTransport syncTransport(Ref ref) {
   final lan = ref.watch(lanNetworkServiceProvider);
   final tor = ref.watch(torNetworkServiceProvider);
-  return tor == null ? lan as SyncTransport : TransportRouter(lan: lan, tor: tor);
+  final libp2p = ref.watch(libp2pNetworkServiceProvider);
+  if (tor == null) return lan as SyncTransport;
+  return TransportRouter(lan: lan, tor: tor, libp2p: libp2p);
 }
 
 /// Best-effort fan-out from the local poster to every accepted follower
@@ -108,6 +146,46 @@ ReconnectPusher reconnectPusher(Ref ref) {
   );
 }
 
+/// Plan 11a — DCUtR upgrade orchestrator. Wired into [syncEngineProvider]
+/// so each Tor-resolved peer fire-and-forget tries to upgrade. Gated
+/// internally on [Libp2pService.isReady]; with the stub bridge in place
+/// every attempt is a no-op until the FFI-backed bridge ships.
+@Riverpod(keepAlive: true)
+Libp2pUpgrader libp2pUpgrader(Ref ref) {
+  return Libp2pUpgrader(
+    libp2p: ref.watch(libp2pServiceProvider),
+    signaling: ref.watch(signalingServiceProvider),
+    reachability: ref.watch(peerReachabilityMonitorProvider),
+    clock: ref.watch(clockProvider),
+    crypto: ref.watch(cryptoServiceProvider),
+    localPubkeyLookup: () async {
+      final identity =
+          await ref.read(storageServiceProvider).getIdentity();
+      return identity?.pubkey;
+    },
+    localSecretKeyLookup: _loadSecretKey,
+  );
+}
+
+/// Plan 11a #17a — single owner of `SignalingService.onInboundConnection`.
+/// Routes inbound libp2pConnect messages to [Libp2pUpgrader]; other
+/// message types fall through for Plan 16. `LifecycleManager` calls
+/// `start()`.
+@Riverpod(keepAlive: true)
+SignalingDispatcher signalingDispatcher(Ref ref) {
+  return SignalingDispatcher(
+    signaling: ref.watch(signalingServiceProvider),
+    upgrader: ref.watch(libp2pUpgraderProvider),
+    crypto: ref.watch(cryptoServiceProvider),
+    localPubkeyLookup: () async {
+      final identity =
+          await ref.read(storageServiceProvider).getIdentity();
+      return identity?.pubkey;
+    },
+    localSecretKeyLookup: _loadSecretKey,
+  );
+}
+
 /// Routes each peer's HTTP calls to either [lanNetworkServiceProvider]
 /// or [torNetworkServiceProvider] based on `connection.transport`.
 @riverpod
@@ -122,6 +200,7 @@ SyncEngine syncEngine(Ref ref) {
     reachabilityMonitor: ref.watch(peerReachabilityMonitorProvider),
     clock: ref.watch(clockProvider),
     ownSecretKeyLookup: _loadSecretKey,
+    libp2pUpgrader: ref.watch(libp2pUpgraderProvider),
   );
 }
 

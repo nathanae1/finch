@@ -88,6 +88,7 @@ class _EncryptedImageState extends ConsumerState<EncryptedImage> {
       } else {
         _imageCache.put(widget.hash, bytes);
         setState(() => _bytes = bytes);
+        await _clearDecryptFailure();
       }
     } finally {
       _loading = false;
@@ -160,6 +161,13 @@ class _EncryptedImageState extends ConsumerState<EncryptedImage> {
     if (identity != null && identity.pubkey == widget.pubkey) return;
     final storage = ref.read(storageServiceProvider);
     await storage.setLastDecryptFailureAt(widget.pubkey, now);
+  }
+
+  Future<void> _clearDecryptFailure() async {
+    final identity = await ref.read(identityControllerProvider.future);
+    if (identity != null && identity.pubkey == widget.pubkey) return;
+    final storage = ref.read(storageServiceProvider);
+    await storage.clearLastDecryptFailureIfSet(widget.pubkey);
   }
 
   /// Walks [chainRoots] in priority order, derives the per-message AEAD

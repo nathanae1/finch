@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart';
 
@@ -19,22 +20,57 @@ Function mediaHandler({
     if (!_isValidHash(hash)) {
       return Response(400, body: 'invalid hash');
     }
-    final cached = await storage.getMedia(hash);
-    if (cached == null) {
+    final file = await resolveMediaFileForHash(
+      storage: storage,
+      appSupportDir: appSupportDir,
+      hash: hash,
+    );
+    if (file == null) {
       return Response.notFound('not found');
     }
-    final file = await resolveMediaFile(appSupportDir, hash);
-    if (!await file.exists()) {
-      return Response.notFound('not found');
-    }
+    final length = await file.length();
     return Response.ok(
       file.openRead(),
       headers: {
         'content-type': 'application/octet-stream',
-        'content-length': cached.size.toString(),
+        'content-length': length.toString(),
       },
     );
   };
+}
+
+/// Returns the on-disk media file for [hash] iff the storage layer knows
+/// about it AND it exists on disk. Used by both the shelf handler (which
+/// streams it) and `Libp2pStreamServer` (which reads it into one frame).
+Future<File?> resolveMediaFileForHash({
+  required StorageService storage,
+  required Directory appSupportDir,
+  required String hash,
+}) async {
+  if (!_isValidHash(hash)) return null;
+  final cached = await storage.getMedia(hash);
+  if (cached == null) return null;
+  final file = await resolveMediaFile(appSupportDir, hash);
+  if (!await file.exists()) return null;
+  return file;
+}
+
+/// Convenience for libp2p: load the entire blob into memory. The current
+/// libp2p single-frame stream contract means we can't stream large blobs;
+/// callers should size their FFI read buffer accordingly. Returns null when
+/// the hash is invalid or the blob is unknown.
+Future<Uint8List?> readMediaBytes({
+  required StorageService storage,
+  required Directory appSupportDir,
+  required String hash,
+}) async {
+  final file = await resolveMediaFileForHash(
+    storage: storage,
+    appSupportDir: appSupportDir,
+    hash: hash,
+  );
+  if (file == null) return null;
+  return await file.readAsBytes();
 }
 
 final _hexPattern = RegExp(r'^[0-9a-f]+$');

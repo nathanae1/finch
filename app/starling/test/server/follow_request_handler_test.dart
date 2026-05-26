@@ -6,6 +6,7 @@ import 'package:starling/server/handlers/follow_request_handler.dart';
 import 'package:starling/server/http_server.dart';
 import 'package:starling/services/mocks/mock_clock.dart';
 import 'package:starling/services/mocks/mock_content_key_service.dart';
+import 'package:starling/services/mocks/mock_crypto_service.dart';
 import 'package:starling/services/storage/database.dart';
 import 'package:starling/services/storage/drift_storage_service.dart';
 import 'package:starling/services/types.dart';
@@ -107,6 +108,8 @@ void main() {
       identityLookup: () async => identity,
       appSupportDir: tmpDir,
       clock: clock,
+      crypto: MockCryptoService(),
+      signalingInboundHandler: (_) {},
       maxBodyBytes: 1024,
     );
     await server.start();

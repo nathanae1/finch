@@ -12,7 +12,17 @@ enum SignalingMessageType {
   answer('answer'),
   iceCandidate('ice_candidate'),
   muteStatus('mute_status'),
-  speakingStatus('speaking_status');
+  speakingStatus('speaking_status'),
+  // Plan 11a — DCUtR hole-punch coordination. payload shape:
+  //   { peer_id: String,           // sender's libp2p PeerId (base58)
+  //     observed_addrs: List<Uint8List>, // candidate multiaddrs (STUN +
+  //                                     // local listen) the sender is
+  //                                     // willing to be dialed at
+  //     nonce: Uint8List,           // 8 random bytes, echoed in response
+  //     punch_at_unix_ms: int }     // proposed simultaneous-open time
+  // roomId for this type is always the empty string — the message is a
+  // pairwise exchange, not bound to a voice room.
+  libp2pConnect('libp2p-connect-v1');
 
   const SignalingMessageType(this.value);
   final String value;

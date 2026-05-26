@@ -100,12 +100,15 @@ class PeerReachabilityMonitor {
   final Duration _torProbeTimeout;
   final Duration _firstCallWindow;
 
-  // Transport priority order — first reachable wins. LAN beats Relay
-  // when we're on the same network as the Friend; Relay beats direct
-  // Tor because a paired Relay's onion is always-up while a phone's is
-  // foreground-only; Tor is the universal fallback.
+  // Transport priority order — first reachable wins. LAN beats libp2p
+  // when we're on the same network (no NAT, lowest latency). libp2p-direct
+  // (Plan 11a) beats Relay and Tor when DCUtR hole-punching succeeds —
+  // QUIC over UDP is multi-second faster than Tor circuits. Relay beats
+  // direct Tor because a paired Relay's onion is always-up while a
+  // phone's is foreground-only; Tor is the universal fallback.
   static const List<PeerTransport> _priority = [
     PeerTransport.lan,
+    PeerTransport.libp2pDirect,
     PeerTransport.relay,
     PeerTransport.tor,
   ];
@@ -116,6 +119,20 @@ class PeerReachabilityMonitor {
   final Map<(String, PeerTransport), Timer> _backoffTimers = {};
   final Map<(String, PeerTransport), Future<bool>> _inflightProbes = {};
   final Pool _probePool = Pool(5);
+
+  /// Plan 11d — passive liveness probe over an already-promoted libp2p
+  /// connection. Installed by `LifecycleManager` via [bindLibp2pProbe]
+  /// after `Libp2pNetworkService` is constructed. Lives outside the
+  /// constructor to avoid an import cycle with `sync_provider.dart`. Null
+  /// during tests and on platforms where libp2p is the stub.
+  Future<void> Function(PeerConnection)? _libp2pProbe;
+
+  /// Per-pubkey timestamp (unix ms) of the most recent passive ping. Used
+  /// to keep ping cadence proportional to the configured probe interval
+  /// rather than firing on every monitor tick.
+  final Map<String, int> _lastLibp2pPingMs = {};
+
+  static const Duration _libp2pPingTimeout = Duration(seconds: 3);
 
   final StreamController<Map<String, PeerReachability>> _stateCtrl =
       StreamController<Map<String, PeerReachability>>.broadcast();
@@ -155,6 +172,7 @@ class PeerReachabilityMonitor {
     }
     _backoffTimers.clear();
     _inflightProbes.clear();
+    _lastLibp2pPingMs.clear();
     if (!_stateCtrl.isClosed) await _stateCtrl.close();
   }
 
@@ -170,6 +188,8 @@ class PeerReachabilityMonitor {
     final follow = await _storage.getFollow(pubkey);
     final probes = <Future<bool>>[];
     for (final transport in _priority) {
+      // See _probeAll — libp2pDirect (Plan 11a) is upgrader-promoted only.
+      if (transport == PeerTransport.libp2pDirect) continue;
       final status = _state[pubkey]!.transports[transport]!;
       if (status.state == TransportState.unknown ||
           status.state == TransportState.probing) {
@@ -199,17 +219,63 @@ class PeerReachabilityMonitor {
       (e) => e.type == 'onion',
       orElse: () => const Endpoint(type: '', address: ''),
     );
-    if (onion.type.isEmpty) return null;
-    if (!_tor.isReady || _torProbeClient() == null) return null;
+    if (onion.type.isEmpty) {
+      _log(
+        'probeCard pubkey=${card.pubkey} result=no-onion-in-card '
+        'endpoint_types=${card.endpoints.map((e) => e.type).toList()}',
+      );
+      return null;
+    }
+    if (!_tor.isReady || _torProbeClient() == null) {
+      _log(
+        'probeCard pubkey=${card.pubkey} result=tor-not-ready '
+        'isReady=${_tor.isReady} clientNull=${_torProbeClient() == null}',
+      );
+      return null;
+    }
     final addr = onion.address;
     final url = addr.contains(':') ? 'http://$addr' : 'http://$addr:80';
-    return _oneShotProbe(card.pubkey, url, PeerTransport.tor);
+    _log('probeCard pubkey=${card.pubkey} dialing url=$url');
+    final result = await _oneShotProbe(card.pubkey, url, PeerTransport.tor);
+    _log(
+      'probeCard pubkey=${card.pubkey} url=$url '
+      'result=${result == null ? "unreachable" : "ok"}',
+    );
+    return result;
   }
 
   /// Manually re-probes every known follow on every transport. Used by
   /// the connection-status settings screen so users troubleshooting can
   /// force a refresh without waiting for the periodic tick.
   Future<void> refreshNow() => _probeAll();
+
+  /// Plan 11d — install the libp2p passive-ping callback. Called once by
+  /// `LifecycleManager` after `Libp2pNetworkService` is built. Until this
+  /// is called, the libp2p branch in [_probeAll] is a no-op (matching the
+  /// pre-11d "upgrader-promoted only, never demoted by monitor" behavior).
+  /// Idempotent — re-binding is safe across resumes.
+  void bindLibp2pProbe(Future<void> Function(PeerConnection) probe) {
+    _libp2pProbe = probe;
+  }
+
+  /// Caller (e.g., [Libp2pUpgrader] in Plan 11a after a successful DCUtR
+  /// upgrade) signals that [transport] for [pubkey] is now reachable via
+  /// [baseUrl]. Promotes the transport so the next `bestConnectionFor`
+  /// call picks it. Idempotent — re-calling with the same args is cheap.
+  void markReachable(String pubkey, PeerTransport transport, String baseUrl) {
+    _ensurePeerEntry(pubkey);
+    _updateStatus(
+      pubkey,
+      transport,
+      (cur) => cur.copyWith(
+        state: TransportState.reachable,
+        lastChange: DateTime.now(),
+        consecutiveFailures: 0,
+        endpointHint: baseUrl,
+      ),
+    );
+    _backoffTimers.remove((pubkey, transport))?.cancel();
+  }
 
   /// Caller (sync engine, media fetcher, follow service) signals that a
   /// real request through [transport] for [pubkey] failed. Marks
@@ -274,6 +340,21 @@ class PeerReachabilityMonitor {
     for (final f in follows) {
       _ensurePeerEntry(f.pubkey);
       for (final transport in list) {
+        // libp2pDirect (Plan 11a) is never *probed up* by the monitor —
+        // promotion is the upgrader's job because the only way to verify
+        // reachability is to run the full signaling + simultaneous-open
+        // dance. Plan 11d adds a passive liveness ping over an already-
+        // promoted connection so a silently-killed v6 mapping is caught
+        // on the monitor's cadence rather than waiting for the next real
+        // sync request to fail.
+        if (transport == PeerTransport.libp2pDirect) {
+          final status = _state[f.pubkey]!.transports[transport]!;
+          if (status.state != TransportState.reachable) continue;
+          tasks.add(_probePool.run(
+            () => _passivePingLibp2p(f.pubkey).then((_) {}),
+          ));
+          continue;
+        }
         tasks.add(_probePool.run(
           () => _probePeer(f.pubkey, transport, f).then((_) {}),
         ));
@@ -408,33 +489,80 @@ class PeerReachabilityMonitor {
     required bool useTor,
   }) async {
     final client = useTor ? _torProbeClient() : _lanProbeClient;
-    if (client == null) return false;
+    if (client == null) {
+      _log('probe $baseUrl client=null useTor=$useTor');
+      return false;
+    }
     final timeout = useTor ? _torProbeTimeout : _probeTimeout;
     try {
       final res =
           await client.get(Uri.parse('$baseUrl/status')).timeout(timeout);
       if (res.statusCode != 200) {
-        developer.log(
-          'probe $baseUrl -> ${res.statusCode}',
-          name: 'peer_reachability',
-        );
+        _log('probe $baseUrl -> ${res.statusCode}');
         return false;
       }
       final body = jsonDecode(res.body);
-      if (body is! Map) return false;
-      final pk = body['pubkey'];
-      if (pk != expectedPubkey) {
-        developer.log(
-          'probe $baseUrl pubkey mismatch: expected=$expectedPubkey got=$pk',
-          name: 'peer_reachability',
-        );
+      if (body is! Map) {
+        _log('probe $baseUrl bad-body type=${body.runtimeType}');
         return false;
       }
-      developer.log('probe $baseUrl ok', name: 'peer_reachability');
+      final pk = body['pubkey'];
+      if (pk != expectedPubkey) {
+        _log('probe $baseUrl pubkey-mismatch expected=$expectedPubkey got=$pk');
+        return false;
+      }
+      _log('probe $baseUrl ok');
       return true;
     } catch (e) {
-      developer.log('probe $baseUrl failed: $e', name: 'peer_reachability');
+      _log('probe $baseUrl failed (useTor=$useTor timeout=${timeout.inSeconds}s): $e');
       return false;
+    }
+  }
+
+  void _log(String msg) {
+    developer.log(msg, name: 'starling.reachability');
+    // Mirror to stdout so the line shows up in `flutter run` output; matches
+    // the dual-channel pattern used by `[starling.tor]` and
+    // `[starling.keychain]`. Keep it terse — this is per-probe.
+    // ignore: avoid_print
+    print('[starling.reachability] $msg');
+  }
+
+  /// Plan 11d — passive liveness probe over an already-promoted libp2p
+  /// connection. Caller must have verified the transport is currently
+  /// `reachable` (state machine never *promotes* libp2pDirect from here —
+  /// that's the upgrader's job). On ping failure, marks unreachable; the
+  /// next sync engine pump fires `Libp2pUpgrader.tryUpgrade` on a Tor-
+  /// resolved attempt.
+  Future<void> _passivePingLibp2p(String pubkey) async {
+    final probe = _libp2pProbe;
+    if (probe == null) return;
+    final status = _state[pubkey]?.transports[PeerTransport.libp2pDirect];
+    if (status == null || status.state != TransportState.reachable) return;
+    final hint = status.endpointHint;
+    if (hint == null) return;
+
+    // Rate-limit relative to the configured probe interval. Monitor ticks
+    // are 60s by default, so this is effectively "at most once per tick";
+    // the guard exists for callers (e.g. mdns peer-changed re-probe) that
+    // can fire the loop more often.
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final last = _lastLibp2pPingMs[pubkey];
+    if (last != null && nowMs - last < _probeInterval.inMilliseconds ~/ 2) {
+      return;
+    }
+    _lastLibp2pPingMs[pubkey] = nowMs;
+
+    final connection = PeerConnection(
+      pubkey: pubkey,
+      baseUrl: hint,
+      transport: PeerTransport.libp2pDirect,
+    );
+    try {
+      await probe(connection).timeout(_libp2pPingTimeout);
+    } catch (e) {
+      _log('libp2p passive ping failed for $pubkey: $e — demoting transport');
+      markUnreachable(pubkey, PeerTransport.libp2pDirect, e);
     }
   }
 
@@ -454,6 +582,12 @@ class PeerReachabilityMonitor {
   }
 
   void _scheduleBackoff(String pubkey, PeerTransport transport) {
+    // libp2pDirect (Plan 11a) re-attempts are driven by SyncEngine's normal
+    // sync cycle through [Libp2pUpgrader]; scheduling a backoff probe here
+    // would call _probePeer with a null candidate URL and re-mark unreachable
+    // immediately — pointless churn. The sync engine's own 60s+ pump is the
+    // de-facto backoff.
+    if (transport == PeerTransport.libp2pDirect) return;
     final key = (pubkey, transport);
     _backoffTimers.remove(key)?.cancel();
     final fails = _state[pubkey]!.transports[transport]!.consecutiveFailures;
@@ -517,6 +651,8 @@ extension on PeerReachability {
         pubkey: pubkey,
         transports: const {
           PeerTransport.lan: TransportStatus(state: TransportState.unknown),
+          PeerTransport.libp2pDirect:
+              TransportStatus(state: TransportState.unknown),
           PeerTransport.relay: TransportStatus(state: TransportState.unknown),
           PeerTransport.tor: TransportStatus(state: TransportState.unknown),
         },

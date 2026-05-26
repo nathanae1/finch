@@ -33,6 +33,11 @@ abstract class StorageService {
   /// Pass `null` to clear. Drives the "Key fresh / stale" status tile.
   Future<void> setLastDecryptFailureAt(String pubkey, int? timestamp);
 
+  /// Clears `last_decrypt_failure_at` only if currently stamped. Single
+  /// no-op UPDATE when the flag is null; lets hot success paths call
+  /// freely without checking first.
+  Future<void> clearLastDecryptFailureIfSet(String pubkey);
+
   // --- Events ---
 
   Future<List<Event>> getEvents({

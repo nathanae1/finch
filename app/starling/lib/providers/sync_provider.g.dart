@@ -222,26 +222,141 @@ final class TorNetworkServiceProvider
 
 String _$torNetworkServiceHash() => r'cc9fca4ce22ce78cfe308c8546f9f1f91ccc5290';
 
+/// Plan 11a — Libp2pNetworkService bound to the global [libp2pServiceProvider]
+/// (currently a stub; production override binds the FFI-backed bridge). Used
+/// by [syncTransportProvider] as the dispatch target for `libp2pDirect`.
+
+@ProviderFor(libp2pNetworkService)
+final libp2pNetworkServiceProvider = Libp2pNetworkServiceProvider._();
+
+/// Plan 11a — Libp2pNetworkService bound to the global [libp2pServiceProvider]
+/// (currently a stub; production override binds the FFI-backed bridge). Used
+/// by [syncTransportProvider] as the dispatch target for `libp2pDirect`.
+
+final class Libp2pNetworkServiceProvider
+    extends
+        $FunctionalProvider<
+          Libp2pNetworkService,
+          Libp2pNetworkService,
+          Libp2pNetworkService
+        >
+    with $Provider<Libp2pNetworkService> {
+  /// Plan 11a — Libp2pNetworkService bound to the global [libp2pServiceProvider]
+  /// (currently a stub; production override binds the FFI-backed bridge). Used
+  /// by [syncTransportProvider] as the dispatch target for `libp2pDirect`.
+  Libp2pNetworkServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libp2pNetworkServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libp2pNetworkServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<Libp2pNetworkService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  Libp2pNetworkService create(Ref ref) {
+    return libp2pNetworkService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Libp2pNetworkService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Libp2pNetworkService>(value),
+    );
+  }
+}
+
+String _$libp2pNetworkServiceHash() =>
+    r'530655e0bfe9fa186ee99b64294f1fccb55e786c';
+
+/// Plan 11a — inbound side of the libp2p direct tier. Wires the seven
+/// `/starling/sync/*/1` protocol handlers to the same pure handler
+/// functions the shelf HTTP server uses. `LifecycleManager` reads this
+/// provider after `libp2p.listen()` completes and calls `start()`.
+
+@ProviderFor(libp2pStreamServer)
+final libp2pStreamServerProvider = Libp2pStreamServerProvider._();
+
+/// Plan 11a — inbound side of the libp2p direct tier. Wires the seven
+/// `/starling/sync/*/1` protocol handlers to the same pure handler
+/// functions the shelf HTTP server uses. `LifecycleManager` reads this
+/// provider after `libp2p.listen()` completes and calls `start()`.
+
+final class Libp2pStreamServerProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Libp2pStreamServer>,
+          Libp2pStreamServer,
+          FutureOr<Libp2pStreamServer>
+        >
+    with
+        $FutureModifier<Libp2pStreamServer>,
+        $FutureProvider<Libp2pStreamServer> {
+  /// Plan 11a — inbound side of the libp2p direct tier. Wires the seven
+  /// `/starling/sync/*/1` protocol handlers to the same pure handler
+  /// functions the shelf HTTP server uses. `LifecycleManager` reads this
+  /// provider after `libp2p.listen()` completes and calls `start()`.
+  Libp2pStreamServerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libp2pStreamServerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libp2pStreamServerHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Libp2pStreamServer> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Libp2pStreamServer> create(Ref ref) {
+    return libp2pStreamServer(ref);
+  }
+}
+
+String _$libp2pStreamServerHash() =>
+    r'5b40258e6dad7f7c18065a7b982768d15f9e1694';
+
 /// Singleton [SyncTransport] that routes each `PeerConnection` to the
-/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor).
-/// Shared by [syncEngineProvider] and the on-demand media fetcher so
-/// they all dial through the same routing logic.
+/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor vs
+/// libp2p stream). Shared by [syncEngineProvider] and the on-demand media
+/// fetcher so they all dial through the same routing logic.
 
 @ProviderFor(syncTransport)
 final syncTransportProvider = SyncTransportProvider._();
 
 /// Singleton [SyncTransport] that routes each `PeerConnection` to the
-/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor).
-/// Shared by [syncEngineProvider] and the on-demand media fetcher so
-/// they all dial through the same routing logic.
+/// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor vs
+/// libp2p stream). Shared by [syncEngineProvider] and the on-demand media
+/// fetcher so they all dial through the same routing logic.
 
 final class SyncTransportProvider
     extends $FunctionalProvider<SyncTransport, SyncTransport, SyncTransport>
     with $Provider<SyncTransport> {
   /// Singleton [SyncTransport] that routes each `PeerConnection` to the
-  /// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor).
-  /// Shared by [syncEngineProvider] and the on-demand media fetcher so
-  /// they all dial through the same routing logic.
+  /// HTTP client matching its transport (LAN direct vs SOCKS5-over-Tor vs
+  /// libp2p stream). Shared by [syncEngineProvider] and the on-demand media
+  /// fetcher so they all dial through the same routing logic.
   SyncTransportProvider._()
     : super(
         from: null,
@@ -275,7 +390,7 @@ final class SyncTransportProvider
   }
 }
 
-String _$syncTransportHash() => r'61e5396ac32df73a3244c2aa498f9360e5fc9353';
+String _$syncTransportHash() => r'104948cfa481b6ec813ff734cf0f3d87e75014f8';
 
 /// Best-effort fan-out from the local poster to every accepted follower
 /// whose connection is reachable. Used by `DefaultPostService` after a
@@ -388,6 +503,123 @@ final class ReconnectPusherProvider
 
 String _$reconnectPusherHash() => r'8f4825632466468ecb56e669b6a7ca723ff50597';
 
+/// Plan 11a — DCUtR upgrade orchestrator. Wired into [syncEngineProvider]
+/// so each Tor-resolved peer fire-and-forget tries to upgrade. Gated
+/// internally on [Libp2pService.isReady]; with the stub bridge in place
+/// every attempt is a no-op until the FFI-backed bridge ships.
+
+@ProviderFor(libp2pUpgrader)
+final libp2pUpgraderProvider = Libp2pUpgraderProvider._();
+
+/// Plan 11a — DCUtR upgrade orchestrator. Wired into [syncEngineProvider]
+/// so each Tor-resolved peer fire-and-forget tries to upgrade. Gated
+/// internally on [Libp2pService.isReady]; with the stub bridge in place
+/// every attempt is a no-op until the FFI-backed bridge ships.
+
+final class Libp2pUpgraderProvider
+    extends $FunctionalProvider<Libp2pUpgrader, Libp2pUpgrader, Libp2pUpgrader>
+    with $Provider<Libp2pUpgrader> {
+  /// Plan 11a — DCUtR upgrade orchestrator. Wired into [syncEngineProvider]
+  /// so each Tor-resolved peer fire-and-forget tries to upgrade. Gated
+  /// internally on [Libp2pService.isReady]; with the stub bridge in place
+  /// every attempt is a no-op until the FFI-backed bridge ships.
+  Libp2pUpgraderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libp2pUpgraderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libp2pUpgraderHash();
+
+  @$internal
+  @override
+  $ProviderElement<Libp2pUpgrader> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Libp2pUpgrader create(Ref ref) {
+    return libp2pUpgrader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Libp2pUpgrader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Libp2pUpgrader>(value),
+    );
+  }
+}
+
+String _$libp2pUpgraderHash() => r'6797fae3dc2f95e3decee015c0d25f17bb84d9cc';
+
+/// Plan 11a #17a — single owner of `SignalingService.onInboundConnection`.
+/// Routes inbound libp2pConnect messages to [Libp2pUpgrader]; other
+/// message types fall through for Plan 16. `LifecycleManager` calls
+/// `start()`.
+
+@ProviderFor(signalingDispatcher)
+final signalingDispatcherProvider = SignalingDispatcherProvider._();
+
+/// Plan 11a #17a — single owner of `SignalingService.onInboundConnection`.
+/// Routes inbound libp2pConnect messages to [Libp2pUpgrader]; other
+/// message types fall through for Plan 16. `LifecycleManager` calls
+/// `start()`.
+
+final class SignalingDispatcherProvider
+    extends
+        $FunctionalProvider<
+          SignalingDispatcher,
+          SignalingDispatcher,
+          SignalingDispatcher
+        >
+    with $Provider<SignalingDispatcher> {
+  /// Plan 11a #17a — single owner of `SignalingService.onInboundConnection`.
+  /// Routes inbound libp2pConnect messages to [Libp2pUpgrader]; other
+  /// message types fall through for Plan 16. `LifecycleManager` calls
+  /// `start()`.
+  SignalingDispatcherProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'signalingDispatcherProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$signalingDispatcherHash();
+
+  @$internal
+  @override
+  $ProviderElement<SignalingDispatcher> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SignalingDispatcher create(Ref ref) {
+    return signalingDispatcher(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SignalingDispatcher value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SignalingDispatcher>(value),
+    );
+  }
+}
+
+String _$signalingDispatcherHash() =>
+    r'd8930c17e819e3bf9041917a16497545bb16fd71';
+
 /// Routes each peer's HTTP calls to either [lanNetworkServiceProvider]
 /// or [torNetworkServiceProvider] based on `connection.transport`.
 
@@ -435,7 +667,7 @@ final class SyncEngineProvider
   }
 }
 
-String _$syncEngineHash() => r'56e197a5d39e5f487c4db683535d076a135f6216';
+String _$syncEngineHash() => r'31e109d73eecf1252ef0c4c8845df3a9cfc4f0f9';
 
 /// Surfaces sync state to the UI and exposes [syncNow] for pull-to-refresh.
 

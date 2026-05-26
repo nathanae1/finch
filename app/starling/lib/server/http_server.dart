@@ -28,6 +28,7 @@ import 'handlers/relay_media_handler.dart';
 import 'handlers/relay_media_push_handler.dart';
 import 'handlers/relay_pair_handler.dart';
 import 'handlers/relay_status_handler.dart';
+import 'handlers/signaling_handler.dart';
 import 'handlers/status_handler.dart';
 import 'middleware/error_handler.dart';
 import 'middleware/owner_signature_middleware.dart';
@@ -67,6 +68,8 @@ class StarlingHttpServer {
     required Future<Identity?> Function() identityLookup,
     required Directory appSupportDir,
     required Clock clock,
+    required CryptoService crypto,
+    required void Function(SignalingChannel channel) signalingInboundHandler,
     FollowService? followService,
     FollowService? Function()? followServiceLookup,
     int maxBindAttempts = 5,
@@ -82,6 +85,8 @@ class StarlingHttpServer {
         identityLookup: identityLookup,
         appSupportDir: appSupportDir,
         clock: clock,
+        crypto: crypto,
+        signalingInboundHandler: signalingInboundHandler,
         followServiceLookup: lookup,
       ),
       clock: clock,
@@ -195,6 +200,8 @@ Router _buildSocialRouter({
   required Future<Identity?> Function() identityLookup,
   required Directory appSupportDir,
   required Clock clock,
+  required CryptoService crypto,
+  required void Function(SignalingChannel channel) signalingInboundHandler,
   required FollowService? Function() followServiceLookup,
 }) {
   final router = Router();
@@ -249,6 +256,13 @@ Router _buildSocialRouter({
     }
     return followAcceptHandler(followService: followService)(request);
   });
+  router.get(
+    '/ws/signal',
+    signalingHandler(
+      crypto: crypto,
+      onChannel: signalingInboundHandler,
+    ),
+  );
   return router;
 }
 

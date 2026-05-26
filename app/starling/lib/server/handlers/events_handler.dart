@@ -42,48 +42,66 @@ Handler eventsHandler({
         return Response(400, body: 'invalid since');
       }
     }
-    final events = await storage.getOwnAndIncomingRefs(
-      identity.pubkey,
+    final envelope = await buildEventsEnvelope(
+      storage: storage,
+      contentKey: contentKey,
+      identity: identity,
       since: since,
-      limit: pageLimit,
-    );
-    // For each event row, prefer the persisted wire-EncryptedEvent
-    // captured at author time — that's the only encryption whose msgSeq
-    // matches the media blobs on disk. Fall back to on-the-fly re-encrypt
-    // for re-distributed third-party events (no media) and for own events
-    // from before the v2 migration (no stored payload). The fresh-msgSeq
-    // counter only advances when the fallback fires.
-    var nextSeq = identity.msgSeqCounter;
-    final items = <EnvelopeItem>[];
-    for (final event in events) {
-      if (event.pubkey == identity.pubkey) {
-        final stored = await storage.getEncryptedPayload(event.id);
-        if (stored != null) {
-          items.add(EnvelopeItem(type: 'event', payload: stored));
-          continue;
-        }
-      }
-      final msgSeq = nextSeq++;
-      final encrypted = contentKey.encryptEvent(
-        event,
-        identity.feedKey,
-        identity.feedKeyEpoch,
-        msgSeq,
-      );
-      items.add(EnvelopeItem(type: 'event', payload: encrypted.toBytes()));
-    }
-    if (nextSeq != identity.msgSeqCounter) {
-      await storage.saveIdentity(
-        identity.copyWith(msgSeqCounter: nextSeq),
-      );
-    }
-    final envelope = Envelope(
-      version: kStarlingProtocolVersion,
-      items: items,
+      pageLimit: pageLimit,
     );
     return Response.ok(
       envelope.toBytes(),
       headers: const {'content-type': 'application/cbor'},
     );
   };
+}
+
+/// Pure envelope build for `/events` / `/starling/sync/events/1`. Persists
+/// the bumped `msgSeqCounter` if any fallback re-encryptions ran.
+Future<Envelope> buildEventsEnvelope({
+  required StorageService storage,
+  required ContentKeyService contentKey,
+  required Identity identity,
+  int? since,
+  int pageLimit = 500,
+}) async {
+  final events = await storage.getOwnAndIncomingRefs(
+    identity.pubkey,
+    since: since,
+    limit: pageLimit,
+  );
+  // For each event row, prefer the persisted wire-EncryptedEvent
+  // captured at author time — that's the only encryption whose msgSeq
+  // matches the media blobs on disk. Fall back to on-the-fly re-encrypt
+  // for re-distributed third-party events (no media) and for own events
+  // from before the v2 migration (no stored payload). The fresh-msgSeq
+  // counter only advances when the fallback fires.
+  var nextSeq = identity.msgSeqCounter;
+  final items = <EnvelopeItem>[];
+  for (final event in events) {
+    if (event.pubkey == identity.pubkey) {
+      final stored = await storage.getEncryptedPayload(event.id);
+      if (stored != null) {
+        items.add(EnvelopeItem(type: 'event', payload: stored));
+        continue;
+      }
+    }
+    final msgSeq = nextSeq++;
+    final encrypted = contentKey.encryptEvent(
+      event,
+      identity.feedKey,
+      identity.feedKeyEpoch,
+      msgSeq,
+    );
+    items.add(EnvelopeItem(type: 'event', payload: encrypted.toBytes()));
+  }
+  if (nextSeq != identity.msgSeqCounter) {
+    await storage.saveIdentity(
+      identity.copyWith(msgSeqCounter: nextSeq),
+    );
+  }
+  return Envelope(
+    version: kStarlingProtocolVersion,
+    items: items,
+  );
 }

@@ -23,7 +23,11 @@ class FakePeerReachabilityMonitor implements PeerReachabilityMonitor {
   Future<PeerConnection?> bestConnectionFor(String pubkey) async {
     final tier = _reachable[pubkey];
     if (tier == null) return null;
-    for (final transport in [PeerTransport.lan, PeerTransport.tor]) {
+    for (final transport in [
+      PeerTransport.lan,
+      PeerTransport.libp2pDirect,
+      PeerTransport.tor,
+    ]) {
       final url = tier[transport];
       if (url != null) {
         return PeerConnection(
@@ -45,6 +49,16 @@ class FakePeerReachabilityMonitor implements PeerReachabilityMonitor {
     markedUnreachable
         .add((pubkey: pubkey, transport: transport, reason: reason));
     _reachable[pubkey]?.remove(transport);
+  }
+
+  @override
+  void markReachable(String pubkey, PeerTransport transport, String baseUrl) {
+    setReachable(pubkey, transport, baseUrl);
+  }
+
+  @override
+  void bindLibp2pProbe(Future<void> Function(PeerConnection) probe) {
+    // No-op — fake never runs the periodic probe loop.
   }
 
   @override

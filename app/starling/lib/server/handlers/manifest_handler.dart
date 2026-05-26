@@ -28,6 +28,10 @@ import '../../services/types.dart';
 /// no auth claim for `/manifest`). A LAN attacker can request someone
 /// else's pending payload but can't decrypt it without the follower's
 /// secret key — the X25519 DH shared key derivation is what gates access.
+///
+/// Plan 11a: the request-parsing/response-building split lets the libp2p
+/// inbound stream handler (`Libp2pStreamServer`) reuse
+/// [buildManifestResponseBytes] with CBOR-derived inputs.
 Handler manifestHandler({
   required StorageService storage,
   required Future<Identity?> Function() identityLookup,
@@ -53,52 +57,74 @@ Handler manifestHandler({
       return Response(400, body: 'invalid ack_rotation_at');
     }
 
-    // Apply ack first so the freshly-acked rows aren't included below.
-    if (requesterPubkey != null && ackRotationAt != null) {
-      await storage.markDistributionsDelivered(
-        requesterPubkey,
-        ackRotationAt,
-      );
-    }
-
-    final fetched = await storage.getEvents(
-      pubkey: identity.pubkey,
+    final body = await buildManifestResponseBytes(
+      storage: storage,
+      identity: identity,
       since: since,
       until: until,
-      limit: pageLimit + 1,
+      requesterPubkey: requesterPubkey,
+      ackRotationAt: ackRotationAt,
+      pageLimit: pageLimit,
     );
-    final hasOlder = fetched.length > pageLimit;
-    final events = hasOlder ? fetched.sublist(0, pageLimit) : fetched;
-
-    final response = <String, dynamic>{
-      'pubkey': identity.pubkey,
-      'events': events
-          .map((e) => <String, dynamic>{
-                'id': e.id,
-                'created_at': e.createdAt,
-              })
-          .toList(),
-      'has_older': hasOlder,
-    };
-
-    if (requesterPubkey != null) {
-      final pending =
-          await storage.latestPendingDistributionFor(requesterPubkey);
-      if (pending != null) {
-        response['new_feed_key'] = <String, dynamic>{
-          'encrypted_feed_key': pending.encryptedFeedKey,
-          'nonce': pending.nonce,
-          'created_at': pending.createdAt,
-        };
-      }
-    }
-
-    final body = Uint8List.fromList(cbor.encode(response));
     return Response.ok(
       body,
       headers: const {'content-type': 'application/cbor'},
     );
   };
+}
+
+/// Pure manifest computation. Reused by the libp2p stream server so the
+/// CBOR wire format stays byte-identical to the HTTP path.
+Future<Uint8List> buildManifestResponseBytes({
+  required StorageService storage,
+  required Identity identity,
+  int? since,
+  int? until,
+  String? requesterPubkey,
+  int? ackRotationAt,
+  int pageLimit = 1000,
+}) async {
+  // Apply ack first so the freshly-acked rows aren't included below.
+  if (requesterPubkey != null && ackRotationAt != null) {
+    await storage.markDistributionsDelivered(
+      requesterPubkey,
+      ackRotationAt,
+    );
+  }
+
+  final fetched = await storage.getEvents(
+    pubkey: identity.pubkey,
+    since: since,
+    until: until,
+    limit: pageLimit + 1,
+  );
+  final hasOlder = fetched.length > pageLimit;
+  final events = hasOlder ? fetched.sublist(0, pageLimit) : fetched;
+
+  final response = <String, dynamic>{
+    'pubkey': identity.pubkey,
+    'events': events
+        .map((e) => <String, dynamic>{
+              'id': e.id,
+              'created_at': e.createdAt,
+            })
+        .toList(),
+    'has_older': hasOlder,
+  };
+
+  if (requesterPubkey != null) {
+    final pending =
+        await storage.latestPendingDistributionFor(requesterPubkey);
+    if (pending != null) {
+      response['new_feed_key'] = <String, dynamic>{
+        'encrypted_feed_key': pending.encryptedFeedKey,
+        'nonce': pending.nonce,
+        'created_at': pending.createdAt,
+      };
+    }
+  }
+
+  return Uint8List.fromList(cbor.encode(response));
 }
 
 int? _parseInt(String? raw) {

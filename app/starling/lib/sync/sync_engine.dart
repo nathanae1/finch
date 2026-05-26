@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:typed_data';
 
@@ -9,7 +10,9 @@ import '../services/crypto/key_cache.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/types.dart';
+import '../utils/feature_flags.dart';
 import 'concurrency.dart';
+import 'libp2p_upgrader.dart';
 import 'manifest_exchange.dart';
 import 'outbound_drain.dart';
 import 'peer_connection_factory.dart';
@@ -59,6 +62,7 @@ class SyncEngine {
     required Clock clock,
     required Future<Uint8List?> Function() ownSecretKeyLookup,
     FeedKeyCache? feedKeyCache,
+    Libp2pUpgrader? libp2pUpgrader,
     int maxParallelPeers = 5,
   })  : _storage = storage,
         _contentKey = contentKey,
@@ -69,6 +73,7 @@ class SyncEngine {
         _clock = clock,
         _ownSecretKeyLookup = ownSecretKeyLookup,
         _feedKeyCache = feedKeyCache,
+        _libp2pUpgrader = libp2pUpgrader,
         _pool = Pool(maxParallelPeers);
 
   final StorageService _storage;
@@ -80,6 +85,7 @@ class SyncEngine {
   final Clock _clock;
   final Future<Uint8List?> Function() _ownSecretKeyLookup;
   final FeedKeyCache? _feedKeyCache;
+  final Libp2pUpgrader? _libp2pUpgrader;
   final Pool _pool;
 
   /// Runs one sync pass. Returns a per-peer report so the UI can surface
@@ -141,6 +147,17 @@ class SyncEngine {
       '${connection.transport.name} peer resolved ${follow.pubkey} -> ${connection.baseUrl}',
       name: 'sync_engine',
     );
+
+    // Plan 11a: if we resolved to Tor and the peer is libp2p-capable, fire a
+    // background DCUtR upgrade attempt. The current run continues over Tor;
+    // a successful upgrade promotes the peer in the reachability monitor so
+    // the next pump picks libp2p-direct automatically.
+    final upgrader = _libp2pUpgrader;
+    if (kLibp2pEnabled &&
+        upgrader != null &&
+        connection.transport == PeerTransport.tor) {
+      unawaited(upgrader.tryUpgrade(connection, follow));
+    }
 
     final identity = await _storage.getIdentity();
     final exchange =
@@ -426,8 +443,8 @@ class SyncEngine {
       );
       // Stamp the staleness signal so the connection-settings tile can
       // surface "Key — stale" and the next sync run knows to look hard
-      // for a pending rotation. Cleared in `_applyRotatedFeedKey` once a
-      // fresh key lands.
+      // for a pending rotation. Cleared on the next successful decrypt
+      // below, or when a fresh key lands in `_applyRotatedFeedKey`.
       await _storage.setLastDecryptFailureAt(
         follow.pubkey,
         _clock.nowUnixSeconds(),
@@ -484,6 +501,7 @@ class SyncEngine {
       );
       return false;
     }
+    await _storage.clearLastDecryptFailureIfSet(follow.pubkey);
     return true;
   }
 }

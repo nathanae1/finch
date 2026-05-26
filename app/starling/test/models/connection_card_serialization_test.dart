@@ -57,9 +57,13 @@ void main() {
       expect(decoded, equals(card));
     });
 
-    test('defaults capabilities to pairwise-v1', () {
+    test('defaults capabilities advertise pairwise-v1 and libp2p-direct-v1',
+        () {
+      // Plan 11a — new ConnectionCards default-advertise libp2p-direct
+      // alongside the original pairwise-v1 so DCUtR upgrades opt in by
+      // default for any peer issued a card after this change.
       const card = ConnectionCard(pubkey: 'pk');
-      expect(card.capabilities, equals(['pairwise-v1']));
+      expect(card.capabilities, equals(['pairwise-v1', 'libp2p-direct-v1']));
     });
 
     test('missing capabilities in wire data defaults to pairwise-v1', () {

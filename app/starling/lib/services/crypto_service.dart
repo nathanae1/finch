@@ -52,7 +52,7 @@ abstract class CryptoService {
   /// Decrypt a media blob where the first 24 bytes are the nonce.
   Uint8List decryptMedia(Uint8List encryptedBlob, Uint8List epochKey);
 
-  // --- Key exchange (X25519 DH + crypto_kdf, ctx "starlingkex") ---
+  // --- Key exchange (X25519 DH + crypto_kdf, 8-byte ctx "starfk00") ---
 
   /// Derive a shared key for feed key exchange.
   /// Uses X25519 DH + libsodium crypto_kdf with context parameters
@@ -64,6 +64,31 @@ abstract class CryptoService {
     Uint8List responderPubkey,
     int timestamp,
   );
+
+  // --- Signaling pairwise key (X25519 DH + crypto_kdf, 8-byte ctx "starsig0") ---
+
+  /// Derive the 32-byte pairwise signaling key (Plan 16 §Encryption).
+  /// Distinct from [deriveSharedKey] by `ctx` — the two cannot collide.
+  /// `mySecretKey` is the 64-byte Ed25519 secret; `theirPubkey` the 32-byte
+  /// Ed25519 public. Both sides arrive at the same key.
+  Uint8List deriveSignalingKey({
+    required Uint8List mySecretKey,
+    required Uint8List theirPubkey,
+  });
+
+  /// XChaCha20-Poly1305 over a pairwise signaling key. Nonce is 24 bytes.
+  Uint8List encryptEphemeral({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List plaintext,
+  });
+
+  /// Inverse of [encryptEphemeral]. Throws on auth failure.
+  Uint8List decryptEphemeral({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List ciphertext,
+  });
 
   // --- Hashing ---
 

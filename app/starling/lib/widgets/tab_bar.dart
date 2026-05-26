@@ -10,10 +10,16 @@ class StarlingBottomTabBar extends StatelessWidget {
     super.key,
     required this.current,
     required this.onTap,
+    this.badges = const {},
   });
 
   final StarlingTab current;
   final ValueChanged<StarlingTab> onTap;
+
+  /// Per-tab badge counts. A count > 0 renders a small dot on that tab's
+  /// icon; the numeric value is not shown (calm-by-design — see CLAUDE.md
+  /// "No push notifications").
+  final Map<StarlingTab, int> badges;
 
   static const _tabs = <_TabDef>[
     _TabDef(StarlingTab.feed, 'Feed'),
@@ -61,6 +67,7 @@ class StarlingBottomTabBar extends StatelessWidget {
                 label: tab.label,
                 icon: _iconFor(tab.id, tab.id == current),
                 active: tab.id == current,
+                hasBadge: (badges[tab.id] ?? 0) > 0,
                 onTap: () => onTap(tab.id),
               ),
             ),
@@ -82,11 +89,13 @@ class _TabButton extends StatelessWidget {
     required this.icon,
     required this.active,
     required this.onTap,
+    this.hasBadge = false,
   });
 
   final String label;
   final IconData icon;
   final bool active;
+  final bool hasBadge;
   final VoidCallback onTap;
 
   @override
@@ -102,7 +111,29 @@ class _TabButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 22, color: color),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, size: 22, color: color),
+                if (hasBadge)
+                  Positioned(
+                    top: -1,
+                    right: -3,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: starling.colors.clay,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: starling.colors.paper,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 3),
             Text(
               label,

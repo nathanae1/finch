@@ -41,7 +41,7 @@ class PeerConnection {
   final PeerTransport transport;
 }
 
-enum PeerTransport { lan, relay, tor }
+enum PeerTransport { lan, libp2pDirect, relay, tor }
 
 class Manifest {
   const Manifest({

@@ -179,6 +179,61 @@ final class TorServiceProvider
 
 String _$torServiceHash() => r'6a60f20b0aef7d7e85eb959e970dc1e9f7eb6435';
 
+/// Plan 11a — libp2p direct-connect tier. Selects the real FFI-backed
+/// bridge on iOS and Android when `kLibp2pEnabled` is true; falls back to
+/// the no-op stub on desktop, in tests, or when the feature flag is off.
+/// `main.dart` may still override this in test setups.
+
+@ProviderFor(libp2pService)
+final libp2pServiceProvider = Libp2pServiceProvider._();
+
+/// Plan 11a — libp2p direct-connect tier. Selects the real FFI-backed
+/// bridge on iOS and Android when `kLibp2pEnabled` is true; falls back to
+/// the no-op stub on desktop, in tests, or when the feature flag is off.
+/// `main.dart` may still override this in test setups.
+
+final class Libp2pServiceProvider
+    extends $FunctionalProvider<Libp2pService, Libp2pService, Libp2pService>
+    with $Provider<Libp2pService> {
+  /// Plan 11a — libp2p direct-connect tier. Selects the real FFI-backed
+  /// bridge on iOS and Android when `kLibp2pEnabled` is true; falls back to
+  /// the no-op stub on desktop, in tests, or when the feature flag is off.
+  /// `main.dart` may still override this in test setups.
+  Libp2pServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libp2pServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libp2pServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<Libp2pService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Libp2pService create(Ref ref) {
+    return libp2pService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Libp2pService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Libp2pService>(value),
+    );
+  }
+}
+
+String _$libp2pServiceHash() => r'29d00ed368a142eb108b042cfb40ee584e83a5a8';
+
 /// Reactive holder for the local `.onion` address. Updated by `main.dart`
 /// after `TorService.createOnionService` returns; watched by
 /// `ownEndpoints` so the published connection card picks up the onion
@@ -342,8 +397,123 @@ final class MdnsServiceProvider
 
 String _$mdnsServiceHash() => r'4c871553ae885ba8c6083dd18390f67ff1075fe2';
 
+/// Runtime-settable slot for the production [WsSignalingService].
+///
+/// Plan 11c: this replaces the previous pattern in `main.dart` that
+/// constructed `WsSignalingService` with a closure over a `late
+/// ProviderContainer`, then handed it back to the container via
+/// `overrideWithValue`. That worked but was fragile — the closure was
+/// captured *before* the container existed, surviving only because Dart
+/// `late` captures by reference.
+///
+/// Now: `main.dart` builds the container, constructs the
+/// `WsSignalingService` against the already-built container, and stores
+/// it here via `set(svc)`. [signalingService] watches this slot and
+/// returns whatever is current.
+
+@ProviderFor(ProductionSignaling)
+final productionSignalingProvider = ProductionSignalingProvider._();
+
+/// Runtime-settable slot for the production [WsSignalingService].
+///
+/// Plan 11c: this replaces the previous pattern in `main.dart` that
+/// constructed `WsSignalingService` with a closure over a `late
+/// ProviderContainer`, then handed it back to the container via
+/// `overrideWithValue`. That worked but was fragile — the closure was
+/// captured *before* the container existed, surviving only because Dart
+/// `late` captures by reference.
+///
+/// Now: `main.dart` builds the container, constructs the
+/// `WsSignalingService` against the already-built container, and stores
+/// it here via `set(svc)`. [signalingService] watches this slot and
+/// returns whatever is current.
+final class ProductionSignalingProvider
+    extends $NotifierProvider<ProductionSignaling, SignalingService?> {
+  /// Runtime-settable slot for the production [WsSignalingService].
+  ///
+  /// Plan 11c: this replaces the previous pattern in `main.dart` that
+  /// constructed `WsSignalingService` with a closure over a `late
+  /// ProviderContainer`, then handed it back to the container via
+  /// `overrideWithValue`. That worked but was fragile — the closure was
+  /// captured *before* the container existed, surviving only because Dart
+  /// `late` captures by reference.
+  ///
+  /// Now: `main.dart` builds the container, constructs the
+  /// `WsSignalingService` against the already-built container, and stores
+  /// it here via `set(svc)`. [signalingService] watches this slot and
+  /// returns whatever is current.
+  ProductionSignalingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'productionSignalingProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$productionSignalingHash();
+
+  @$internal
+  @override
+  ProductionSignaling create() => ProductionSignaling();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SignalingService? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SignalingService?>(value),
+    );
+  }
+}
+
+String _$productionSignalingHash() =>
+    r'ea2055da3857eebfdccce1bc319cc5463b1535da';
+
+/// Runtime-settable slot for the production [WsSignalingService].
+///
+/// Plan 11c: this replaces the previous pattern in `main.dart` that
+/// constructed `WsSignalingService` with a closure over a `late
+/// ProviderContainer`, then handed it back to the container via
+/// `overrideWithValue`. That worked but was fragile — the closure was
+/// captured *before* the container existed, surviving only because Dart
+/// `late` captures by reference.
+///
+/// Now: `main.dart` builds the container, constructs the
+/// `WsSignalingService` against the already-built container, and stores
+/// it here via `set(svc)`. [signalingService] watches this slot and
+/// returns whatever is current.
+
+abstract class _$ProductionSignaling extends $Notifier<SignalingService?> {
+  SignalingService? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<SignalingService?, SignalingService?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<SignalingService?, SignalingService?>,
+              SignalingService?,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+/// The default fallback is [MockSignalingService] (so the dispatcher,
+/// upgrader, and tests have a consistent backing) until `main.dart`
+/// installs a real [WsSignalingService] via [ProductionSignaling].
+
 @ProviderFor(signalingService)
 final signalingServiceProvider = SignalingServiceProvider._();
+
+/// The default fallback is [MockSignalingService] (so the dispatcher,
+/// upgrader, and tests have a consistent backing) until `main.dart`
+/// installs a real [WsSignalingService] via [ProductionSignaling].
 
 final class SignalingServiceProvider
     extends
@@ -353,6 +523,9 @@ final class SignalingServiceProvider
           SignalingService
         >
     with $Provider<SignalingService> {
+  /// The default fallback is [MockSignalingService] (so the dispatcher,
+  /// upgrader, and tests have a consistent backing) until `main.dart`
+  /// installs a real [WsSignalingService] via [ProductionSignaling].
   SignalingServiceProvider._()
     : super(
         from: null,
@@ -386,7 +559,7 @@ final class SignalingServiceProvider
   }
 }
 
-String _$signalingServiceHash() => r'a078f428cc39d2f9f30be0f3ace88968744e83ce';
+String _$signalingServiceHash() => r'60d1ab507f1fb20eb944aecec0a488b4602866cc';
 
 @ProviderFor(clock)
 final clockProvider = ClockProvider._();

@@ -56,16 +56,12 @@ void backgroundSyncCallbackDispatcher() {
 Future<void> initializeBackgroundSync() async {
   if (!Platform.isAndroid) return;
   try {
-    await Workmanager().initialize(
-      backgroundSyncCallbackDispatcher,
-      // ignore: prefer_const_constructors
-      isInDebugMode: false,
-    );
+    await Workmanager().initialize(backgroundSyncCallbackDispatcher);
     await Workmanager().registerPeriodicTask(
       kBackgroundSyncTaskName,
       kBackgroundSyncTaskName,
       frequency: kBackgroundSyncFrequency,
-      existingWorkPolicy: ExistingWorkPolicy.keep,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
       constraints: Constraints(
         networkType: NetworkType.connected,
         requiresBatteryNotLow: true,

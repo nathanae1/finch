@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../providers/follow_requests_provider.dart';
 import '../providers/sync_provider.dart';
 import '../theme/starling_theme.dart';
 import '../widgets/tab_bar.dart';
@@ -53,12 +54,15 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final starling = StarlingTheme.of(context);
+    final inboundCount =
+        ref.watch(inboundRequestsStreamProvider).value?.length ?? 0;
     return Scaffold(
       backgroundColor: starling.colors.paper,
       body: navigationShell,
       bottomNavigationBar: StarlingBottomTabBar(
         current: _current,
         onTap: (t) => _onTap(context, ref, t),
+        badges: {StarlingTab.friends: inboundCount},
       ),
     );
   }

@@ -1,0 +1,109 @@
+[package]
+name = "starling_bridge"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "starling_bridge"
+crate-type = ["staticlib", "cdylib"]
+
+# Merged FFI crate: combines what used to be `arti_bridge` and
+# `libp2p_bridge` into one staticlib. The two were split for organizational
+# reasons but each was producing its own copy of every shared Rust
+# dependency (ring, compiler_builtins, tokio, etc.), and Apple's ld-prime
+# rejects strong-symbol duplicates across two `-force_load`'d archives —
+# ~584 duplicate-symbol errors on iOS link. Merging them so the shared
+# deps exist in exactly one compilation unit fixes the link permanently.
+#
+# Module layout (src/):
+#   arti/   — was native/arti_bridge/src/  (FFI: arti_*)
+#   p2p/    — was native/libp2p_bridge/src/ (FFI: lp_*)
+# Submodule is named `p2p` (not `libp2p`) so the `libp2p` *crate*
+# stays unambiguously addressable inside `p2p/` source files.
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+once_cell = "1"
+parking_lot = "0.12"
+bytes = "1"
+ciborium = "0.2"
+zeroize = "1"
+futures = "0.3"
+# Tokio: union of arti's (rt-multi-thread, sync, time, macros) and
+# libp2p's (same + net). `net` is required for the QUIC transport.
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "net"] }
+
+# --- arti / tor (used only by src/arti/) ---
+
+# Arti — pinned to a recent 0.x line. The exact patch version may need a bump
+# when crates.io publishes newer releases.
+arti-client = { version = "0.34", default-features = false, features = ["tokio", "rustls", "onion-service-client", "onion-service-service"] }
+tor-hsservice = { version = "0.34" }
+tor-hsrproxy = { version = "0.34" }
+tor-rtcompat = { version = "0.34", features = ["tokio", "rustls"] }
+tor-keymgr = { version = "0.34" }
+tor-socksproto = { version = "0.34" }
+fs-mistrust = "0.10"
+safelog = "0.5"
+
+# tor-dirmgr → rusqlite → libsqlite3-sys dynamically links against the
+# host libsqlite3 by default. The Android NDK sysroot does not ship
+# libsqlite3, so cross-compiles for *-linux-android fail to link.
+# Cargo feature unification: declaring this dep with `bundled` flips
+# the feature on the single libsqlite3-sys instance in the dep tree,
+# forcing it to compile sqlite from the vendored C source instead.
+libsqlite3-sys = { version = "0.35", features = ["bundled"] }
+
+# --- libp2p (used only by src/p2p/) ---
+
+# rust-libp2p — pinned to a recent 0.x line. Only the protocols Plan 11a
+# actually needs: QUIC transport, Noise security, yamux mux, Identify
+# (for peer/observed-address exchange), Ed25519 identity, ping. The
+# `stream` feature exposes `libp2p::Stream` + the user-stream behaviour
+# Plan 11a uses for the seven /starling/sync/*/1 protocols.
+# No mDNS (we use native bridges), no AutoNAT, no Kad/Gossipsub/Relay.
+# Plan 11c dropped `dcutr`: rust-libp2p's DCUtR behaviour is
+# relay-orchestrated — it expects a circuit-relay-v2 client to bootstrap
+# the simultaneous-open. Starling explicitly rules out public relays
+# (100% P2P), so the behaviour would never fire. We coordinate
+# simultaneous-open ourselves over Tor-routed WS signaling in
+# `Libp2pUpgrader`.
+libp2p = { version = "0.55", default-features = false, features = [
+    "quic",
+    "noise",
+    "yamux",
+    "identify",
+    "tokio",
+    "macros",
+    "ed25519",
+    "ping",
+] }
+libp2p-stream = "0.3.0-alpha"
+
+# Plan 11c — per-interface IPv6 enumerator. Required for cold-start
+# libp2p-direct: cellular carriers assign a globally-routable v6 to
+# each device but rust-libp2p's `listen_on("/ip6/::/...")` only emits
+# the unspecified bind addr, not the per-interface IPs the carrier
+# assigned. libp2p depends on this transitively but we need a direct
+# handle to it.
+if-watch = { version = "3.2", features = ["tokio"] }
+
+# Dart Native Port — lets the bridge post Swarm events to a Dart
+# `ReceivePort` from non-isolate threads without blocking the FFI call.
+# Uses the older `Dart_PostCObject` ABI: the Dart side hands us
+# `NativeApi.postCObject` (a function pointer) at init, we store it via
+# `store_dart_post_cobject`, and `Isolate::new(port).post(value)` does
+# the rest. Used only by src/p2p/; the arti side never calls into it.
+allo-isolate = "0.1"
+
+[build-dependencies]
+cbindgen = "0.27"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../services/clock.dart';
@@ -6,6 +8,10 @@ import '../services/content_key_service.dart';
 import '../services/crypto/key_cache.dart';
 import '../services/crypto/publish_lock.dart';
 import '../services/crypto_service.dart';
+import '../services/libp2p/libp2p_bridge.dart';
+import '../services/libp2p/libp2p_bridge_stub.dart';
+import '../services/libp2p/libp2p_service.dart';
+import '../utils/feature_flags.dart';
 import '../services/mdns_service.dart';
 import '../services/mocks/mock_content_key_service.dart';
 import '../services/mocks/mock_crypto_service.dart';
@@ -36,6 +42,19 @@ StorageService storageService(Ref ref) => MockStorageService();
 @riverpod
 TorService torService(Ref ref) => MockTorService();
 
+/// Plan 11a — libp2p direct-connect tier. Selects the real FFI-backed
+/// bridge on iOS and Android when `kLibp2pEnabled` is true; falls back to
+/// the no-op stub on desktop, in tests, or when the feature flag is off.
+/// `main.dart` may still override this in test setups.
+@Riverpod(keepAlive: true)
+Libp2pService libp2pService(Ref ref) {
+  final canUseNative = kLibp2pEnabled && (Platform.isIOS || Platform.isAndroid);
+  final Libp2pService bridge =
+      canUseNative ? Libp2pBridge() : Libp2pBridgeStub();
+  ref.onDispose(bridge.shutdown);
+  return bridge;
+}
+
 /// Reactive holder for the local `.onion` address. Updated by `main.dart`
 /// after `TorService.createOnionService` returns; watched by
 /// `ownEndpoints` so the published connection card picks up the onion
@@ -56,9 +75,33 @@ NetworkService networkService(Ref ref) => MockNetworkService();
 @riverpod
 MdnsService mdnsService(Ref ref) => MockMdnsService();
 
+/// Runtime-settable slot for the production [WsSignalingService].
+///
+/// Plan 11c: this replaces the previous pattern in `main.dart` that
+/// constructed `WsSignalingService` with a closure over a `late
+/// ProviderContainer`, then handed it back to the container via
+/// `overrideWithValue`. That worked but was fragile — the closure was
+/// captured *before* the container existed, surviving only because Dart
+/// `late` captures by reference.
+///
+/// Now: `main.dart` builds the container, constructs the
+/// `WsSignalingService` against the already-built container, and stores
+/// it here via `set(svc)`. [signalingService] watches this slot and
+/// returns whatever is current.
+@Riverpod(keepAlive: true)
+class ProductionSignaling extends _$ProductionSignaling {
+  @override
+  SignalingService? build() => null;
+  void set(SignalingService svc) => state = svc;
+}
+
+/// The default fallback is [MockSignalingService] (so the dispatcher,
+/// upgrader, and tests have a consistent backing) until `main.dart`
+/// installs a real [WsSignalingService] via [ProductionSignaling].
 @riverpod
-SignalingService signalingService(Ref ref) =>
-    MockSignalingService();
+SignalingService signalingService(Ref ref) {
+  return ref.watch(productionSignalingProvider) ?? MockSignalingService();
+}
 
 @riverpod
 Clock clock(Ref ref) => const SystemClock();

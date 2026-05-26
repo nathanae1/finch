@@ -42,51 +42,64 @@ Handler eventsPushHandler({
       return Response(400, body: 'invalid envelope cbor');
     }
 
-    var accepted = 0;
-    var rejected = 0;
-    for (final item in envelope.items) {
-      if (item.type != 'event') {
-        // Forward-compat: store unknown types; later plans may consume.
-        await storage.saveUnknownEnvelopeItem(
-          UnknownEnvelopeItem(
-            sourcePubkey: '',
-            envelopeVersion: envelope.version,
-            type: item.type,
-            payload: item.payload,
-            receivedAt: clock.nowUnixSeconds(),
-          ),
-        );
-        continue;
-      }
-      try {
-        final encrypted = EncryptedEvent.fromBytes(item.payload);
-        final follow = await storage.getFollow(encrypted.pubkey);
-        if (follow == null) {
-          // Sender pubkey isn't on our follows list — silently drop.
-          rejected++;
-          continue;
-        }
-        // Mirror sync_engine: msgSeq is local-only metadata excluded from
-        // wire serialization, so the decrypted Event has it null. Carry
-        // the wire-format msgSeq through so media decryption can later
-        // re-derive the per-message AEAD key without re-fetching.
-        final decrypted = contentKey.decryptEvent(encrypted, follow.feedKey);
-        final plain = decrypted.copyWith(msgSeq: encrypted.msgSeq);
-        await storage.saveEvent(plain);
-        accepted++;
-      } catch (e) {
-        developer.log(
-          'rejected pushed event: $e',
-          name: 'events_push_handler',
-        );
-        rejected++;
-      }
-    }
-
-    developer.log(
-      'POST /events accepted=$accepted rejected=$rejected',
-      name: 'events_push_handler',
+    await ingestPushedEnvelope(
+      storage: storage,
+      contentKey: contentKey,
+      clock: clock,
+      envelope: envelope,
     );
     return Response(202, body: '');
   };
+}
+
+/// Pure events-push ingestion: decrypt each `event` item under the matching
+/// follow's feed key and persist. Reused by `Libp2pStreamServer` so the
+/// libp2p path applies the exact same auth-by-possession rules as the
+/// HTTP path.
+Future<void> ingestPushedEnvelope({
+  required StorageService storage,
+  required ContentKeyService contentKey,
+  required Clock clock,
+  required Envelope envelope,
+}) async {
+  var accepted = 0;
+  var rejected = 0;
+  for (final item in envelope.items) {
+    if (item.type != 'event') {
+      // Forward-compat: store unknown types; later plans may consume.
+      await storage.saveUnknownEnvelopeItem(
+        UnknownEnvelopeItem(
+          sourcePubkey: '',
+          envelopeVersion: envelope.version,
+          type: item.type,
+          payload: item.payload,
+          receivedAt: clock.nowUnixSeconds(),
+        ),
+      );
+      continue;
+    }
+    try {
+      final encrypted = EncryptedEvent.fromBytes(item.payload);
+      final follow = await storage.getFollow(encrypted.pubkey);
+      if (follow == null) {
+        rejected++;
+        continue;
+      }
+      final decrypted = contentKey.decryptEvent(encrypted, follow.feedKey);
+      final plain = decrypted.copyWith(msgSeq: encrypted.msgSeq);
+      await storage.saveEvent(plain);
+      accepted++;
+    } catch (e) {
+      developer.log(
+        'rejected pushed event: $e',
+        name: 'events_push_handler',
+      );
+      rejected++;
+    }
+  }
+
+  developer.log(
+    'envelope ingested accepted=$accepted rejected=$rejected',
+    name: 'events_push_handler',
+  );
 }

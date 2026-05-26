@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import '../services/media_service.dart';
@@ -49,42 +48,51 @@ class RemoteMediaFetcher {
       return null;
     }
     if (cached != null) {
-      developer.log(
-        'stale CachedMedia row for $hash (no file on disk) — re-fetching',
-        name: 'remote_media_fetcher',
+      // ignore: avoid_print
+      print(
+        '[starling.fetch] stale CachedMedia row for $hash (no file on disk) '
+        '— re-fetching',
       );
       await _storage.deleteMedia(hash);
     }
 
     final connection = await _peerFactory.resolve(authorPubkey);
     if (connection == null) {
-      developer.log(
-        'no transport for media $hash from $authorPubkey',
-        name: 'remote_media_fetcher',
-      );
+      // ignore: avoid_print
+      print('[starling.fetch] no transport for media $hash from $authorPubkey');
       return null;
     }
+
+    // ignore: avoid_print
+    print(
+      '[starling.fetch] attempting media $hash from $authorPubkey via '
+      '${connection.transport.name} url=${connection.baseUrl}',
+    );
 
     final Uint8List bytes;
     try {
       bytes = await _transport.fetchMedia(connection, hash);
     } catch (e) {
-      developer.log(
-        'media fetch failed for $hash from $authorPubkey via '
+      // ignore: avoid_print
+      print(
+        '[starling.fetch] media fetch failed for $hash from $authorPubkey via '
         '${connection.transport.name}: $e',
-        name: 'remote_media_fetcher',
       );
       _reachability.markUnreachable(authorPubkey, connection.transport, e);
       return null;
     }
 
+    // ignore: avoid_print
+    print(
+      '[starling.fetch] media fetch OK $hash via ${connection.transport.name} '
+      'bytes=${bytes.length}',
+    );
+
     try {
       await _mediaService.storeReceivedBlob(hash, bytes);
     } catch (e) {
-      developer.log(
-        'media store failed for $hash: $e',
-        name: 'remote_media_fetcher',
-      );
+      // ignore: avoid_print
+      print('[starling.fetch] media store failed for $hash: $e');
       return null;
     }
     return bytes;

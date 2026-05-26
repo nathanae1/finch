@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'providers/deep_link_provider.dart';
 import 'providers/identity_provider.dart';
 import 'providers/service_providers.dart';
+import 'providers/sync_provider.dart';
 import 'router.dart';
 import 'screens/friends/confirm_request_sheet.dart';
 import 'services/clock.dart';
@@ -22,6 +23,7 @@ import 'services/crypto/pairwise_content_key_service.dart';
 import 'services/crypto/sodium_crypto_service.dart';
 import 'services/lifecycle/lifecycle_manager.dart';
 import 'services/mdns_service.dart';
+import 'services/signaling/ws_signaling_service.dart';
 import 'services/storage/database.dart';
 import 'services/storage/drift_storage_service.dart';
 import 'services/storage/keychain_manager.dart';
@@ -135,11 +137,39 @@ Future<void> main() async {
       // read from this single cache instance — rotations must update the
       // same cache the publish path reads from.
       overrides.add(feedKeyCacheProvider.overrideWithValue(cache));
+
+      // Run retention once per launch — fire-and-forget. The DB is already
+      // open and encrypted by the time we get here.
+      unawaited(_runRetention(storage));
+
+      // Plan 11c: build the container first, then construct the
+      // production WsSignalingService against the already-built
+      // container and install it in the runtime-settable production slot.
+      // This replaces the previous `late ProviderContainer` closure
+      // pattern — see `productionSignalingProvider` in
+      // `lib/providers/service_providers.dart`.
+      final container = ProviderContainer(overrides: overrides);
+      final wsSignaling = WsSignalingService(
+        crypto: crypto,
+        peerFactory: (pubkey) =>
+            container.read(peerConnectionFactoryProvider).resolve(pubkey),
+        localPubkey: identity.pubkey,
+        localSecretKey: secretKey,
+      );
+      container.read(productionSignalingProvider.notifier).set(wsSignaling);
+
+      runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const StarlingApp(),
+        ),
+      );
+      return;
     }
   }
 
-  // Run retention once per launch — fire-and-forget. The DB is already
-  // open and encrypted by the time we get here.
+  // No identity (or no secret key) — leave the mock signaling binding in
+  // place. Retention still runs.
   unawaited(_runRetention(storage));
 
   runApp(ProviderScope(overrides: overrides, child: const StarlingApp()));

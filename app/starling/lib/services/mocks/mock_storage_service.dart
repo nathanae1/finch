@@ -113,6 +113,15 @@ class MockStorageService implements StorageService {
     }
   }
 
+  @override
+  Future<void> clearLastDecryptFailureIfSet(String pubkey) async {
+    final follow = _follows[pubkey];
+    if (follow != null && follow.lastDecryptFailureAt != null) {
+      _follows[pubkey] = follow.copyWith(clearLastDecryptFailureAt: true);
+      _emitFollows();
+    }
+  }
+
   // --- Events ---
 
   @override

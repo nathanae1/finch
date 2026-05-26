@@ -78,6 +78,29 @@ class MockCryptoService implements CryptoService {
       Uint8List.fromList(List.filled(32, 0xBB));
 
   @override
+  Uint8List deriveSignalingKey({
+    required Uint8List mySecretKey,
+    required Uint8List theirPubkey,
+  }) =>
+      Uint8List.fromList(List.filled(32, 0xAA));
+
+  @override
+  Uint8List encryptEphemeral({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List plaintext,
+  }) =>
+      Uint8List.fromList(plaintext);
+
+  @override
+  Uint8List decryptEphemeral({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List ciphertext,
+  }) =>
+      Uint8List.fromList(ciphertext);
+
+  @override
   Uint8List blake2b256(Uint8List data) {
     // Simple deterministic hash for testing: use dart:convert's utf8 + base64
     // to produce 32 bytes. Not cryptographically secure.

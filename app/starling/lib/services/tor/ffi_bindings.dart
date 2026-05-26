@@ -131,7 +131,9 @@ class ArtiBindings {
       return DynamicLibrary.process();
     }
     if (Platform.isAndroid) {
-      return DynamicLibrary.open('libarti_bridge.so');
+      // Merged native bridge — the arti_* and lp_* FFI surfaces both live
+      // in libstarling_bridge.so. See native/starling_bridge/.
+      return DynamicLibrary.open('libstarling_bridge.so');
     }
     // Linux/Windows desktop builds aren't part of Plan 11; let tests that
     // import this fail loudly rather than silently load the wrong thing.

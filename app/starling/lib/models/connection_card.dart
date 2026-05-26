@@ -38,7 +38,7 @@ class ConnectionCard {
   const ConnectionCard({
     required this.pubkey,
     this.endpoints = const [],
-    this.capabilities = const ['pairwise-v1'],
+    this.capabilities = const ['pairwise-v1', 'libp2p-direct-v1'],
   });
 
   final String pubkey;

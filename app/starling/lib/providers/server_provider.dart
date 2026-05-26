@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../server/http_server.dart';
+import '../services/signaling/ws_signaling_service.dart';
 import 'app_paths_provider.dart';
 import 'follow_provider.dart';
 import 'identity_provider.dart';
@@ -26,12 +27,24 @@ class HttpServerController extends _$HttpServerController {
     final clock = ref.watch(clockProvider);
     final appSupportDir = await ref.watch(appSupportDirectoryProvider.future);
 
+    final crypto = ref.watch(cryptoServiceProvider);
     final server = StarlingHttpServer.social(
       storage: storage,
       contentKey: contentKey,
       identityLookup: storage.getIdentity,
       appSupportDir: appSupportDir,
       clock: clock,
+      crypto: crypto,
+      // Plan 11b — every authenticated inbound /ws/signal channel is
+      // handed off to the production WsSignalingService so the dispatcher
+      // can decrypt + route. With the mock binding still in place
+      // (pre-identity), this is a no-op.
+      signalingInboundHandler: (channel) {
+        final svc = ref.read(signalingServiceProvider);
+        if (svc is WsSignalingService) {
+          svc.handleInbound(channel);
+        }
+      },
       // Lazy lookup avoids a build-time cycle:
       //   ownEndpoints → httpServerController → followService → ownEndpoints.
       // followService is only needed at /follow-accept request time.

@@ -211,10 +211,15 @@ class SodiumCryptoService implements CryptoService {
       final keyMaterialBytes = blake2b256(info);
       keyMaterial = SecureKey.fromList(_sodium, keyMaterialBytes);
 
-      // Step 3: crypto_kdf_derive_from_key with fixed context "starlingkex".
+      // Step 3: crypto_kdf_derive_from_key with fixed 8-byte context.
+      // libsodium's crypto_kdf context is exactly 8 bytes; the earlier
+      // "starlingkex" (11 bytes) was rejected. The trailing digit
+      // reserves room for future derivation revisions without changing
+      // the wire spec — mirrors the "starsig0" convention used for the
+      // signaling pairwise key in [deriveSignalingKey].
       derived = _sodium.crypto.kdf.deriveFromKey(
         masterKey: keyMaterial,
-        context: 'starlingkex',
+        context: 'starfk00',
         subkeyId: BigInt.one,
         subkeyLen: 32,
       );
@@ -225,6 +230,92 @@ class SodiumCryptoService implements CryptoService {
       sharedSecret?.dispose();
       mySk.dispose();
     }
+  }
+
+  // --- Signaling pairwise key ---
+
+  @override
+  Uint8List deriveSignalingKey({
+    required Uint8List mySecretKey,
+    required Uint8List theirPubkey,
+  }) {
+    // Recover my Ed25519 pubkey from the 64-byte sk (libsodium layout:
+    // first 32 bytes = seed, last 32 bytes = pk).
+    final myPubkey = Uint8List.fromList(
+      Uint8List.sublistView(mySecretKey, 32, 64),
+    );
+    // Convert Ed25519 → X25519 for DH.
+    final mySkX25519Bytes = ed25519ToX25519SecretKey(mySecretKey);
+    final theirPkX25519 = ed25519ToX25519PublicKey(theirPubkey);
+
+    final mySk = SecureKey.fromList(_sodium, mySkX25519Bytes);
+    SecureKey? sharedSecret;
+    SecureKey? keyMaterial;
+    SecureKey? derived;
+    try {
+      sharedSecret = _sodium.crypto.scalarmult.call(
+        n: mySk,
+        p: theirPkX25519,
+      );
+      final rawShared = sharedSecret.extractBytes();
+
+      // Lex-sort the two Ed25519 pubkeys so both sides arrive at the same
+      // key without role coordination. Plan 16 spec writes the info bytes
+      // as `my_pk || their_pk` from each side's perspective; the canonical
+      // sort is the symmetry fix the spec leaves implicit.
+      final (lo, hi) = _lexLess(myPubkey, theirPubkey)
+          ? (myPubkey, theirPubkey)
+          : (theirPubkey, myPubkey);
+
+      final info = Uint8List(rawShared.length + lo.length + hi.length);
+      info.setRange(0, rawShared.length, rawShared);
+      info.setRange(rawShared.length, rawShared.length + lo.length, lo);
+      info.setRange(rawShared.length + lo.length, info.length, hi);
+
+      final keyMaterialBytes = blake2b256(info);
+      keyMaterial = SecureKey.fromList(_sodium, keyMaterialBytes);
+
+      // libsodium crypto_kdf context is exactly 8 bytes; Plan 16's spec
+      // shorthand "starlingsig" is the conceptual ctx, "starsig0" is the
+      // 8-byte realization. The trailing digit reserves room for a future
+      // derivation revision without changing the wire spec.
+      derived = _sodium.crypto.kdf.deriveFromKey(
+        masterKey: keyMaterial,
+        context: 'starsig0',
+        subkeyId: BigInt.one,
+        subkeyLen: 32,
+      );
+      return derived.extractBytes();
+    } finally {
+      derived?.dispose();
+      keyMaterial?.dispose();
+      sharedSecret?.dispose();
+      mySk.dispose();
+    }
+  }
+
+  @override
+  Uint8List encryptEphemeral({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List plaintext,
+  }) =>
+      encrypt(plaintext, nonce, key);
+
+  @override
+  Uint8List decryptEphemeral({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List ciphertext,
+  }) =>
+      decrypt(ciphertext, nonce, key);
+
+  static bool _lexLess(Uint8List a, Uint8List b) {
+    final len = a.length < b.length ? a.length : b.length;
+    for (var i = 0; i < len; i++) {
+      if (a[i] != b[i]) return a[i] < b[i];
+    }
+    return a.length < b.length;
   }
 
   // --- Hashing ---

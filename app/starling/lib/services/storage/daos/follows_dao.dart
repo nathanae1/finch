@@ -37,4 +37,14 @@ class FollowsDao extends DatabaseAccessor<AppDatabase>
           .write(FollowEntriesCompanion(
             lastDecryptFailureAt: Value(timestamp),
           ));
+
+  Future<void> clearLastDecryptFailureIfSet(String pubkey) => (update(
+        followEntries,
+      )..where(
+              (f) =>
+                  f.pubkey.equals(pubkey) & f.lastDecryptFailureAt.isNotNull(),
+            ))
+          .write(const FollowEntriesCompanion(
+        lastDecryptFailureAt: Value(null),
+      ));
 }

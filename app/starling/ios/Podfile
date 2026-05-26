@@ -32,9 +32,13 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Plan 11: Arti/Tor FFI bridge. The xcframework is produced by
-  # `native/arti_bridge/build.sh ios` and lives at Runner/arti_bridge.xcframework.
-  pod 'arti_bridge', :path => '.'
+  # Merged native FFI bridge: arti (Tor) + libp2p direct-connect in one
+  # staticlib. Replaces the previous separate `arti_bridge` and
+  # `libp2p_bridge` pods — the split caused ~584 duplicate-symbol link
+  # errors because each Rust staticlib bundled its own copy of `ring` +
+  # `compiler_builtins`. xcframework produced by
+  # `native/starling_bridge/build.sh ios`, at Runner/starling_bridge.xcframework.
+  pod 'starling_bridge', :path => '.'
 
   target 'RunnerTests' do
     inherit! :search_paths
@@ -58,5 +62,55 @@ post_install do |installer|
         config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
       end
     end
+  end
+
+  # Inject `-force_load` for starling_bridge directly on the Runner
+  # xcodeproj (not via the pod's `user_target_xcconfig`). The flag has
+  # to override the linker's default dead-strip behavior for symbols
+  # that are only resolved via `dlsym` from Dart, which the static
+  # linker can't see. `$(STARLING_SLICE)` indirection keeps the
+  # OTHER_LDFLAGS value a plain array — historically this dodged a
+  # CocoaPods singular-merge collision when two pods both set per-SDK
+  # OTHER_LDFLAGS conditionals; preserved here so a future second
+  # native pod doesn't reintroduce the problem.
+  #
+  # Strip any previously-injected `-force_load` for the (now-deleted)
+  # arti_bridge / libp2p_bridge and for any stale starling_bridge
+  # entries BEFORE appending fresh ones. Without this, every `pod
+  # install` re-run would append another copy and the linker would
+  # eventually fail on duplicate -force_load directives.
+  installer.aggregate_targets.each do |aggregate|
+    next unless aggregate.name == 'Pods-Runner'
+    aggregate.user_project.targets.each do |t|
+      next unless t.name == 'Runner'
+      t.build_configurations.each do |config|
+        existing = Array(config.build_settings['OTHER_LDFLAGS'] || '$(inherited)')
+        skip_next = false
+        cleaned = existing.reject do |flag|
+          if skip_next
+            skip_next = false
+            true
+          elsif flag == '-force_load'
+            skip_next = true
+            true
+          else
+            flag.include?('arti_bridge.xcframework') ||
+              flag.include?('libp2p_bridge.xcframework') ||
+              flag.include?('starling_bridge.xcframework')
+          end
+        end
+        config.build_settings['OTHER_LDFLAGS'] = cleaned + [
+          '-force_load "$(SRCROOT)/Runner/starling_bridge.xcframework/$(STARLING_SLICE)/libstarling_bridge.a"',
+        ]
+        config.build_settings['STARLING_SLICE[sdk=iphoneos*]']         = 'ios-arm64'
+        config.build_settings['STARLING_SLICE[sdk=iphonesimulator*]']  = 'ios-arm64_x86_64-simulator'
+        # Drop the old per-bridge SLICE vars now that the bridges merged.
+        config.build_settings.delete('ARTI_SLICE[sdk=iphoneos*]')
+        config.build_settings.delete('ARTI_SLICE[sdk=iphonesimulator*]')
+        config.build_settings.delete('LIBP2P_SLICE[sdk=iphoneos*]')
+        config.build_settings.delete('LIBP2P_SLICE[sdk=iphonesimulator*]')
+      end
+    end
+    aggregate.user_project.save
   end
 end

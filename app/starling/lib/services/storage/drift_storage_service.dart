@@ -65,6 +65,10 @@ class DriftStorageService implements StorageService {
   Future<void> setLastDecryptFailureAt(String pubkey, int? timestamp) =>
       _db.followsDao.setLastDecryptFailureAt(pubkey, timestamp);
 
+  @override
+  Future<void> clearLastDecryptFailureIfSet(String pubkey) =>
+      _db.followsDao.clearLastDecryptFailureIfSet(pubkey);
+
   // --- Events ---
 
   @override

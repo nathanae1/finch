@@ -84,7 +84,7 @@ dependencies:
   # owns the opt-in foreground service that keeps the HTTP server + Tor
   # alive in background. iOS uses BGTaskScheduler directly via native
   # AppDelegate code — no Dart package needed for that path.
-  workmanager: ^0.5.2
+  workmanager: ^0.9.0
   flutter_foreground_task: ^9.1.0
 
   # Utilities
